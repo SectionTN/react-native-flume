@@ -1,0 +1,120 @@
+#include "doctest.h"
+
+#include <memory>
+#include <string>
+
+#include "batch.h"
+#include "core/Layout.h"
+#include "core/TreeParser.h"
+#include "fake_measurer.h"
+#include "values.h"
+
+namespace {
+
+using Frame = std::array<float, 4>;
+
+// Mounts a parsed tree by hand; the reconciler takes this job over in Task 8.
+std::unique_ptr<flume::Mounted> mount(flume::Layout& layout, const flume::Node& node, int& nextId, bool isRoot) {
+  auto mounted = std::make_unique<flume::Mounted>();
+  mounted->type = node.type;
+  mounted->style = node.style;
+  mounted->text = node.text;
+  mounted->imageUri = node.imageUri;
+  mounted->viewId = isRoot ? 0 : nextId++;
+  mounted->yoga = layout.createNode(*mounted);
+  layout.applyStyle(mounted->yoga, mounted->style);
+  for (const auto& child : node.children) {
+    auto childMounted = mount(layout, *child, nextId, false);
+    YGNodeInsertChild(mounted->yoga, childMounted->yoga, YGNodeGetChildCount(mounted->yoga));
+    mounted->children.push_back(std::move(childMounted));
+  }
+  return mounted;
+}
+
+flume::Value chatCellWithText(const std::string& textA) {
+  auto cell = chatCell();
+  auto parsedTemplate = flume::parseTree(cell);
+  REQUIRE(parsedTemplate.root);
+  return obj({{"type", V("view")},
+              {"style", obj({{"flexDirection", V("row")}, {"padding", V(12)}, {"gap", V(12)}, {"alignItems", V("center")}})},
+              {"children",
+               arr({obj({{"type", V("image")},
+                         {"source", V("https://x/a.png")},
+                         {"style", obj({{"width", V(40)}, {"height", V(40)}, {"borderRadius", V(20)}})}}),
+                    obj({{"type", V("view")},
+                         {"style", obj({{"flex", V(1)}})},
+                         {"children", arr({obj({{"type", V("text")}, {"text", V(textA.c_str())}, {"style", obj({{"fontSize", V(16)}})}}),
+                                           obj({{"type", V("text")}, {"text", V("9:41")}, {"style", obj({{"fontSize", V(12)}})}})})}})})}});
+}
+
+}  // namespace
+
+TEST_CASE("lays out the chat cell at 360") {
+  FakeMeasurer fake;
+  flume::Layout layout(fake, 1);
+  int nextId = 1;
+  auto parsed = flume::parseTree(chatCell());
+  auto root = mount(layout, *parsed.root, nextId, true);
+  flume::OpBatch batch;
+  layout.layout(*root, 360);
+  layout.readFrames(*root, batch);
+  CHECK(batch.rootWidth == 360.0f);
+  CHECK(batch.rootHeight == 64.0f);
+  CHECK(frameOf(batch, 0) == Frame{0, 0, 360, 64});
+  CHECK(frameOf(batch, 1) == Frame{12, 12, 40, 40});
+  CHECK(frameOf(batch, 2) == Frame{64, 14, 284, 36});
+  CHECK(frameOf(batch, 3) == Frame{0, 0, 284, 20});
+  CHECK(frameOf(batch, 4) == Frame{0, 20, 284, 16});
+  CHECK(root->children[1]->children[0]->measuredMaxWidth == 284.0f);
+  CHECK(layout.measureCalls == 2);
+  CHECK(layout.measureHits == 0);
+}
+
+TEST_CASE("a three-line text grows the row past the image") {
+  FakeMeasurer fake;
+  flume::Layout layout(fake, 1);
+  int nextId = 1;
+  auto parsed = flume::parseTree(chatCellWithText(std::string(100, 'a')));
+  auto root = mount(layout, *parsed.root, nextId, true);
+  flume::OpBatch batch;
+  layout.layout(*root, 360);
+  layout.readFrames(*root, batch);
+  CHECK(batch.rootHeight == 100.0f);
+  CHECK(frameOf(batch, 1) == Frame{12, 30, 40, 40});
+  CHECK(frameOf(batch, 2) == Frame{64, 12, 284, 76});
+  CHECK(frameOf(batch, 3) == Frame{0, 0, 284, 60});
+}
+
+TEST_CASE("an unchanged layout emits no frames") {
+  FakeMeasurer fake;
+  flume::Layout layout(fake, 1);
+  int nextId = 1;
+  auto parsed = flume::parseTree(chatCell());
+  auto root = mount(layout, *parsed.root, nextId, true);
+  flume::OpBatch first;
+  layout.layout(*root, 360);
+  layout.readFrames(*root, first);
+  flume::OpBatch second;
+  layout.layout(*root, 360);
+  layout.readFrames(*root, second);
+  CHECK(first.opCount() == 5);
+  CHECK(second.opCount() == 0);
+  CHECK(second.rootHeight == 64.0f);
+}
+
+TEST_CASE("the measure cache answers a repeated measure") {
+  FakeMeasurer fake;
+  flume::Layout layout(fake, 1);
+  int nextId = 1;
+  auto parsed = flume::parseTree(chatCell());
+  auto root = mount(layout, *parsed.root, nextId, true);
+  layout.layout(*root, 360);
+  int callsAfterFirst = fake.calls;
+  layout.measureCalls = 0;
+  layout.measureHits = 0;
+  layout.markTextDirty(root->children[1]->children[0]->yoga);
+  layout.layout(*root, 360);
+  CHECK(fake.calls == callsAfterFirst);
+  CHECK(layout.measureCalls == 1);
+  CHECK(layout.measureHits == 1);
+}
