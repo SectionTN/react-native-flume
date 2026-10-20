@@ -41,8 +41,9 @@ std::unique_ptr<Node> parseNode(const Value& value, std::string& error) {
       node->imageUri = uri->asString();
     }
   }
+  // Text and image are leaves: Yoga refuses children under a node with a measure function.
   if (const Value* children = value.get("children");
-      children != nullptr && children->kind() == Value::Kind::Array) {
+      node->type == NodeType::View && children != nullptr && children->kind() == Value::Kind::Array) {
     const auto& items = children->asArray();
     node->children.reserve(items.size());
     for (size_t i = 0; i < items.size(); i++) {

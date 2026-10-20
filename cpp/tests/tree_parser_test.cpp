@@ -49,3 +49,14 @@ TEST_CASE("errors") {
   CHECK(flume::parseTree(obj({{"type", V("view")}, {"children", arr({obj({{"type", V("nope")}})})}})).error ==
         "unknown element type: nope");
 }
+
+TEST_CASE("text and image elements drop their children") {
+  auto text = flume::parseTree(
+      obj({{"type", V("text")}, {"text", V("a")}, {"children", arr({obj({{"type", V("view")}})})}}));
+  REQUIRE(text.root);
+  CHECK(text.root->children.empty());
+  auto image = flume::parseTree(
+      obj({{"type", V("image")}, {"source", V("u")}, {"children", arr({obj({{"type", V("view")}})})}}));
+  REQUIRE(image.root);
+  CHECK(image.root->children.empty());
+}
