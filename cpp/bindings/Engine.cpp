@@ -47,10 +47,11 @@ std::shared_ptr<Store> Engine::find(int storeId) {
 }
 
 void Engine::setData(int storeId, std::vector<std::string> keys, std::vector<std::string> types,
-                     std::vector<int> changedIndices, std::vector<Value> changedItems) {
+                     std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys) {
   auto store = find(storeId);
   if (store == nullptr) return;
-  store->setPending(std::move(keys), std::move(types), std::move(changedIndices), std::move(changedItems));
+  store->list.setPending(std::move(keys), std::move(types), std::move(changedIndices), std::move(changedItems),
+                         stableKeys);
   scheduleRefresh(store, false);
 }
 
@@ -72,8 +73,11 @@ void Engine::scheduleRefresh(const std::shared_ptr<Store>& store, bool always) {
   worklets::scheduleOnUI(scheduler, [weak, always] {
     auto s = weak.lock();
     if (s == nullptr) return;
-    bool applied = s->applyPending();
-    if ((applied || always) && s->listener != nullptr) s->listener->onDataChanged(s->count());
+    std::optional<ListOps> ops = s->list.applyPending();
+    if (s->listener == nullptr || (!ops && !always)) return;
+    ListOps reset;
+    reset.reset = true;
+    s->listener->onListChanged(always ? reset : *ops, s->list.count());
   });
 }
 
@@ -148,8 +152,8 @@ int Engine::attach(int storeId, StoreListener* listener, std::unique_ptr<TextMea
   store->layout = std::make_unique<Layout>(*store->measurer, pointScale);
   store->reconciler = std::make_unique<Reconciler>(*store->layout);
   store->listener = listener;
-  store->applyPending();
-  return store->count();
+  store->list.applyPending();
+  return store->list.count();
 }
 
 void Engine::detach(int storeId) {
@@ -167,7 +171,7 @@ void Engine::detach(int storeId) {
 
 int Engine::count(int storeId) {
   auto store = find(storeId);
-  return store == nullptr ? 0 : store->count();
+  return store == nullptr ? 0 : store->list.count();
 }
 
 void Engine::releaseHolder(int storeId, int holderId) {
@@ -233,16 +237,16 @@ void Engine::bindOnRuntime(jsi::Runtime& rt, int index) {
       slot.renderCellFn = serializable->toJSValue(rt).asObject(rt).asFunction(rt);
       slot.renderCellVersion = store->renderCellVersion();
     }
-    if (index < 0 || index >= store->count()) {
+    if (index < 0 || index >= store->list.count()) {
       current_.error = "index out of range: " + std::to_string(index);
       return;
     }
-    if (slot.retainedGeneration != store->keysGeneration()) {
-      slot.items.retain(store->keys());
-      slot.retainedGeneration = store->keysGeneration();
+    if (slot.retainedGeneration != store->list.keysGeneration()) {
+      slot.items.retain(store->list.keys());
+      slot.retainedGeneration = store->list.keysGeneration();
     }
     const jsi::Value& item =
-        slot.items.materialize(rt, store->keyAt(index), store->itemVersion(index), store->itemAt(index));
+        slot.items.materialize(rt, store->list.keyAt(index), store->list.itemVersion(index), store->list.itemAt(index));
     jsi::Value result = slot.renderCellFn->call(rt, {jsi::Value(rt, item), jsi::Value(index)});
     ParseResult parsed = parseTree(toValue(rt, result));
     if (parsed.root == nullptr) {
@@ -255,6 +259,24 @@ void Engine::bindOnRuntime(jsi::Runtime& rt, int index) {
   } catch (const std::exception& e) {
     current_.error = std::string("renderCell failed: ") + e.what();
   }
+}
+
+int Engine::viewType(int storeId, int position) {
+  auto store = find(storeId);
+  if (store == nullptr || position < 0 || position >= store->list.count()) return 0;
+  return store->list.typeIdAt(position);
+}
+
+int64_t Engine::itemId(int storeId, int position) {
+  auto store = find(storeId);
+  if (store == nullptr || position < 0 || position >= store->list.count()) return -1;
+  return store->list.itemIdAt(position);
+}
+
+std::string Engine::keyAt(int storeId, int position) {
+  auto store = find(storeId);
+  if (store == nullptr || position < 0 || position >= store->list.count()) return "";
+  return store->list.keyAt(position);
 }
 
 void Engine::warn(const std::string& message) { logOnce(message); }

@@ -34,7 +34,14 @@ export function Flume<T>({ data, renderCell, keyExtractor, style }: FlumeProps<T
     if (prev.current.storeId !== storeId) prev.current = { storeId };
     const diff = diffData(prev.current.state, data, keyExtractor ?? defaultKey);
     prev.current.state = diff.next;
-    host.setData(storeId, diff.keys, diff.types, diff.changedIndices, diff.changedItems);
+    host.setData(
+      storeId,
+      diff.keys,
+      diff.types,
+      diff.changedIndices,
+      diff.changedItems,
+      keyExtractor !== undefined,
+    );
   }, [host, storeId, data, keyExtractor]);
 
   return <FlumeViewNativeComponent storeId={storeId} style={style} />;

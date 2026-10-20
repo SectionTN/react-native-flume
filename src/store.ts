@@ -19,6 +19,7 @@ export type FlumeHost = {
     types: string[],
     changedIndices: number[],
     changedItems: unknown[],
+    stableKeys: boolean,
   ): void;
   setCell(
     storeId: number,

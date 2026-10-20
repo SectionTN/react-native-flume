@@ -20,6 +20,13 @@ object FlumeJni {
 
   @JvmStatic external fun count(storeId: Int): Int
 
+  // Per position: the view type id, the stable item id (-1 when unknown) and the key ("" when unknown).
+  @JvmStatic external fun viewType(storeId: Int, position: Int): Int
+
+  @JvmStatic external fun itemId(storeId: Int, position: Int): Long
+
+  @JvmStatic external fun keyAt(storeId: Int, position: Int): String
+
   // Null when the store is gone.
   @JvmStatic external fun bind(storeId: Int, holderId: Int, index: Int, widthDp: Float): FlumeBatch?
 

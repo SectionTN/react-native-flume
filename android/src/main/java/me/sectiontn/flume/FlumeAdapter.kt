@@ -33,7 +33,7 @@ class FlumeAdapter(
     notifyDataSetChanged()
   }
 
-  override fun onDataChanged(count: Int) {
+  override fun onListChanged(reset: Boolean, removed: IntArray, inserted: IntArray, moved: IntArray, changed: IntArray, count: Int) {
     this.count = count
     notifyDataSetChanged()
   }

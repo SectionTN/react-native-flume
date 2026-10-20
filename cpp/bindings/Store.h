@@ -13,7 +13,9 @@
 
 #include "bindings/ItemCache.h"
 #include "core/Holder.h"
+#include "core/KeyDiff.h"
 #include "core/Layout.h"
+#include "core/ListStore.h"
 #include "core/Reconciler.h"
 #include "core/TextMeasurer.h"
 #include "core/Value.h"
@@ -22,28 +24,21 @@ namespace flume {
 
 struct StoreListener {
   virtual ~StoreListener() = default;
-  virtual void onDataChanged(int count) = 0;  // UI thread
+  virtual void onListChanged(const ListOps& ops, int count) = 0;  // UI thread
 };
 
-// One list: its order and items, the pending snapshot from the JS thread, its holders and its runtime handles.
+// One list: its order and items, the cell worklet, its holders and its runtime handles.
 class Store : public std::enable_shared_from_this<Store> {
  public:
   explicit Store(int id) : id(id) {}
   const int id;
 
+  ListStore list;
+
   // JS thread
-  void setPending(std::vector<std::string> keys, std::vector<std::string> types, std::vector<int> changedIndices,
-                  std::vector<Value> changedItems);
   void setRenderCell(std::shared_ptr<worklets::Serializable> renderCell);
 
   // UI thread
-  bool applyPending();
-  int count() const { return static_cast<int>(keys_.size()); }
-  const std::string& keyAt(int index) const { return keys_[index]; }
-  const Value& itemAt(int index) const { return items_[index]; }
-  uint64_t itemVersion(int index) const { return versions_[index]; }
-  const std::vector<std::string>& keys() const { return keys_; }
-  uint64_t keysGeneration() const { return keysGeneration_; }  // bumped when the key set changes
   std::shared_ptr<worklets::Serializable> renderCell() const;
   uint64_t renderCellVersion() const;
 
@@ -62,24 +57,9 @@ class Store : public std::enable_shared_from_this<Store> {
   } slot;
 
  private:
-  struct Pending {
-    std::vector<std::string> keys;
-    std::vector<std::string> types;
-    std::vector<int> changedIndices;
-    std::vector<Value> changedItems;
-  };
-
   mutable std::mutex mutex_;
-  std::optional<Pending> pending_;
   std::shared_ptr<worklets::Serializable> renderCell_;
   uint64_t renderCellVersion_ = 0;
-
-  std::vector<std::string> keys_;
-  std::vector<std::string> types_;
-  std::vector<Value> items_;
-  std::vector<uint64_t> versions_;
-  uint64_t nextVersion_ = 1;
-  uint64_t keysGeneration_ = 0;
 };
 
 }  // namespace flume

@@ -57,6 +57,18 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
 
   static jint count(jni::alias_ref<jclass>, jint storeId) { return flume::Engine::instance().count(storeId); }
 
+  static jint viewType(jni::alias_ref<jclass>, jint storeId, jint position) {
+    return flume::Engine::instance().viewType(storeId, position);
+  }
+
+  static jlong itemId(jni::alias_ref<jclass>, jint storeId, jint position) {
+    return flume::Engine::instance().itemId(storeId, position);
+  }
+
+  static jni::local_ref<jni::JString> keyAt(jni::alias_ref<jclass>, jint storeId, jint position) {
+    return jni::make_jstring(flume::Engine::instance().keyAt(storeId, position));
+  }
+
   static jni::local_ref<JFlumeBatch> bind(jni::alias_ref<jclass>, jint storeId, jint holderId, jint index,
                                           jfloat widthDp) {
     flume::OpBatch batch;
@@ -79,6 +91,9 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
         makeNativeMethod("attach", JFlumeJni::attach),
         makeNativeMethod("detach", JFlumeJni::detach),
         makeNativeMethod("count", JFlumeJni::count),
+        makeNativeMethod("viewType", JFlumeJni::viewType),
+        makeNativeMethod("itemId", JFlumeJni::itemId),
+        makeNativeMethod("keyAt", JFlumeJni::keyAt),
         makeNativeMethod("bind", JFlumeJni::bind),
         makeNativeMethod("releaseHolder", JFlumeJni::releaseHolder),
     });
