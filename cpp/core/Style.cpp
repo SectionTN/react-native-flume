@@ -8,6 +8,19 @@
 #include "core/Color.h"
 
 namespace flume {
+
+Dimension Dimension::fromValue(const Value& v, bool allowAuto) {
+  if (v.kind() == Value::Kind::Number) return {Unit::Point, static_cast<float>(v.asNumber())};
+  if (v.kind() != Value::Kind::String) return {};
+  const std::string& s = v.asString();
+  if (allowAuto && s == "auto") return {Unit::Auto, 0};
+  if (s.size() < 2 || s.back() != '%') return {};
+  char* end = nullptr;
+  float n = std::strtof(s.c_str(), &end);
+  if (end != s.c_str() + s.size() - 1) return {};
+  return {Unit::Percent, n};
+}
+
 namespace {
 
 using Setter = void (*)(Style&, const Value&);
@@ -15,16 +28,6 @@ using Setter = void (*)(Style&, const Value&);
 std::optional<float> number(const Value& v) {
   if (v.kind() != Value::Kind::Number) return std::nullopt;
   return static_cast<float>(v.asNumber());
-}
-
-std::optional<float> percent(const Value& v) {
-  if (v.kind() != Value::Kind::String) return std::nullopt;
-  const std::string& s = v.asString();
-  if (s.size() < 2 || s.back() != '%') return std::nullopt;
-  char* end = nullptr;
-  float n = std::strtof(s.c_str(), &end);
-  if (end != s.c_str() + s.size() - 1) return std::nullopt;
-  return n;
 }
 
 template <typename T>
@@ -42,7 +45,10 @@ std::optional<YGAlign> alignValue(const Value& v) {
                                 {"flex-end", YGAlignFlexEnd},
                                 {"center", YGAlignCenter},
                                 {"stretch", YGAlignStretch},
-                                {"baseline", YGAlignBaseline}});
+                                {"baseline", YGAlignBaseline},
+                                {"space-between", YGAlignSpaceBetween},
+                                {"space-around", YGAlignSpaceAround},
+                                {"space-evenly", YGAlignSpaceEvenly}});
 }
 
 void setFontWeight(Style& s, const Value& v) {
@@ -56,23 +62,21 @@ void setFontWeight(Style& s, const Value& v) {
   }
 }
 
-template <std::array<std::optional<float>, YGEdgeAll + 1> Style::*Field, YGEdge Edge>
-void setEdge(Style& s, const Value& v) {
-  if (auto n = number(v)) (s.*Field)[Edge] = *n;
-}
-
 template <std::optional<float> Style::*Field>
 void setNumber(Style& s, const Value& v) {
   if (auto n = number(v)) s.*Field = *n;
 }
 
-template <std::optional<float> Style::*Field, std::optional<float> Style::*PercentField>
+template <Dimension Style::*Field, bool AllowAuto>
 void setDimension(Style& s, const Value& v) {
-  if (auto n = number(v)) {
-    s.*Field = *n;
-  } else if (auto p = percent(v)) {
-    s.*PercentField = *p;
-  }
+  Dimension d = Dimension::fromValue(v, AllowAuto);
+  if (d.unit != Dimension::Unit::Undefined) s.*Field = d;
+}
+
+template <std::array<Dimension, YGEdgeAll + 1> Style::*Field, YGEdge Edge, bool AllowAuto>
+void setEdge(Style& s, const Value& v) {
+  Dimension d = Dimension::fromValue(v, AllowAuto);
+  if (d.unit != Dimension::Unit::Undefined) (s.*Field)[Edge] = d;
 }
 
 template <std::optional<uint32_t> Style::*Field>
@@ -81,47 +85,84 @@ void setColor(Style& s, const Value& v) {
   if (auto c = parseColor(v.asString())) s.*Field = *c;
 }
 
+template <size_t Corner>
+void setRadius(Style& s, const Value& v) {
+  if (auto n = number(v)) s.borderRadii[Corner] = *n;
+}
+
+template <typename T, std::optional<T> Style::*Field, typename F>
+Setter enumSetter(F) {
+  return [](Style& s, const Value& v) {
+    if (auto e = F{}(v)) s.*Field = *e;
+  };
+}
+
 const std::unordered_map<std::string_view, Setter>& setters() {
   static const std::unordered_map<std::string_view, Setter> table = {
       {"flex", setNumber<&Style::flex>},
       {"flexGrow", setNumber<&Style::flexGrow>},
       {"flexShrink", setNumber<&Style::flexShrink>},
-      {"flexBasis", setNumber<&Style::flexBasis>},
-      {"width", setDimension<&Style::width, &Style::widthPercent>},
-      {"height", setDimension<&Style::height, &Style::heightPercent>},
-      {"minWidth", setNumber<&Style::minWidth>},
-      {"minHeight", setNumber<&Style::minHeight>},
-      {"maxWidth", setNumber<&Style::maxWidth>},
-      {"maxHeight", setNumber<&Style::maxHeight>},
+      {"aspectRatio", setNumber<&Style::aspectRatio>},
       {"gap", setNumber<&Style::gap>},
       {"rowGap", setNumber<&Style::rowGap>},
       {"columnGap", setNumber<&Style::columnGap>},
-      {"top", setNumber<&Style::top>},
-      {"left", setNumber<&Style::left>},
-      {"right", setNumber<&Style::right>},
-      {"bottom", setNumber<&Style::bottom>},
-      {"opacity", setNumber<&Style::opacity>},
-      {"borderRadius", setNumber<&Style::borderRadius>},
-      {"padding", setEdge<&Style::padding, YGEdgeAll>},
-      {"paddingTop", setEdge<&Style::padding, YGEdgeTop>},
-      {"paddingBottom", setEdge<&Style::padding, YGEdgeBottom>},
-      {"paddingLeft", setEdge<&Style::padding, YGEdgeLeft>},
-      {"paddingRight", setEdge<&Style::padding, YGEdgeRight>},
-      {"paddingStart", setEdge<&Style::padding, YGEdgeStart>},
-      {"paddingEnd", setEdge<&Style::padding, YGEdgeEnd>},
-      {"paddingHorizontal", setEdge<&Style::padding, YGEdgeHorizontal>},
-      {"paddingVertical", setEdge<&Style::padding, YGEdgeVertical>},
-      {"margin", setEdge<&Style::margin, YGEdgeAll>},
-      {"marginTop", setEdge<&Style::margin, YGEdgeTop>},
-      {"marginBottom", setEdge<&Style::margin, YGEdgeBottom>},
-      {"marginLeft", setEdge<&Style::margin, YGEdgeLeft>},
-      {"marginRight", setEdge<&Style::margin, YGEdgeRight>},
-      {"marginStart", setEdge<&Style::margin, YGEdgeStart>},
-      {"marginEnd", setEdge<&Style::margin, YGEdgeEnd>},
-      {"marginHorizontal", setEdge<&Style::margin, YGEdgeHorizontal>},
-      {"marginVertical", setEdge<&Style::margin, YGEdgeVertical>},
+      {"flexBasis", setDimension<&Style::flexBasis, true>},
+      {"width", setDimension<&Style::width, true>},
+      {"height", setDimension<&Style::height, true>},
+      {"minWidth", setDimension<&Style::minWidth, false>},
+      {"minHeight", setDimension<&Style::minHeight, false>},
+      {"maxWidth", setDimension<&Style::maxWidth, false>},
+      {"maxHeight", setDimension<&Style::maxHeight, false>},
+      {"top", setEdge<&Style::position, YGEdgeTop, false>},
+      {"left", setEdge<&Style::position, YGEdgeLeft, false>},
+      {"right", setEdge<&Style::position, YGEdgeRight, false>},
+      {"bottom", setEdge<&Style::position, YGEdgeBottom, false>},
+      {"start", setEdge<&Style::position, YGEdgeStart, false>},
+      {"end", setEdge<&Style::position, YGEdgeEnd, false>},
+      {"padding", setEdge<&Style::padding, YGEdgeAll, false>},
+      {"paddingTop", setEdge<&Style::padding, YGEdgeTop, false>},
+      {"paddingBottom", setEdge<&Style::padding, YGEdgeBottom, false>},
+      {"paddingLeft", setEdge<&Style::padding, YGEdgeLeft, false>},
+      {"paddingRight", setEdge<&Style::padding, YGEdgeRight, false>},
+      {"paddingStart", setEdge<&Style::padding, YGEdgeStart, false>},
+      {"paddingEnd", setEdge<&Style::padding, YGEdgeEnd, false>},
+      {"paddingHorizontal", setEdge<&Style::padding, YGEdgeHorizontal, false>},
+      {"paddingVertical", setEdge<&Style::padding, YGEdgeVertical, false>},
+      {"margin", setEdge<&Style::margin, YGEdgeAll, true>},
+      {"marginTop", setEdge<&Style::margin, YGEdgeTop, true>},
+      {"marginBottom", setEdge<&Style::margin, YGEdgeBottom, true>},
+      {"marginLeft", setEdge<&Style::margin, YGEdgeLeft, true>},
+      {"marginRight", setEdge<&Style::margin, YGEdgeRight, true>},
+      {"marginStart", setEdge<&Style::margin, YGEdgeStart, true>},
+      {"marginEnd", setEdge<&Style::margin, YGEdgeEnd, true>},
+      {"marginHorizontal", setEdge<&Style::margin, YGEdgeHorizontal, true>},
+      {"marginVertical", setEdge<&Style::margin, YGEdgeVertical, true>},
       {"backgroundColor", setColor<&Style::backgroundColor>},
       {"color", setColor<&Style::color>},
+      {"borderColor", setColor<&Style::borderColor>},
+      {"shadowColor", setColor<&Style::shadowColor>},
+      {"tintColor", setColor<&Style::tintColor>},
+      {"opacity", setNumber<&Style::opacity>},
+      {"borderWidth", setNumber<&Style::borderWidth>},
+      {"shadowOpacity", setNumber<&Style::shadowOpacity>},
+      {"shadowRadius", setNumber<&Style::shadowRadius>},
+      {"elevation", setNumber<&Style::elevation>},
+      {"lineHeight", setNumber<&Style::lineHeight>},
+      {"letterSpacing", setNumber<&Style::letterSpacing>},
+      {"borderTopLeftRadius", setRadius<0>},
+      {"borderTopRightRadius", setRadius<1>},
+      {"borderBottomRightRadius", setRadius<2>},
+      {"borderBottomLeftRadius", setRadius<3>},
+      {"borderRadius",
+       [](Style& s, const Value& v) {
+         if (auto n = number(v)) s.borderRadii.fill(*n);
+       }},
+      {"shadowOffset",
+       [](Style& s, const Value& v) {
+         const Value* w = v.get("width");
+         const Value* h = v.get("height");
+         if (w != nullptr && h != nullptr && number(*w) && number(*h)) s.shadowOffset = {*number(*w), *number(*h)};
+       }},
       {"fontWeight", setFontWeight},
       {"fontSize",
        [](Style& s, const Value& v) {
@@ -130,6 +171,37 @@ const std::unordered_map<std::string_view, Setter>& setters() {
       {"numberOfLines",
        [](Style& s, const Value& v) {
          if (auto n = number(v)) s.numberOfLines = static_cast<int>(*n);
+       }},
+      {"fontFamily",
+       [](Style& s, const Value& v) {
+         if (v.kind() == Value::Kind::String) s.fontFamily = v.asString();
+       }},
+      {"fontStyle",
+       [](Style& s, const Value& v) {
+         if (auto e = enumValue<bool>(v, {{"italic", true}, {"normal", false}})) s.italic = *e;
+       }},
+      {"textAlign",
+       [](Style& s, const Value& v) {
+         if (auto e = enumValue<TextAlign>(v, {{"auto", TextAlign::Auto},
+                                               {"left", TextAlign::Left},
+                                               {"right", TextAlign::Right},
+                                               {"center", TextAlign::Center},
+                                               {"justify", TextAlign::Justify}}))
+           s.textAlign = *e;
+       }},
+      {"textDecorationLine",
+       [](Style& s, const Value& v) {
+         if (auto e = enumValue<uint8_t>(v, {{"none", 0}, {"underline", 1}, {"line-through", 2}, {"underline line-through", 3}}))
+           s.decoration = *e;
+       }},
+      {"ellipsizeMode", [](Style&, const Value&) {}},
+      {"resizeMode",
+       [](Style& s, const Value& v) {
+         if (auto e = enumValue<ResizeMode>(v, {{"cover", ResizeMode::Cover},
+                                                {"contain", ResizeMode::Contain},
+                                                {"stretch", ResizeMode::Stretch},
+                                                {"center", ResizeMode::Center}}))
+           s.resizeMode = *e;
        }},
       {"flexDirection",
        [](Style& s, const Value& v) {
@@ -146,6 +218,10 @@ const std::unordered_map<std::string_view, Setter>& setters() {
       {"alignSelf",
        [](Style& s, const Value& v) {
          if (auto e = alignValue(v)) s.alignSelf = *e;
+       }},
+      {"alignContent",
+       [](Style& s, const Value& v) {
+         if (auto e = alignValue(v)) s.alignContent = *e;
        }},
       {"justifyContent",
        [](Style& s, const Value& v) {
@@ -168,12 +244,21 @@ const std::unordered_map<std::string_view, Setter>& setters() {
        [](Style& s, const Value& v) {
          if (auto e = enumValue<YGPositionType>(v, {{"absolute", YGPositionTypeAbsolute},
                                                      {"relative", YGPositionTypeRelative}}))
-           s.position = *e;
+           s.positionType = *e;
        }},
       {"overflow",
        [](Style& s, const Value& v) {
          if (auto e = enumValue<YGOverflow>(v, {{"visible", YGOverflowVisible}, {"hidden", YGOverflowHidden}}))
            s.overflow = *e;
+       }},
+      {"display",
+       [](Style& s, const Value& v) {
+         if (auto e = enumValue<YGDisplay>(v, {{"flex", YGDisplayFlex}, {"none", YGDisplayNone}})) s.display = *e;
+       }},
+      {"direction",
+       [](Style& s, const Value& v) {
+         if (auto e = enumValue<YGDirection>(v, {{"inherit", YGDirectionInherit}, {"ltr", YGDirectionLTR}, {"rtl", YGDirectionRTL}}))
+           s.direction = *e;
        }},
   };
   return table;
@@ -181,12 +266,16 @@ const std::unordered_map<std::string_view, Setter>& setters() {
 
 }  // namespace
 
-Style Style::fromValue(const Value& object) {
+Style Style::fromValue(const Value& object, std::vector<std::string>* unknownKeys) {
   Style style;
   const auto& table = setters();
   for (const auto& [key, value] : object.asObject()) {
     auto it = table.find(key);
-    if (it != table.end()) it->second(style, value);
+    if (it != table.end()) {
+      it->second(style, value);
+    } else if (unknownKeys != nullptr) {
+      unknownKeys->push_back(key);
+    }
   }
   return style;
 }

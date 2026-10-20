@@ -14,11 +14,11 @@ ViewKind kindOf(NodeType type) {
 }
 
 bool hasVisual(const Style& s) {
-  return s.backgroundColor.has_value() || s.opacity.has_value() || s.borderRadius.has_value();
+  return s.backgroundColor.has_value() || s.opacity.has_value() || s.borderRadii[0].has_value();
 }
 
 bool visualChanged(const Style& a, const Style& b) {
-  return a.backgroundColor != b.backgroundColor || a.opacity != b.opacity || a.borderRadius != b.borderRadius;
+  return a.backgroundColor != b.backgroundColor || a.opacity != b.opacity || a.borderRadii != b.borderRadii;
 }
 
 bool textStyleChanged(const Style& a, const Style& b) {
@@ -27,7 +27,7 @@ bool textStyleChanged(const Style& a, const Style& b) {
 }
 
 bool imageStyleChanged(const Style& a, const Style& b) {
-  return a.width != b.width || a.height != b.height || a.borderRadius != b.borderRadius;
+  return a.width != b.width || a.height != b.height || a.borderRadii != b.borderRadii;
 }
 
 }  // namespace
@@ -160,12 +160,12 @@ void Reconciler::emitTextOf(Mounted& node, OpBatch& out) {
 
 void Reconciler::emitViewStyle(const Mounted& node, OpBatch& out) {
   out.viewStyle(node.viewId, node.style.backgroundColor.value_or(0), node.style.opacity.value_or(1),
-                node.style.borderRadius.value_or(0));
+                node.style.borderRadii[0].value_or(0));
 }
 
 void Reconciler::emitImage(const Mounted& node, OpBatch& out) {
-  out.image(node.viewId, node.imageUri, node.style.width.value_or(0), node.style.height.value_or(0),
-            node.style.borderRadius.value_or(0));
+  out.image(node.viewId, node.imageUri, node.style.width.pointsOr(0), node.style.height.pointsOr(0),
+            node.style.borderRadii[0].value_or(0));
 }
 
 void Reconciler::release(Holder& holder) {

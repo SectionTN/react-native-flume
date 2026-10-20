@@ -12,7 +12,7 @@ TEST_CASE("parses the chat cell") {
   REQUIRE(r.root->children.size() == 2);
   CHECK(r.root->children[0]->type == flume::NodeType::Image);
   CHECK(r.root->children[0]->imageUri == "https://x/a.png");
-  CHECK(r.root->children[0]->style.borderRadius == 20.0f);
+  CHECK(r.root->children[0]->style.borderRadii[0] == 20.0f);
   auto& column = *r.root->children[1];
   CHECK(column.style.flex == 1.0f);
   REQUIRE(column.children.size() == 2);

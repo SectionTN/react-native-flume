@@ -22,39 +22,71 @@ void Layout::destroyNode(YGNodeRef node) { YGNodeFree(node); }
 
 void Layout::markTextDirty(YGNodeRef node) { YGNodeMarkDirty(node); }
 
+namespace {
+
+using PointSetter = void (*)(YGNodeRef, float);
+using AutoSetter = void (*)(YGNodeRef);
+using EdgePointSetter = void (*)(YGNodeRef, YGEdge, float);
+using EdgeAutoSetter = void (*)(YGNodeRef, YGEdge);
+
+void setDimension(YGNodeRef node, const Dimension& d, PointSetter points, PointSetter percent, AutoSetter automatic) {
+  switch (d.unit) {
+    case Dimension::Unit::Point: points(node, d.value); break;
+    case Dimension::Unit::Percent: percent(node, d.value); break;
+    case Dimension::Unit::Auto:
+      if (automatic != nullptr) automatic(node);
+      else points(node, YGUndefined);
+      break;
+    default: points(node, YGUndefined);
+  }
+}
+
+void setEdge(YGNodeRef node, YGEdge edge, const Dimension& d, EdgePointSetter points, EdgePointSetter percent,
+             EdgeAutoSetter automatic) {
+  switch (d.unit) {
+    case Dimension::Unit::Point: points(node, edge, d.value); break;
+    case Dimension::Unit::Percent: percent(node, edge, d.value); break;
+    case Dimension::Unit::Auto:
+      if (automatic != nullptr) automatic(node, edge);
+      else points(node, edge, YGUndefined);
+      break;
+    default: points(node, edge, YGUndefined);
+  }
+}
+
+}  // namespace
+
 void Layout::applyStyle(YGNodeRef node, const Style& s) {
   YGNodeStyleSetFlex(node, s.flex.value_or(YGUndefined));
   YGNodeStyleSetFlexGrow(node, s.flexGrow.value_or(YGUndefined));
   YGNodeStyleSetFlexShrink(node, s.flexShrink.value_or(YGUndefined));
-  if (s.flexBasis) YGNodeStyleSetFlexBasis(node, *s.flexBasis);
-  else YGNodeStyleSetFlexBasisAuto(node);
-  if (s.widthPercent) YGNodeStyleSetWidthPercent(node, *s.widthPercent);
-  else if (s.width) YGNodeStyleSetWidth(node, *s.width);
-  else YGNodeStyleSetWidthAuto(node);
-  if (s.heightPercent) YGNodeStyleSetHeightPercent(node, *s.heightPercent);
-  else if (s.height) YGNodeStyleSetHeight(node, *s.height);
-  else YGNodeStyleSetHeightAuto(node);
-  YGNodeStyleSetMinWidth(node, s.minWidth.value_or(YGUndefined));
-  YGNodeStyleSetMinHeight(node, s.minHeight.value_or(YGUndefined));
-  YGNodeStyleSetMaxWidth(node, s.maxWidth.value_or(YGUndefined));
-  YGNodeStyleSetMaxHeight(node, s.maxHeight.value_or(YGUndefined));
+  YGNodeStyleSetAspectRatio(node, s.aspectRatio.value_or(YGUndefined));
+  setDimension(node, s.flexBasis, YGNodeStyleSetFlexBasis, YGNodeStyleSetFlexBasisPercent, YGNodeStyleSetFlexBasisAuto);
+  setDimension(node, s.width, YGNodeStyleSetWidth, YGNodeStyleSetWidthPercent, YGNodeStyleSetWidthAuto);
+  setDimension(node, s.height, YGNodeStyleSetHeight, YGNodeStyleSetHeightPercent, YGNodeStyleSetHeightAuto);
+  setDimension(node, s.minWidth, YGNodeStyleSetMinWidth, YGNodeStyleSetMinWidthPercent, nullptr);
+  setDimension(node, s.minHeight, YGNodeStyleSetMinHeight, YGNodeStyleSetMinHeightPercent, nullptr);
+  setDimension(node, s.maxWidth, YGNodeStyleSetMaxWidth, YGNodeStyleSetMaxWidthPercent, nullptr);
+  setDimension(node, s.maxHeight, YGNodeStyleSetMaxHeight, YGNodeStyleSetMaxHeightPercent, nullptr);
   YGNodeStyleSetGap(node, YGGutterAll, s.gap.value_or(YGUndefined));
   YGNodeStyleSetGap(node, YGGutterRow, s.rowGap.value_or(YGUndefined));
   YGNodeStyleSetGap(node, YGGutterColumn, s.columnGap.value_or(YGUndefined));
-  YGNodeStyleSetPositionType(node, s.position.value_or(YGPositionTypeRelative));
-  YGNodeStyleSetPosition(node, YGEdgeTop, s.top.value_or(YGUndefined));
-  YGNodeStyleSetPosition(node, YGEdgeLeft, s.left.value_or(YGUndefined));
-  YGNodeStyleSetPosition(node, YGEdgeRight, s.right.value_or(YGUndefined));
-  YGNodeStyleSetPosition(node, YGEdgeBottom, s.bottom.value_or(YGUndefined));
+  YGNodeStyleSetPositionType(node, s.positionType.value_or(YGPositionTypeRelative));
   YGNodeStyleSetFlexDirection(node, s.flexDirection.value_or(YGFlexDirectionColumn));
   YGNodeStyleSetAlignItems(node, s.alignItems.value_or(YGAlignStretch));
   YGNodeStyleSetAlignSelf(node, s.alignSelf.value_or(YGAlignAuto));
+  YGNodeStyleSetAlignContent(node, s.alignContent.value_or(YGAlignFlexStart));
   YGNodeStyleSetJustifyContent(node, s.justifyContent.value_or(YGJustifyFlexStart));
   YGNodeStyleSetFlexWrap(node, s.flexWrap.value_or(YGWrapNoWrap));
   YGNodeStyleSetOverflow(node, s.overflow.value_or(YGOverflowVisible));
-  for (int edge = 0; edge <= YGEdgeAll; edge++) {
-    YGNodeStyleSetPadding(node, static_cast<YGEdge>(edge), s.padding[edge].value_or(YGUndefined));
-    YGNodeStyleSetMargin(node, static_cast<YGEdge>(edge), s.margin[edge].value_or(YGUndefined));
+  YGNodeStyleSetDisplay(node, s.display.value_or(YGDisplayFlex));
+  YGNodeStyleSetDirection(node, s.direction.value_or(YGDirectionInherit));
+  YGNodeStyleSetBorder(node, YGEdgeAll, s.borderWidth.value_or(YGUndefined));
+  for (int i = 0; i <= YGEdgeAll; i++) {
+    auto edge = static_cast<YGEdge>(i);
+    setEdge(node, edge, s.padding[i], YGNodeStyleSetPadding, YGNodeStyleSetPaddingPercent, nullptr);
+    setEdge(node, edge, s.margin[i], YGNodeStyleSetMargin, YGNodeStyleSetMarginPercent, YGNodeStyleSetMarginAuto);
+    setEdge(node, edge, s.position[i], YGNodeStyleSetPosition, YGNodeStyleSetPositionPercent, YGNodeStyleSetPositionAuto);
   }
 }
 

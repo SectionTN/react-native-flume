@@ -118,3 +118,53 @@ TEST_CASE("the measure cache answers a repeated measure") {
   CHECK(layout.measureCalls == 1);
   CHECK(layout.measureHits == 1);
 }
+
+namespace {
+
+// Mounts a tree, lays it out at the width and returns its frames.
+flume::OpBatch framesAt(const flume::Value& tree, float width) {
+  FakeMeasurer fake;
+  flume::Layout layout(fake, 1);
+  int nextId = 1;
+  auto parsed = flume::parseTree(tree);
+  REQUIRE(parsed.root);
+  auto root = mount(layout, *parsed.root, nextId, true);
+  flume::OpBatch batch;
+  layout.layout(*root, width);
+  layout.readFrames(*root, batch);
+  return batch;
+}
+
+flume::Value styled(flume::Value style, std::vector<flume::Value> children = {}) {
+  flume::Value::Object node{{"type", V("view")}, {"style", std::move(style)}};
+  if (!children.empty()) node.emplace_back("children", flume::Value(flume::Value::Array(children.begin(), children.end())));
+  return flume::Value(std::move(node));
+}
+
+}  // namespace
+
+TEST_CASE("percent width and aspect ratio") {
+  auto batch = framesAt(styled(obj({}), {styled(obj({{"width", V("50%")}, {"aspectRatio", V(2)}}))}), 360);
+  CHECK(frameOf(batch, 1) == Frame{0, 0, 180, 90});
+}
+
+TEST_CASE("display none takes no space") {
+  auto batch = framesAt(styled(obj({}), {styled(obj({{"height", V(10)}, {"display", V("none")}})),
+                                         styled(obj({{"height", V(20)}}))}),
+                        360);
+  CHECK(frameOf(batch, 2) == Frame{0, 0, 360, 20});
+}
+
+TEST_CASE("an auto margin pushes a row child to the end") {
+  auto batch = framesAt(styled(obj({{"flexDirection", V("row")}}),
+                               {styled(obj({{"width", V(100)}, {"height", V(10)}, {"marginLeft", V("auto")}}))}),
+                        360);
+  CHECK(frameOf(batch, 1) == Frame{260, 0, 100, 10});
+}
+
+TEST_CASE("border width insets the children") {
+  auto batch = framesAt(styled(obj({{"borderWidth", V(4)}}),
+                               {obj({{"type", V("text")}, {"text", V("hello")}, {"style", obj({{"fontSize", V(16)}})}})}),
+                        360);
+  CHECK(frameOf(batch, 1) == Frame{4, 4, 352, 20});
+}
