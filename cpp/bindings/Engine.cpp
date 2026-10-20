@@ -208,7 +208,7 @@ bool Engine::bind(int storeId, int holderId, int index, float widthDp, OpBatch& 
   if (current_.fresh != nullptr) {
     store->reconciler->reconcile(holder, std::move(current_.fresh), out);
   } else {
-    logOnce(current_.error.empty() ? "renderCell produced nothing" : current_.error);
+    report(2, current_.error.empty() ? "renderCell produced nothing" : current_.error);
   }
   int64_t t2 = nowNs();
   if (holder.root != nullptr) {
@@ -248,7 +248,9 @@ void Engine::bindOnRuntime(jsi::Runtime& rt, int index) {
     const jsi::Value& item =
         slot.items.materialize(rt, store->list.keyAt(index), store->list.itemVersion(index), store->list.itemAt(index));
     jsi::Value result = slot.renderCellFn->call(rt, {jsi::Value(rt, item), jsi::Value(index)});
-    ParseResult parsed = parseTree(toValue(rt, result));
+    std::vector<std::string> unknownKeys;
+    ParseResult parsed = parseTree(toValue(rt, result), &unknownKeys);
+    for (const std::string& key : unknownKeys) report(1, "unknown style key: " + key);
     if (parsed.root == nullptr) {
       current_.error = "renderCell returned an invalid tree: " + parsed.error;
       return;
@@ -279,7 +281,34 @@ std::string Engine::keyAt(int storeId, int position) {
   return store->list.keyAt(position);
 }
 
-void Engine::warn(const std::string& message) { logOnce(message); }
+void Engine::setCallInvoker(std::shared_ptr<facebook::react::CallInvoker> invoker) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  callInvoker_ = std::move(invoker);
+}
+
+void Engine::setReporter(jsi::Function reporter) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  reporter_ = std::make_shared<jsi::Function>(std::move(reporter));
+}
+
+void Engine::report(int level, const std::string& message) {
+  if (!logged_.insert(message).second) return;
+  std::shared_ptr<jsi::Function> reporter;
+  std::shared_ptr<facebook::react::CallInvoker> invoker;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    reporter = reporter_;
+    invoker = callInvoker_;
+  }
+  if (reporter == nullptr || invoker == nullptr) {
+    logged_.erase(message);
+    logOnce(message);
+    return;
+  }
+  invoker->invokeAsync([reporter, level, message](jsi::Runtime& rt) {
+    reporter->call(rt, jsi::Value(level), jsi::String::createFromUtf8(rt, message));
+  });
+}
 
 void Engine::logOnce(const std::string& message) {
   if (!logged_.insert(message).second) return;

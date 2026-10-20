@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ReactCommon/CallInvoker.h>
 #include <jsi/jsi.h>
 #include <worklets/Compat/StableApi.h>
 
@@ -30,7 +31,10 @@ class Engine {
   void setData(int storeId, std::vector<std::string> keys, std::vector<std::string> types,
                std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys);
   void setCell(int storeId, std::shared_ptr<worklets::Serializable> renderCell);
-  void warn(const std::string& message);  // once per message
+  void setCallInvoker(std::shared_ptr<facebook::react::CallInvoker> invoker);
+  void setReporter(facebook::jsi::Function reporter);  // a function on the React runtime, development only
+  void report(int level, const std::string& message);  // once per message: the reporter when set, else logcat
+  void warn(const std::string& message) { report(1, message); }
 
   // Flume runtime, inside the install host function
   void onInstall(facebook::jsi::Runtime& flumeRuntime);
@@ -65,6 +69,8 @@ class Engine {
   std::unordered_map<int, std::shared_ptr<Store>> releasing_;
   int nextStoreId_ = 1;
   std::shared_ptr<worklets::UIScheduler> scheduler_;
+  std::shared_ptr<facebook::react::CallInvoker> callInvoker_;
+  std::shared_ptr<facebook::jsi::Function> reporter_;
   std::shared_ptr<worklets::WorkletRuntime> runtime_;
   std::optional<facebook::jsi::Function> bindFn_;
   std::optional<facebook::jsi::Function> releaseFn_;

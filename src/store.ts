@@ -25,7 +25,11 @@ export type FlumeHost = {
     storeId: number,
     renderCell: SerializableRef<(item: never, index: number) => CellNode>,
   ): void;
+  setReporter(reporter: (level: number, message: string) => void): void;
 };
+
+export const isDev =
+  typeof __DEV__ === 'undefined' ? process.env.NODE_ENV !== 'production' : __DEV__;
 
 const state: { host?: FlumeHost; runtime?: ReturnType<typeof createWorkletRuntime> } = {};
 
@@ -39,6 +43,12 @@ export function getHost(): FlumeHost {
     throw new Error('react-native-flume: the native host is not installed');
   }
   host.setScheduler(getUISchedulerHolder());
+  // Native warnings and renderCell errors surface in LogBox during development only.
+  if (isDev) {
+    host.setReporter((level, message) => {
+      (level >= 2 ? console.error : console.warn)(`react-native-flume: ${message}`);
+    });
+  }
   // The worklet captures the host object by reference, so install() runs on the flume runtime under its lock.
   state.runtime = createWorkletRuntime({ name: 'flume', enableEventLoop: false });
   runOnRuntimeSync(state.runtime, () => {

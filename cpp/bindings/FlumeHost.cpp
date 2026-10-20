@@ -14,7 +14,7 @@ namespace jsi = facebook::jsi;
 
 namespace {
 
-const char* const kNames[] = {"install", "setScheduler", "createStore", "releaseStore", "setData", "setCell"};
+const char* const kNames[] = {"install", "setScheduler", "createStore", "releaseStore", "setData", "setCell", "setReporter"};
 
 std::vector<std::string> stringsOf(jsi::Runtime& rt, const jsi::Value& value) {
   std::vector<std::string> out;
@@ -107,6 +107,14 @@ jsi::Value FlumeHost::get(jsi::Runtime& rt, const jsi::PropNameID& nameId) {
                           auto worklet = worklets::extractSerializable(
                               rt, args[1], "react-native-flume: renderCell must be a worklet");
                           engine.setCell(static_cast<int>(args[0].asNumber()), std::move(worklet));
+                          return jsi::Value::undefined();
+                        });
+  }
+  if (name == "setReporter") {
+    return hostFunction(rt, "setReporter", 1,
+                        [&engine](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args, size_t count) {
+                          if (count < 1 || !args[0].isObject()) throw jsi::JSError(rt, "setReporter needs a function");
+                          engine.setReporter(args[0].asObject(rt).asFunction(rt));
                           return jsi::Value::undefined();
                         });
   }

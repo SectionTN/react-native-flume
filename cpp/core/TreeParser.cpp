@@ -31,7 +31,7 @@ void parseSource(const Value& source, Node& node) {
   }
 }
 
-std::unique_ptr<Node> parseNode(const Value& value, std::string& error) {
+std::unique_ptr<Node> parseNode(const Value& value, std::string& error, std::vector<std::string>* unknownKeys) {
   const std::string* type = stringAt(value, "type");
   if (type == nullptr) {
     error = "cell is not an element";
@@ -51,7 +51,7 @@ std::unique_ptr<Node> parseNode(const Value& value, std::string& error) {
     return nullptr;
   }
   if (const Value* style = value.get("style"); style != nullptr && style->kind() == Value::Kind::Object) {
-    node->style = Style::fromValue(*style);
+    node->style = Style::fromValue(*style, unknownKeys);
   }
   if (const std::string* text = stringAt(value, "text")) node->text = *text;
   if (const Value* scaling = value.get("allowFontScaling");
@@ -90,7 +90,7 @@ std::unique_ptr<Node> parseNode(const Value& value, std::string& error) {
         error = "child " + std::to_string(i) + " is not an element";
         return nullptr;
       }
-      auto child = parseNode(items[i], error);
+      auto child = parseNode(items[i], error, unknownKeys);
       if (child == nullptr) return nullptr;
       node->children.push_back(std::move(child));
     }
@@ -100,13 +100,13 @@ std::unique_ptr<Node> parseNode(const Value& value, std::string& error) {
 
 }  // namespace
 
-ParseResult parseTree(const Value& value) {
+ParseResult parseTree(const Value& value, std::vector<std::string>* unknownKeys) {
   ParseResult result;
   if (value.kind() != Value::Kind::Object) {
     result.error = "cell is not an element";
     return result;
   }
-  result.root = parseNode(value, result.error);
+  result.root = parseNode(value, result.error, unknownKeys);
   return result;
 }
 

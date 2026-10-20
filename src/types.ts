@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 
 export type CellDimension = number | `${number}%`;
@@ -143,9 +144,18 @@ export type CellImageProps = CellStyle & {
 
 export type CellPressableProps = CellStyle & { id: string; pressedOpacity?: number };
 
+export type PressInfo<T> = { item: T; index: number; id?: string };
+
 export type FlumeProps<T> = {
   data: readonly T[];
-  renderCell: (item: T, index: number) => CellNode;
+  renderCell?: (item: T, index: number) => CellNode;
+  // Accepted for migration; React cells render in a later version.
+  renderItem?: (info: { item: T; index: number }) => ReactElement | null;
   keyExtractor?: (item: T, index: number) => string;
+  getItemType?: (item: T, index: number) => string;
+  extraData?: unknown;
+  itemAnimations?: boolean;
+  onPress?: (info: PressInfo<T>) => void;
+  onLongPress?: (info: PressInfo<T>) => void;
   style?: StyleProp<ViewStyle>;
 };

@@ -38,7 +38,10 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
 
   static jni::local_ref<BindingsInstallerHolder::javaobject> createBindingsInstaller(jni::alias_ref<jclass>) {
     return BindingsInstallerHolder::newObjectCxxArgs(
-        [](jsi::Runtime& runtime, const std::shared_ptr<CallInvoker>&) { flume::FlumeHost::install(runtime); });
+        [](jsi::Runtime& runtime, const std::shared_ptr<CallInvoker>& invoker) {
+          flume::Engine::instance().setCallInvoker(invoker);
+          flume::FlumeHost::install(runtime);
+        });
   }
 
   static jint attach(jni::alias_ref<jclass>, jint storeId, jni::alias_ref<flume::android::JFlumeStoreListener> listener,

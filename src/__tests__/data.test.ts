@@ -47,3 +47,23 @@ describe('diffData', () => {
     expect(d.next.byKey.size).toBe(0);
   });
 });
+
+describe('diffData types and keys', () => {
+  it('types come from getItemType', () => {
+    const d = diffData(undefined, [a, b], defaultKey, (item) => (item.n > 1 ? 'big' : 'small'));
+    expect(d.types).toEqual(['small', 'big']);
+  });
+
+  it('keys are stable with an extractor or ids', () => {
+    expect(diffData(undefined, [a, b], defaultKey).stableKeys).toBe(true);
+    expect(diffData(undefined, [{ n: 1 }], defaultKey).stableKeys).toBe(false);
+    expect(diffData(undefined, [{ n: 1 }], (_item, i) => `k${i}`).stableKeys).toBe(true);
+  });
+
+  it('duplicate keys get a suffix', () => {
+    const d = diffData(undefined, [a, { id: 'a', n: 9 }, { id: 'a', n: 8 }], defaultKey);
+    expect(d.keys).toEqual(['a', 'a:2', 'a:3']);
+    expect(d.duplicates).toEqual(['a']);
+    expect(d.next.byKey.get('a:3')).toEqual({ id: 'a', n: 8 });
+  });
+});

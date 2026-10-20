@@ -20,7 +20,7 @@ target_link_libraries(flume_core PUBLIC yogacore)
 file(GLOB_RECURSE FLUME_BINDINGS_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/../bindings/*.cpp")
 if(FLUME_BINDINGS_SOURCES)
   add_library(flume_bindings STATIC ${FLUME_BINDINGS_SOURCES})
-  target_include_directories(flume_bindings PRIVATE "${REACT_NATIVE_DIR}/ReactCommon/jsi" "${WORKLETS_DIR}/Common/cpp")
+  target_include_directories(flume_bindings PRIVATE "${REACT_NATIVE_DIR}/ReactCommon/jsi" "${REACT_NATIVE_DIR}/ReactCommon/callinvoker" "${WORKLETS_DIR}/Common/cpp")
   target_link_libraries(flume_bindings PRIVATE flume_core)
 endif()
 

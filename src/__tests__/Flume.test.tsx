@@ -22,6 +22,7 @@ function installHost() {
   const alive = new Set<number>();
   const data: DataCall[] = [];
   const cells: CellCall[] = [];
+  let reporter: ((level: number, message: string) => void) | undefined;
   let next = 1;
   const host: FlumeHost = {
     install: () => {},
@@ -40,9 +41,18 @@ function installHost() {
     setCell: (storeId) => {
       cells.push({ storeId, alive: alive.has(storeId) });
     },
+    setReporter: (fn) => {
+      reporter = fn;
+    },
   };
   (globalThis as { __flume?: FlumeHost }).__flume = host;
-  return { alive, data, cells };
+  return {
+    alive,
+    data,
+    cells,
+    report: (level: number, message: string) => reporter?.(level, message),
+    hasReporter: () => reporter !== undefined,
+  };
 }
 
 const item = { id: 'a' };
@@ -86,5 +96,45 @@ describe('Flume store lifecycle', () => {
       tree.unmount();
     });
     expect(host.alive.has(storeId)).toBe(false);
+  });
+});
+
+describe('Flume props', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+  });
+
+  it('maps a press event to the item by key', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const onPress = vi.fn();
+    const tree = await mount(createElement(Flume, { data: [item], renderCell, onPress }));
+    const native = tree.root.find((node) => String(node.type) === 'FlumeView');
+    native.props.onPress({ nativeEvent: { index: 0, key: 'a', id: '' } });
+    expect(onPress).toHaveBeenCalledWith({ item, index: 0, id: undefined });
+  });
+
+  it('warns once when renderItem accompanies renderCell', async () => {
+    installHost();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { Flume } = await import('../Flume');
+    const renderItem = () => null;
+    const tree = await mount(createElement(Flume, { data: [item], renderCell, renderItem }));
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [item], renderCell, renderItem }));
+    });
+    const calls = warn.mock.calls.filter((call) => String(call[0]).includes('renderItem'));
+    expect(calls).toHaveLength(1);
+  });
+
+  it('registers a reporter in development', async () => {
+    const host = installHost();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { Flume } = await import('../Flume');
+    await mount(createElement(Flume, { data: [item], renderCell }));
+    expect(host.hasReporter()).toBe(true);
+    host.report(2, 'boom');
+    expect(error).toHaveBeenCalledWith('react-native-flume: boom');
   });
 });

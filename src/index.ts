@@ -7,4 +7,5 @@ export type {
   CellStyle,
   CellTextOptions,
   FlumeProps,
+  PressInfo,
 } from './types';
