@@ -34,8 +34,7 @@ export function getHost(): FlumeHost {
     throw new Error('react-native-flume: the native host is not installed');
   }
   host.setScheduler(getUISchedulerHolder());
-  // The worklet captures the host object, which worklets passes by reference; install() then runs
-  // with the flume runtime and its lock, where the native side keeps the runtime.
+  // The worklet captures the host object by reference, so install() runs on the flume runtime under its lock.
   state.runtime = createWorkletRuntime({ name: 'flume', enableEventLoop: false });
   runOnRuntimeSync(state.runtime, () => {
     'worklet';

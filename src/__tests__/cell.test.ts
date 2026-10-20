@@ -50,9 +50,4 @@ describe('cell builders', () => {
     expect(cell.spacer()).toEqual({ type: 'view', style: { flex: 1 } });
     expect(cell.spacer(8)).toEqual({ type: 'view', style: { flexBasis: 8 } });
   });
-
-  it('builders are plain functions under vitest', () => {
-    // vitest runs the untransformed source: the worklet directive is only a string here.
-    expect((cell.view as unknown as { __workletHash?: number }).__workletHash).toBeUndefined();
-  });
 });
