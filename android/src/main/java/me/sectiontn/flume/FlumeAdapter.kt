@@ -21,20 +21,20 @@ class FlumeAdapter(
     setHasStableIds(true)
   }
 
+  // Re-attaching the same store keeps the holders and their trees; the engine only re-registers the listener.
   fun attach(storeId: Int) {
-    if (this.storeId == storeId) return
-    if (this.storeId != 0) detach()
+    val changed = this.storeId != storeId
+    if (changed && this.storeId != 0) detach()
     this.storeId = storeId
-    count = FlumeJni.attach(storeId, this, measurer, density)
-    notifyDataSetChanged()
+    val attached = FlumeJni.attach(storeId, this, measurer, density)
+    if (changed || attached != count) {
+      count = attached
+      notifyDataSetChanged()
+    }
   }
 
   fun detach() {
-    if (storeId == 0) return
-    FlumeJni.detach(storeId)
-    storeId = 0
-    count = 0
-    notifyDataSetChanged()
+    if (storeId != 0) FlumeJni.detach(storeId)
   }
 
   override fun onListChanged(reset: Boolean, removed: IntArray, inserted: IntArray, moved: IntArray, changed: IntArray, count: Int) {

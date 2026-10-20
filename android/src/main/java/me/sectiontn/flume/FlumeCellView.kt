@@ -1,127 +1,69 @@
 package me.sectiontn.flume
 
 import android.content.Context
-import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
-import android.util.SparseArray
 import android.view.View
 import android.view.ViewGroup
 import com.facebook.drawee.view.SimpleDraweeView
 import kotlin.math.min
-import kotlin.math.roundToInt
 
-// One holder's view tree, kept across binds and updated from the engine's op batches.
-class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) : FlumeGroup(context) {
+// One holder's view tree, kept across binds and updated from the engine's op batches through CellTree.
+class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) : FlumeGroup(context), CellViews<View> {
   private val density = context.resources.displayMetrics.density
-  private val views = SparseArray<View>()
-  private val frames = SparseArray<RectF>()
+  private val tree = CellTree(this, density)
   private var rootHeightPx = 0
   var cellId = 0
 
+  override val root: View
+    get() = this
+
   fun apply(batch: FlumeBatch) {
-    val ints = batch.ints
-    val floats = batch.floats
-    var i = 0
-    var f = 0
-    while (i < ints.size) {
-      when (ints[i]) {
-        1 -> {
-          val id = ints[i + 1]
-          val kind = ints[i + 2]
-          val parentId = ints[i + 3]
-          val index = ints[i + 4]
-          i += 5
-          val view = when (kind) {
-            1 -> FlumeTextView(context)
-            2 -> FlumeImages.create(context)
-            else -> FlumeGroup(context)
-          }
-          views.put(id, view)
-          frames.put(id, RectF())
-          val parent = if (parentId == 0) this else views.get(parentId) as? ViewGroup ?: this
-          parent.addView(view, min(index, parent.childCount))
-        }
-        2 -> {
-          val id = ints[i + 1]
-          i += 2
-          val view = views.get(id)
-          if (view != null) {
-            (view.parent as? ViewGroup)?.removeView(view)
-            views.remove(id)
-            frames.remove(id)
-          }
-        }
-        3 -> {
-          val id = ints[i + 1]
-          i += 2
-          val x = floats[f] * density
-          val y = floats[f + 1] * density
-          val w = floats[f + 2] * density
-          val h = floats[f + 3] * density
-          f += 4
-          if (id == 0) rootHeightPx = h.roundToInt() else frames.get(id)?.set(x, y, x + w, y + h)
-        }
-        4 -> {
-          val id = ints[i + 1]
-          val color = ints[i + 2]
-          i += 4
-          val opacity = floats[f]
-          val radius = floats[f + 1] * density
-          f += 7
-          val view = if (id == 0) this else views.get(id)
-          if (view != null) {
-            view.background = if (color != 0 || radius > 0f) GradientDrawable().apply {
-              setColor(color)
-              cornerRadius = radius
-            } else null
-            view.alpha = opacity
-          }
-        }
-        5 -> {
-          val id = ints[i + 1]
-          val text = batch.strings[ints[i + 2]]
-          val color = ints[i + 3]
-          val weight = ints[i + 4]
-          val lines = ints[i + 5]
-          i += 10
-          val fontSize = floats[f]
-          val maxWidth = floats[f + 1]
-          f += 4
-          (views.get(id) as? FlumeTextView)?.set(measurer.layoutFor(text, fontSize, weight, maxWidth, lines), color)
-        }
-        6 -> {
-          val id = ints[i + 1]
-          val uri = batch.strings[ints[i + 2]]
-          val headerCount = ints[i + 6]
-          i += 7 + 2 * headerCount
-          val w = floats[f] * density
-          val h = floats[f + 1] * density
-          val radius = floats[f + 2] * density
-          f += 6
-          (views.get(id) as? SimpleDraweeView)?.let { FlumeImages.bind(it, uri, w.roundToInt(), h.roundToInt(), radius) }
-        }
-        // Pressable and accessibility payloads are skipped until the views read them.
-        7 -> {
-          i += 3
-          f += 1
-        }
-        8 -> i += 6
-        9 -> {
-          val id = ints[i + 1]
-          val index = ints[i + 2]
-          i += 3
-          val view = views.get(id)
-          val parent = view?.parent as? ViewGroup
-          if (view != null && parent != null) {
-            parent.removeView(view)
-            parent.addView(view, min(index, parent.childCount))
-          }
-        }
-        else -> return
-      }
-    }
+    rootHeightPx = tree.apply(batch)
     requestLayout()
   }
+
+  override fun create(kind: Int): View = when (kind) {
+    1 -> FlumeTextView(context)
+    2 -> FlumeImages.create(context)
+    else -> FlumeGroup(context)
+  }
+
+  override fun add(parent: View, child: View, index: Int) {
+    val group = parent as? ViewGroup ?: return
+    group.addView(child, min(index, group.childCount))
+  }
+
+  override fun remove(parent: View, child: View) {
+    (parent as? ViewGroup)?.removeView(child)
+  }
+
+  override fun move(parent: View, child: View, index: Int) {
+    val group = parent as? ViewGroup ?: return
+    group.removeView(child)
+    group.addView(child, min(index, group.childCount))
+  }
+
+  override fun removeAll() = removeAllViews()
+
+  override fun viewStyle(view: View, backgroundColor: Int, borderColor: Int, opacity: Float, radiiPx: FloatArray, borderWidthPx: Float, elevationPx: Float) {
+    view.background = if (backgroundColor != 0 || radiiPx[0] > 0f) GradientDrawable().apply {
+      setColor(backgroundColor)
+      cornerRadius = radiiPx[0]
+    } else null
+    view.alpha = opacity
+  }
+
+  override fun text(view: View, spec: TextSpec, color: Int) {
+    (view as? FlumeTextView)?.set(measurer.layoutFor(spec.text, spec.fontSizeDp, spec.fontWeight, spec.maxWidthDp, spec.numberOfLines), color)
+  }
+
+  override fun image(view: View, spec: ImageSpec) {
+    (view as? SimpleDraweeView)?.let { FlumeImages.bind(it, spec.uri, spec.widthPx, spec.heightPx, spec.radiiPx[0]) }
+  }
+
+  override fun pressable(view: View, id: String, pressedOpacity: Float) = Unit
+
+  override fun accessibility(view: View, label: String?, testId: String?, role: Int, accessible: Int) = Unit
 
   override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
     setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), rootHeightPx)
@@ -129,15 +71,9 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
 
   // Every descendant is placed here from its Yoga frame; FlumeGroup containers do no layout of their own.
   override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-    for (n in 0 until views.size()) {
-      val view = views.valueAt(n)
-      val frame = frames.get(views.keyAt(n)) ?: continue
-      val w = (frame.right - frame.left).roundToInt()
-      val h = (frame.bottom - frame.top).roundToInt()
-      view.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY))
-      val left = frame.left.roundToInt()
-      val top = frame.top.roundToInt()
-      view.layout(left, top, left + w, top + h)
+    tree.frames { view, left, top, width, height ->
+      view.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY))
+      view.layout(left, top, left + width, top + height)
     }
   }
 }

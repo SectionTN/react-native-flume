@@ -148,9 +148,12 @@ void Engine::releaseOnRuntime(int storeId) {
 int Engine::attach(int storeId, StoreListener* listener, std::unique_ptr<TextMeasurer> measurer, float pointScale) {
   auto store = find(storeId);
   if (store == nullptr) return 0;
-  store->measurer = std::move(measurer);
-  store->layout = std::make_unique<Layout>(*store->measurer, pointScale);
-  store->reconciler = std::make_unique<Reconciler>(*store->layout);
+  // The holders outlive a detach: the platform's recycled views keep their trees until the store is released.
+  if (store->layout == nullptr) {
+    store->measurer = std::move(measurer);
+    store->layout = std::make_unique<Layout>(*store->measurer, pointScale);
+    store->reconciler = std::make_unique<Reconciler>(*store->layout);
+  }
   store->listener = listener;
   store->list.applyPending();
   return store->list.count();
@@ -158,15 +161,7 @@ int Engine::attach(int storeId, StoreListener* listener, std::unique_ptr<TextMea
 
 void Engine::detach(int storeId) {
   auto store = find(storeId);
-  if (store == nullptr) return;
-  store->listener = nullptr;
-  if (store->reconciler != nullptr) {
-    for (auto& [id, holder] : store->holders) store->reconciler->release(*holder);
-  }
-  store->holders.clear();
-  store->reconciler.reset();
-  store->layout.reset();
-  store->measurer.reset();
+  if (store != nullptr) store->listener = nullptr;
 }
 
 int Engine::count(int storeId) {
