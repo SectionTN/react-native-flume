@@ -210,7 +210,7 @@ bool Engine::bind(int storeId, int holderId, int index, float widthDp, OpBatch& 
   if (holder.root != nullptr) {
     store->layout->layout(*holder.root, widthDp);
     store->layout->readFrames(*holder.root, out);
-    store->reconciler->emitText(holder, out);
+    store->reconciler->emitAfterLayout(holder, out);
   }
   int64_t t3 = nowNs();
   out.stats = {t1 - t0, t2 - t1, t3 - t2, store->layout->measureCalls, store->layout->measureHits, first ? 1 : 0};

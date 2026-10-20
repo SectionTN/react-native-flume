@@ -5,10 +5,12 @@
 #include <array>
 #include <cmath>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "core/Node.h"
+#include "core/OpBatch.h"
 
 namespace flume {
 
@@ -20,6 +22,15 @@ struct Mounted {
   Style style;
   std::string text;
   std::string imageUri;
+  ResizeMode resizeMode = ResizeMode::Cover;
+  std::optional<uint32_t> tintColor;
+  Headers imageHeaders;
+  std::string pressId;
+  float pressedOpacity = 0.7f;
+  std::string key;
+  std::string testID;
+  std::string accessibilityLabel;
+  std::optional<bool> accessible;
   int viewId = 0;              // 0 is the holder's own view
   YGNodeRef yoga = nullptr;
   Layout* layout = nullptr;

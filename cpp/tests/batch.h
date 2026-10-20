@@ -1,10 +1,12 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <optional>
 #include <vector>
 
 #include "core/OpBatch.h"
+#include "doctest.h"
 
 // Decodes the typed arrays the way the Kotlin side does, for assertions.
 struct DecodedOp {
@@ -19,12 +21,12 @@ inline std::vector<DecodedOp> decode(const flume::OpBatch& batch) {
   size_t i = 0;
   size_t f = 0;
   auto takeInts = [&](DecodedOp& op, int count) {
-    for (int k = 0; k < count; k++) op.ints.push_back(batch.ints[i++]);
+    for (int k = 0; k < count; k++) op.ints.push_back(i < batch.ints.size() ? batch.ints[i++] : -1);
   };
   auto takeFloats = [&](DecodedOp& op, int count) {
-    for (int k = 0; k < count; k++) op.floats.push_back(batch.floats[f++]);
+    for (int k = 0; k < count; k++) op.floats.push_back(f < batch.floats.size() ? batch.floats[f++] : NAN);
   };
-  while (i < batch.ints.size()) {
+  while (i + 1 < batch.ints.size()) {
     DecodedOp op;
     op.op = batch.ints[i++];
     op.id = batch.ints[i++];
@@ -32,9 +34,12 @@ inline std::vector<DecodedOp> decode(const flume::OpBatch& batch) {
       case 1: takeInts(op, 3); break;
       case 2: break;
       case 3: takeFloats(op, 4); break;
-      case 4: takeInts(op, 1); takeFloats(op, 2); break;
-      case 5: takeInts(op, 4); takeFloats(op, 2); break;
-      case 6: takeInts(op, 1); takeFloats(op, 3); break;
+      case 4: takeInts(op, 2); takeFloats(op, 7); break;
+      case 5: takeInts(op, 8); takeFloats(op, 4); break;
+      case 6: takeInts(op, 5); takeInts(op, 2 * std::max(op.ints[4], 0)); takeFloats(op, 6); break;
+      case 7: takeInts(op, 1); takeFloats(op, 1); break;
+      case 8: takeInts(op, 4); break;
+      case 9: takeInts(op, 1); break;
       default: return ops;
     }
     ops.push_back(std::move(op));
@@ -56,12 +61,21 @@ inline std::optional<std::array<float, 4>> frameOf(const flume::OpBatch& batch, 
   return frame;
 }
 
-inline int createdParent(const flume::OpBatch& batch, int id) {
+// The first op with that code and id; a missing op fails the check and returns a sentinel-filled op.
+inline DecodedOp firstOp(const flume::OpBatch& batch, int code, int id) {
   for (const auto& op : decode(batch)) {
-    if (op.op == 1 && op.id == id) return op.ints[1];
+    if (op.op == code && op.id == id) return op;
   }
-  return -1;
+  FAIL_CHECK("no op " << code << " for id " << id);
+  DecodedOp missing;
+  missing.ints.assign(32, -1);
+  missing.floats.assign(32, -1);
+  return missing;
 }
+
+inline int createdParent(const flume::OpBatch& batch, int id) { return firstOp(batch, 1, id).ints[1]; }
+
+inline DecodedOp textOp(const flume::OpBatch& batch, int id) { return firstOp(batch, 5, id); }
 
 inline float textMaxWidth(const flume::OpBatch& batch, int id) {
   for (const auto& op : decode(batch)) {

@@ -11,6 +11,7 @@ struct Holder {
   int id = 0;
   int nextViewId = 1;
   std::unique_ptr<Mounted> root;
+  std::string rootLabel;  // the derived accessibility label last sent for the root
 };
 
 }  // namespace flume

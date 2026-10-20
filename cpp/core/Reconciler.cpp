@@ -9,25 +9,77 @@ ViewKind kindOf(NodeType type) {
   switch (type) {
     case NodeType::Text: return ViewKind::Text;
     case NodeType::Image: return ViewKind::Image;
+    case NodeType::Pressable: return ViewKind::Pressable;
     default: return ViewKind::View;
   }
 }
 
+bool isContainer(NodeType type) { return type == NodeType::View || type == NodeType::Pressable; }
+
+bool anyRadius(const Style& s) {
+  return std::any_of(s.borderRadii.begin(), s.borderRadii.end(), [](const auto& r) { return r.has_value(); });
+}
+
 bool hasVisual(const Style& s) {
-  return s.backgroundColor.has_value() || s.opacity.has_value() || s.borderRadii[0].has_value();
+  return s.backgroundColor.has_value() || s.opacity.has_value() || anyRadius(s) || s.borderWidth.has_value() ||
+         s.borderColor.has_value() || s.elevation.has_value();
 }
 
 bool visualChanged(const Style& a, const Style& b) {
-  return a.backgroundColor != b.backgroundColor || a.opacity != b.opacity || a.borderRadii != b.borderRadii;
+  return a.backgroundColor != b.backgroundColor || a.opacity != b.opacity || a.borderRadii != b.borderRadii ||
+         a.borderWidth != b.borderWidth || a.borderColor != b.borderColor || a.elevation != b.elevation;
 }
 
 bool textStyleChanged(const Style& a, const Style& b) {
   return a.fontSize != b.fontSize || a.fontWeight != b.fontWeight || a.color != b.color ||
-         a.numberOfLines != b.numberOfLines;
+         a.numberOfLines != b.numberOfLines || a.fontFamily != b.fontFamily || a.italic != b.italic ||
+         a.lineHeight != b.lineHeight || a.letterSpacing != b.letterSpacing || a.textAlign != b.textAlign ||
+         a.decoration != b.decoration;
 }
 
 bool imageStyleChanged(const Style& a, const Style& b) {
   return a.width != b.width || a.height != b.height || a.borderRadii != b.borderRadii;
+}
+
+bool imageChanged(const Mounted& m, const Node& n) {
+  return m.imageUri != n.imageUri || m.resizeMode != n.resizeMode || m.tintColor != n.tintColor ||
+         m.imageHeaders != n.imageHeaders;
+}
+
+bool pressableChanged(const Mounted& m, const Node& n) {
+  return m.pressId != n.pressId || m.pressedOpacity != n.pressedOpacity;
+}
+
+bool accessibilityChanged(const Mounted& m, const Node& n) {
+  return m.accessibilityLabel != n.accessibilityLabel || m.testID != n.testID || m.accessible != n.accessible;
+}
+
+// A pressable is always exposed as a button; other nodes only when something is set.
+bool hasAccessibility(const Mounted& m) {
+  return m.type == NodeType::Pressable || !m.accessibilityLabel.empty() || !m.testID.empty() || m.accessible.has_value();
+}
+
+void copyProps(Mounted& mounted, Node& fresh) {
+  mounted.style = fresh.style;
+  mounted.text = std::move(fresh.text);
+  mounted.imageUri = std::move(fresh.imageUri);
+  mounted.resizeMode = fresh.resizeMode;
+  mounted.tintColor = fresh.tintColor;
+  mounted.imageHeaders = std::move(fresh.imageHeaders);
+  mounted.pressId = std::move(fresh.pressId);
+  mounted.pressedOpacity = fresh.pressedOpacity;
+  mounted.key = std::move(fresh.key);
+  mounted.testID = std::move(fresh.testID);
+  mounted.accessibilityLabel = std::move(fresh.accessibilityLabel);
+  mounted.accessible = fresh.accessible;
+}
+
+void appendTexts(const Mounted& node, std::string& out) {
+  if (node.type == NodeType::Text && !node.text.empty()) {
+    if (!out.empty()) out += ' ';
+    out += node.text;
+  }
+  for (const auto& child : node.children) appendTexts(*child, out);
 }
 
 }  // namespace
@@ -55,15 +107,15 @@ std::unique_ptr<Mounted> Reconciler::mountNew(Holder& holder, Node& fresh, int v
                                               OpBatch& out) {
   auto mounted = std::make_unique<Mounted>();
   mounted->type = fresh.type;
-  mounted->style = fresh.style;
-  mounted->text = std::move(fresh.text);
-  mounted->imageUri = std::move(fresh.imageUri);
+  copyProps(*mounted, fresh);
   mounted->viewId = viewId;
   mounted->yoga = layout_.createNode(*mounted);
   layout_.applyStyle(mounted->yoga, mounted->style);
   if (viewId != 0) out.create(viewId, kindOf(mounted->type), parentId, index);
-  if (mounted->type == NodeType::View && hasVisual(mounted->style)) emitViewStyle(*mounted, out);
+  if (isContainer(mounted->type) && hasVisual(mounted->style)) emitViewStyle(*mounted, out);
   if (mounted->type == NodeType::Image) emitImage(*mounted, out);
+  if (mounted->type == NodeType::Pressable) emitPressable(*mounted, out);
+  if (hasAccessibility(*mounted)) emitAccessibility(*mounted, out);
   if (mounted->type == NodeType::Text) mounted->textDirty = true;
   mounted->children.reserve(fresh.children.size());
   for (size_t i = 0; i < fresh.children.size(); i++) {
@@ -82,7 +134,7 @@ void Reconciler::reconcileNode(Holder& holder, Mounted& mounted, Node& fresh, Op
     bool imageStyle = imageStyleChanged(mounted.style, fresh.style);
     mounted.style = fresh.style;
     layout_.applyStyle(mounted.yoga, mounted.style);
-    if (mounted.type == NodeType::View && visual) emitViewStyle(mounted, out);
+    if (isContainer(mounted.type) && visual) emitViewStyle(mounted, out);
     if (mounted.type == NodeType::Text && textStyle) {
       mounted.textDirty = true;
       layout_.markTextDirty(mounted.yoga);
@@ -97,10 +149,25 @@ void Reconciler::reconcileNode(Holder& holder, Mounted& mounted, Node& fresh, Op
     mounted.textDirty = true;
     layout_.markTextDirty(mounted.yoga);
   }
-  if (mounted.type == NodeType::Image && mounted.imageUri != fresh.imageUri) {
+  if (mounted.type == NodeType::Image && imageChanged(mounted, fresh)) {
     mounted.imageUri = std::move(fresh.imageUri);
+    mounted.resizeMode = fresh.resizeMode;
+    mounted.tintColor = fresh.tintColor;
+    mounted.imageHeaders = std::move(fresh.imageHeaders);
     if (!imageEmitted) emitImage(mounted, out);
   }
+  if (mounted.type == NodeType::Pressable && pressableChanged(mounted, fresh)) {
+    mounted.pressId = std::move(fresh.pressId);
+    mounted.pressedOpacity = fresh.pressedOpacity;
+    emitPressable(mounted, out);
+  }
+  if (accessibilityChanged(mounted, fresh)) {
+    mounted.accessibilityLabel = std::move(fresh.accessibilityLabel);
+    mounted.testID = std::move(fresh.testID);
+    mounted.accessible = fresh.accessible;
+    emitAccessibility(mounted, out);
+  }
+  mounted.key = std::move(fresh.key);
 
   size_t common = std::min(mounted.children.size(), fresh.children.size());
   for (size_t i = 0; i < common; i++) {
@@ -141,16 +208,17 @@ void Reconciler::freeTree(Mounted& mounted) {
   mounted.yoga = nullptr;
 }
 
-void Reconciler::emitText(Holder& holder, OpBatch& out) {
-  if (holder.root != nullptr) emitTextOf(*holder.root, out);
+void Reconciler::emitAfterLayout(Holder& holder, OpBatch& out) {
+  if (holder.root == nullptr) return;
+  emitTextOf(*holder.root, out);
+  emitRootLabel(holder, out);
 }
 
 void Reconciler::emitTextOf(Mounted& node, OpBatch& out) {
   if (node.type == NodeType::Text) {
     float maxWidth = node.measuredMaxWidth > 0 ? node.measuredMaxWidth : YGNodeLayoutGetWidth(node.yoga);
     if (node.textDirty || maxWidth != node.emittedMaxWidth) {
-      out.text(node.viewId, node.text, node.style.color.value_or(0xFF000000u), node.style.fontWeight,
-               node.style.numberOfLines, node.style.fontSize, maxWidth);
+      out.text(node.viewId, node.text, node.style, maxWidth);
       node.textDirty = false;
       node.emittedMaxWidth = maxWidth;
     }
@@ -158,14 +226,30 @@ void Reconciler::emitTextOf(Mounted& node, OpBatch& out) {
   for (auto& child : node.children) emitTextOf(*child, out);
 }
 
-void Reconciler::emitViewStyle(const Mounted& node, OpBatch& out) {
-  out.viewStyle(node.viewId, node.style.backgroundColor.value_or(0), node.style.opacity.value_or(1),
-                node.style.borderRadii[0].value_or(0));
+// Without an explicit label the cell reads as its texts in order; sent only when that string changes.
+void Reconciler::emitRootLabel(Holder& holder, OpBatch& out) {
+  const Mounted& root = *holder.root;
+  if (!root.accessibilityLabel.empty()) return;
+  std::string joined;
+  appendTexts(root, joined);
+  if (joined == holder.rootLabel) return;
+  holder.rootLabel = joined;
+  out.accessibility(0, joined, root.testID, 0, root.accessible);
 }
 
+void Reconciler::emitViewStyle(const Mounted& node, OpBatch& out) { out.viewStyle(node.viewId, node.style); }
+
 void Reconciler::emitImage(const Mounted& node, OpBatch& out) {
-  out.image(node.viewId, node.imageUri, node.style.width.pointsOr(0), node.style.height.pointsOr(0),
-            node.style.borderRadii[0].value_or(0));
+  out.image(node.viewId, node.imageUri, node.style, node.resizeMode, node.tintColor, node.imageHeaders);
+}
+
+void Reconciler::emitPressable(const Mounted& node, OpBatch& out) {
+  out.pressable(node.viewId, node.pressId, node.pressedOpacity);
+}
+
+void Reconciler::emitAccessibility(const Mounted& node, OpBatch& out) {
+  out.accessibility(node.viewId, node.accessibilityLabel, node.testID, node.type == NodeType::Pressable ? 1 : 0,
+                    node.accessible);
 }
 
 void Reconciler::release(Holder& holder) {
@@ -174,6 +258,7 @@ void Reconciler::release(Holder& holder) {
     holder.root.reset();
   }
   holder.nextViewId = 1;
+  holder.rootLabel.clear();
 }
 
 }  // namespace flume

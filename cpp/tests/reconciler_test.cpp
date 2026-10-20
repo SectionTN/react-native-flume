@@ -1,5 +1,6 @@
 #include "doctest.h"
 
+#include <algorithm>
 #include <array>
 #include <vector>
 
@@ -29,7 +30,7 @@ struct Rig {
     rec.reconcile(holder, std::move(parsed.root), batch);
     layout.layout(*holder.root, width);
     layout.readFrames(*holder.root, batch);
-    rec.emitText(holder, batch);
+    rec.emitAfterLayout(holder, batch);
   }
 };
 
@@ -75,7 +76,7 @@ std::vector<int> idsOf(const flume::OpBatch& batch, size_t count) {
 TEST_CASE("first bind creates every view in document order") {
   Rig rig;
   rig.bind(chatCell());
-  CHECK(opsOf(rig.batch) == std::vector<int>{1, 6, 1, 1, 1, 3, 3, 3, 3, 3, 5, 5});
+  CHECK(opsOf(rig.batch) == std::vector<int>{1, 6, 1, 1, 1, 3, 3, 3, 3, 3, 5, 5, 8});
   CHECK(rig.holder.root->children[1]->children[1]->viewId == 4);
   CHECK(createdParent(rig.batch, 3) == 2);
   CHECK(textMaxWidth(rig.batch, 3) == 284.0f);
@@ -94,15 +95,15 @@ TEST_CASE("a changed text emits one Text op") {
   Rig rig;
   rig.bind(chatCell());
   rig.bind(rowCell(imageNode("https://x/a.png"), {textNode("hello", 16, "#111"), textNode("9:42", 12, "#666")}));
-  CHECK(opsOf(rig.batch) == std::vector<int>{5});
-  CHECK(rig.batch.strings.back() == "9:42");
+  CHECK(opsOf(rig.batch) == std::vector<int>{5, 8});
+  CHECK(rig.batch.strings[textOp(rig.batch, 4).ints[0]] == "9:42");
 }
 
 TEST_CASE("fewer children remove from the end") {
   Rig rig;
   rig.bind(chatCell());
   rig.bind(rowCell(imageNode("https://x/a.png"), {textNode("hello", 16, "#111")}));
-  CHECK(opsOf(rig.batch) == std::vector<int>{2, 3});
+  CHECK(opsOf(rig.batch) == std::vector<int>{2, 3, 8});
   CHECK(idsOf(rig.batch, 1) == std::vector<int>{4});
   CHECK(frameOf(rig.batch, 2) == Frame{64, 22, 284, 20});
   CHECK_FALSE(frameOf(rig.batch, 3).has_value());
@@ -115,7 +116,7 @@ TEST_CASE("more children create at the end") {
                    {textNode("hello", 16, "#111"), textNode("9:41", 12, "#666"), textNode("x", 12, "#666")}));
   auto ops = opsOf(rig.batch);
   CHECK(ops.front() == 1);
-  CHECK(ops.back() == 5);
+  CHECK(ops.back() == 8);
   CHECK(createdParent(rig.batch, 5) == 2);
   CHECK(decode(rig.batch).front().ints[2] == 2);
   CHECK(rig.batch.rootHeight == 76.0f);
@@ -168,4 +169,64 @@ TEST_CASE("a narrower width re-emits the text op with the new max width") {
   rig.bind(chatCell(), 300);
   CHECK(textMaxWidth(rig.batch, 3) == 224.0f);
   CHECK(textMaxWidth(rig.batch, 4) == 224.0f);
+}
+
+TEST_CASE("a pressable mounts with its id and pressed opacity") {
+  Rig rig;
+  rig.bind(rowCell(obj({{"type", V("pressable")}, {"id", V("like")}, {"children", arr({textNode("Like", 14, "#0066ff")})}}), {}));
+  auto op = firstOp(rig.batch, 7, 1);
+  CHECK(rig.batch.strings[op.ints[0]] == "like");
+  CHECK(op.floats[0] == 0.7f);
+  CHECK(createdParent(rig.batch, 2) == 1);
+}
+
+TEST_CASE("a text op carries the font options") {
+  Rig rig;
+  rig.bind(obj({{"type", V("text")}, {"text", V("a")},
+                {"style", obj({{"fontFamily", V("Inter")}, {"fontStyle", V("italic")}, {"lineHeight", V(20)},
+                               {"letterSpacing", V(0.5)}, {"textAlign", V("center")}, {"textDecorationLine", V("underline line-through")}})}}));
+  auto op = textOp(rig.batch, 0);
+  CHECK(rig.batch.strings[op.ints[4]] == "Inter");
+  CHECK(op.ints[5] == 1);
+  CHECK(op.ints[6] == 3);
+  CHECK(op.ints[7] == 3);
+  CHECK(op.floats[2] == 20.0f);
+  CHECK(op.floats[3] == 0.5f);
+}
+
+TEST_CASE("an image op carries resize mode, tint and headers") {
+  Rig rig;
+  rig.bind(rowCell(obj({{"type", V("image")}, {"source", obj({{"uri", V("u")}, {"headers", obj({{"A", V("b")}})}})},
+                        {"resizeMode", V("stretch")}, {"tintColor", V("#f00")},
+                        {"style", obj({{"width", V(40)}, {"height", V(40)}, {"borderTopLeftRadius", V(8)}})}}), {}));
+  auto op = firstOp(rig.batch, 6, 1);
+  CHECK(op.ints[1] == 2);
+  CHECK(op.ints[2] == 1);
+  CHECK(static_cast<uint32_t>(op.ints[3]) == 0xFFFF0000u);
+  CHECK(op.ints[4] == 1);
+  CHECK(rig.batch.strings[op.ints[5]] == "A");
+  CHECK(op.floats[2] == 8.0f);
+  CHECK(op.floats[3] == 0.0f);
+}
+
+TEST_CASE("the root label joins the texts in order") {
+  Rig rig;
+  rig.bind(chatCell());
+  auto op = firstOp(rig.batch, 8, 0);
+  CHECK(rig.batch.strings[op.ints[0]] == "hello 9:41");
+  rig.bind(chatCell());
+  auto ops = opsOf(rig.batch);
+  CHECK(std::count(ops.begin(), ops.end(), 8) == 0);
+}
+
+TEST_CASE("a border change re-emits the view style") {
+  Rig rig;
+  rig.bind(rowCell(imageNode("u"), {}, "#fff"));
+  rig.bind(obj({{"type", V("view")},
+                {"style", obj({{"flexDirection", V("row")}, {"padding", V(12)}, {"gap", V(12)}, {"alignItems", V("center")},
+                               {"backgroundColor", V("#fff")}, {"borderWidth", V(2)}, {"borderColor", V("#000")}})},
+                {"children", arr({imageNode("u")})}}));
+  auto op = firstOp(rig.batch, 4, 0);
+  CHECK(op.floats[5] == 2.0f);
+  CHECK(static_cast<uint32_t>(op.ints[1]) == 0xFF000000u);
 }

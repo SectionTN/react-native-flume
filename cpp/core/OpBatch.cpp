@@ -2,39 +2,70 @@
 
 namespace flume {
 
+namespace {
+
+int32_t code(Op op) { return static_cast<int32_t>(op); }
+int32_t color(std::optional<uint32_t> c, uint32_t fallback) { return static_cast<int32_t>(c.value_or(fallback)); }
+float radius(const Style& s, size_t corner) { return s.borderRadii[corner].value_or(0); }
+
+}  // namespace
+
 void OpBatch::create(int id, ViewKind kind, int parentId, int index) {
-  ints.insert(ints.end(), {static_cast<int32_t>(Op::Create), id, static_cast<int32_t>(kind), parentId, index});
+  ints.insert(ints.end(), {code(Op::Create), id, static_cast<int32_t>(kind), parentId, index});
   count_++;
 }
 
 void OpBatch::remove(int id) {
-  ints.insert(ints.end(), {static_cast<int32_t>(Op::Remove), id});
+  ints.insert(ints.end(), {code(Op::Remove), id});
   count_++;
 }
 
 void OpBatch::frame(int id, float x, float y, float w, float h) {
-  ints.insert(ints.end(), {static_cast<int32_t>(Op::Frame), id});
+  ints.insert(ints.end(), {code(Op::Frame), id});
   floats.insert(floats.end(), {x, y, w, h});
   count_++;
 }
 
-void OpBatch::viewStyle(int id, uint32_t backgroundColor, float opacity, float borderRadius) {
-  ints.insert(ints.end(), {static_cast<int32_t>(Op::ViewStyle), id, static_cast<int32_t>(backgroundColor)});
-  floats.insert(floats.end(), {opacity, borderRadius});
+void OpBatch::viewStyle(int id, const Style& s) {
+  ints.insert(ints.end(), {code(Op::ViewStyle), id, color(s.backgroundColor, 0), color(s.borderColor, 0xFF000000u)});
+  floats.insert(floats.end(), {s.opacity.value_or(1), radius(s, 0), radius(s, 1), radius(s, 2), radius(s, 3),
+                               s.borderWidth.value_or(0), s.elevation.value_or(0)});
   count_++;
 }
 
-void OpBatch::text(int id, const std::string& text, uint32_t color, int fontWeight, int numberOfLines,
-                   float fontSize, float maxWidth) {
-  ints.insert(ints.end(), {static_cast<int32_t>(Op::Text), id, addString(text), static_cast<int32_t>(color),
-                           fontWeight, numberOfLines});
-  floats.insert(floats.end(), {fontSize, maxWidth});
+void OpBatch::text(int id, const std::string& text, const Style& s, float maxWidth) {
+  ints.insert(ints.end(), {code(Op::Text), id, addString(text), color(s.color, 0xFF000000u), s.fontWeight, s.numberOfLines,
+                           addStringOrNone(s.fontFamily), s.italic ? 1 : 0, static_cast<int32_t>(s.textAlign),
+                           static_cast<int32_t>(s.decoration)});
+  floats.insert(floats.end(), {s.fontSize, maxWidth, s.lineHeight.value_or(0), s.letterSpacing.value_or(0)});
   count_++;
 }
 
-void OpBatch::image(int id, const std::string& uri, float width, float height, float borderRadius) {
-  ints.insert(ints.end(), {static_cast<int32_t>(Op::Image), id, addString(uri)});
-  floats.insert(floats.end(), {width, height, borderRadius});
+void OpBatch::image(int id, const std::string& uri, const Style& s, ResizeMode mode, std::optional<uint32_t> tint,
+                    const Headers& headers) {
+  ints.insert(ints.end(), {code(Op::Image), id, addString(uri), static_cast<int32_t>(mode), tint ? 1 : 0, color(tint, 0),
+                           static_cast<int32_t>(headers.size())});
+  for (const auto& [key, value] : headers) ints.insert(ints.end(), {addString(key), addString(value)});
+  floats.insert(floats.end(), {s.width.pointsOr(0), s.height.pointsOr(0), radius(s, 0), radius(s, 1), radius(s, 2),
+                               radius(s, 3)});
+  count_++;
+}
+
+void OpBatch::pressable(int id, const std::string& pressId, float pressedOpacity) {
+  ints.insert(ints.end(), {code(Op::Pressable), id, addString(pressId)});
+  floats.push_back(pressedOpacity);
+  count_++;
+}
+
+void OpBatch::accessibility(int id, const std::string& label, const std::string& testID, int role,
+                            std::optional<bool> accessible) {
+  ints.insert(ints.end(), {code(Op::Accessibility), id, addStringOrNone(label), addStringOrNone(testID), role,
+                           accessible ? (*accessible ? 1 : 0) : -1});
+  count_++;
+}
+
+void OpBatch::move(int id, int index) {
+  ints.insert(ints.end(), {code(Op::Move), id, index});
   count_++;
 }
 
@@ -52,5 +83,7 @@ int32_t OpBatch::addString(const std::string& s) {
   strings.push_back(s);
   return static_cast<int32_t>(strings.size() - 1);
 }
+
+int32_t OpBatch::addStringOrNone(const std::string& s) { return s.empty() ? -1 : addString(s); }
 
 }  // namespace flume

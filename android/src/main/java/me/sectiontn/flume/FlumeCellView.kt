@@ -64,10 +64,10 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
         4 -> {
           val id = ints[i + 1]
           val color = ints[i + 2]
-          i += 3
+          i += 4
           val opacity = floats[f]
           val radius = floats[f + 1] * density
-          f += 2
+          f += 7
           val view = if (id == 0) this else views.get(id)
           if (view != null) {
             view.background = if (color != 0 || radius > 0f) GradientDrawable().apply {
@@ -83,21 +83,39 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
           val color = ints[i + 3]
           val weight = ints[i + 4]
           val lines = ints[i + 5]
-          i += 6
+          i += 10
           val fontSize = floats[f]
           val maxWidth = floats[f + 1]
-          f += 2
+          f += 4
           (views.get(id) as? FlumeTextView)?.set(measurer.layoutFor(text, fontSize, weight, maxWidth, lines), color)
         }
         6 -> {
           val id = ints[i + 1]
           val uri = batch.strings[ints[i + 2]]
-          i += 3
+          val headerCount = ints[i + 6]
+          i += 7 + 2 * headerCount
           val w = floats[f] * density
           val h = floats[f + 1] * density
           val radius = floats[f + 2] * density
-          f += 3
+          f += 6
           (views.get(id) as? SimpleDraweeView)?.let { FlumeImages.bind(it, uri, w.roundToInt(), h.roundToInt(), radius) }
+        }
+        // Pressable and accessibility payloads are skipped until the views read them.
+        7 -> {
+          i += 3
+          f += 1
+        }
+        8 -> i += 6
+        9 -> {
+          val id = ints[i + 1]
+          val index = ints[i + 2]
+          i += 3
+          val view = views.get(id)
+          val parent = view?.parent as? ViewGroup
+          if (view != null && parent != null) {
+            parent.removeView(view)
+            parent.addView(view, min(index, parent.childCount))
+          }
         }
         else -> return
       }
