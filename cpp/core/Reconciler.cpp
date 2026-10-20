@@ -146,11 +146,14 @@ void Reconciler::emitText(Holder& holder, OpBatch& out) {
 }
 
 void Reconciler::emitTextOf(Mounted& node, OpBatch& out) {
-  if (node.type == NodeType::Text && node.textDirty) {
+  if (node.type == NodeType::Text) {
     float maxWidth = node.measuredMaxWidth > 0 ? node.measuredMaxWidth : YGNodeLayoutGetWidth(node.yoga);
-    out.text(node.viewId, node.text, node.style.color.value_or(0xFF000000u), node.style.fontWeight,
-             node.style.numberOfLines, node.style.fontSize, maxWidth);
-    node.textDirty = false;
+    if (node.textDirty || maxWidth != node.emittedMaxWidth) {
+      out.text(node.viewId, node.text, node.style.color.value_or(0xFF000000u), node.style.fontWeight,
+               node.style.numberOfLines, node.style.fontSize, maxWidth);
+      node.textDirty = false;
+      node.emittedMaxWidth = maxWidth;
+    }
   }
   for (auto& child : node.children) emitTextOf(*child, out);
 }

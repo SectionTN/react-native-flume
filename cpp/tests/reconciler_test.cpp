@@ -22,12 +22,12 @@ struct Rig {
   flume::Holder holder;
   flume::OpBatch batch;
 
-  void bind(const flume::Value& tree) {
+  void bind(const flume::Value& tree, float width = 360) {
     batch.clear();
     auto parsed = flume::parseTree(tree);
     REQUIRE(parsed.root);
     rec.reconcile(holder, std::move(parsed.root), batch);
-    layout.layout(*holder.root, 360);
+    layout.layout(*holder.root, width);
     layout.readFrames(*holder.root, batch);
     rec.emitText(holder, batch);
   }
@@ -160,4 +160,12 @@ TEST_CASE("release frees the tree") {
   rig.bind(chatCell());
   rig.rec.release(rig.holder);
   CHECK(rig.holder.root == nullptr);
+}
+
+TEST_CASE("a narrower width re-emits the text op with the new max width") {
+  Rig rig;
+  rig.bind(chatCell());
+  rig.bind(chatCell(), 300);
+  CHECK(textMaxWidth(rig.batch, 3) == 224.0f);
+  CHECK(textMaxWidth(rig.batch, 4) == 224.0f);
 }
