@@ -1,3 +1,5 @@
+import type { StyleProp, ViewStyle } from 'react-native';
+
 export type CellDimension = number | `${number}%`;
 
 export type CellFontWeight =
@@ -140,3 +142,10 @@ export type CellImageProps = CellStyle & {
 };
 
 export type CellPressableProps = CellStyle & { id: string; pressedOpacity?: number };
+
+export type FlumeProps<T> = {
+  data: readonly T[];
+  renderCell: (item: T, index: number) => CellNode;
+  keyExtractor?: (item: T, index: number) => string;
+  style?: StyleProp<ViewStyle>;
+};
