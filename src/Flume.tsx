@@ -1,4 +1,5 @@
 import { type ReactElement, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createSerializable } from 'react-native-worklets';
 import { type DataState, defaultKey, diffData } from './data';
 import FlumeViewNativeComponent from './specs/FlumeViewNativeComponent';
 import { getHost } from './store';
@@ -13,7 +14,8 @@ export function Flume<T>({ data, renderCell, keyExtractor, style }: FlumeProps<T
 
   // Declared before the data effect so the cell is in place when the first data lands.
   useLayoutEffect(() => {
-    host.setCell(storeId, renderCell);
+    // The native side extracts a SerializableJSRef, which only createSerializable produces.
+    host.setCell(storeId, createSerializable(renderCell));
   }, [host, storeId, renderCell]);
 
   useLayoutEffect(() => {

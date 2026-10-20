@@ -2,6 +2,7 @@ import {
   createWorkletRuntime,
   getUISchedulerHolder,
   runOnRuntimeSync,
+  type SerializableRef,
 } from 'react-native-worklets';
 import NativeFlume from './specs/NativeFlume';
 import type { CellNode } from './types';
@@ -19,7 +20,10 @@ export type FlumeHost = {
     changedIndices: number[],
     changedItems: unknown[],
   ): void;
-  setCell(storeId: number, renderCell: (item: never, index: number) => CellNode): void;
+  setCell(
+    storeId: number,
+    renderCell: SerializableRef<(item: never, index: number) => CellNode>,
+  ): void;
 };
 
 const state: { host?: FlumeHost; runtime?: ReturnType<typeof createWorkletRuntime> } = {};

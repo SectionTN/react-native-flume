@@ -1,0 +1,134 @@
+buildscript {
+  ext.Flume = [
+    kotlinVersion: "2.0.21",
+    minSdkVersion: 24,
+    compileSdkVersion: 36
+  ]
+
+  ext.getExtOrDefault = { prop ->
+    if (rootProject.ext.has(prop)) {
+      return rootProject.ext.get(prop)
+    }
+
+    return Flume[prop]
+  }
+
+  repositories {
+    google()
+    mavenCentral()
+  }
+
+  dependencies {
+    classpath "com.android.tools.build:gradle:8.7.2"
+    // noinspection DifferentKotlinGradleVersion
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion')}"
+  }
+}
+
+def reactNativeArchitectures() {
+  def value = rootProject.getProperties().get("reactNativeArchitectures")
+  return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
+}
+
+// The app's React Native, so the prefab, the CMake helpers and the Yoga headers match the runtime.
+def reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile()
+
+apply plugin: "com.android.library"
+
+if (project.extensions.findByName("kotlin") == null) {
+  apply plugin: "kotlin-android"
+}
+
+apply plugin: "com.facebook.react"
+
+android {
+  namespace "me.sectiontn.flume"
+
+  compileSdkVersion getExtOrDefault("compileSdkVersion")
+
+  defaultConfig {
+    minSdkVersion getExtOrDefault("minSdkVersion")
+
+    externalNativeBuild {
+      cmake {
+        cppFlags "-O2 -frtti -fexceptions -Wall -fstack-protector-all"
+        arguments "-DANDROID_STL=c++_shared", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON", "-DREACT_NATIVE_DIR=${reactNativeDir}"
+        abiFilters (*reactNativeArchitectures())
+        targets "flume"
+      }
+    }
+  }
+
+  if (rootProject.ext.has("ndkVersion")) {
+    ndkVersion rootProject.ext.ndkVersion
+  }
+
+  externalNativeBuild {
+    cmake {
+      path "CMakeLists.txt"
+    }
+  }
+
+  packaging {
+    resources {
+      excludes += [
+        "META-INF",
+        "META-INF/**"
+      ]
+    }
+
+    jniLibs {
+      excludes += [
+        "**/libc++_shared.so",
+        "**/libfbjni.so",
+        "**/libjsi.so",
+        "**/libfolly_json.so",
+        "**/libfolly_runtime.so",
+        "**/libglog.so",
+        "**/libhermes.so",
+        "**/libhermes-executor-debug.so",
+        "**/libhermes_executor.so",
+        "**/libreactnative.so",
+        "**/libreactnativejni.so",
+        "**/libturbomodulejsijni.so",
+        "**/libreact_nativemodule_core.so",
+        "**/libjscexecutor.so",
+        "**/libworklets.so"
+      ]
+    }
+  }
+
+  buildFeatures {
+    prefab true
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+
+  testOptions {
+    unitTests.returnDefaultValues = true
+  }
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+  implementation "androidx.recyclerview:recyclerview:1.4.0"
+  if (rootProject.subprojects.find { it.name == "react-native-worklets" } != null) {
+    implementation project(":react-native-worklets")
+  } else {
+    throw new GradleException("react-native-flume needs react-native-worklets. Install it in the app.")
+  }
+  testImplementation "junit:junit:4.13.2"
+}
+
+// The worklets prefab comes out of its own native build; CMake must not configure before it exists.
+evaluationDependsOn(":react-native-worklets")
+afterEvaluate {
+  ["Debug", "Release"].each { variant ->
+    tasks.named("externalNativeBuild${variant}").configure {
+      dependsOn(project(":react-native-worklets").tasks.named("externalNativeBuild${variant}"))
+    }
+  }
+}
