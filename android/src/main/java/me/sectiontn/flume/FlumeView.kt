@@ -6,8 +6,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 class FlumeView(context: Context) : FrameLayout(context) {
+  private val measurer = FlumeTextMeasurer(context)
   val recycler = RecyclerView(context).apply { layoutManager = LinearLayoutManager(context) }
+  private val adapter = FlumeAdapter(context, measurer, recycler)
+
   var storeId = 0
+    set(value) {
+      field = value
+      if (isAttachedToWindow && value != 0) adapter.attach(value)
+    }
 
   private val measureAndLayout = Runnable {
     measure(
@@ -18,7 +25,18 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   init {
+    recycler.adapter = adapter
     addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+  }
+
+  override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+    if (storeId != 0) adapter.attach(storeId)
+  }
+
+  override fun onDetachedFromWindow() {
+    adapter.detach()
+    super.onDetachedFromWindow()
   }
 
   // Fabric never runs a second Android layout pass, so a RecyclerView relayout has to be driven here.
