@@ -4,8 +4,11 @@ import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.view.ViewGroup
+import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.Button
 import com.facebook.drawee.view.SimpleDraweeView
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 // One holder's view tree, kept across binds and updated from the engine's op batches through CellTree.
 class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) : FlumeGroup(context), CellViews<View> {
@@ -13,6 +16,19 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
   private val tree = CellTree(this, density)
   private var rootHeightPx = 0
   var cellId = 0
+
+  // Receives the pressable id (null for the cell itself) and whether it was a long press.
+  var onPress: ((id: String?, long: Boolean) -> Unit)? = null
+
+  init {
+    isClickable = true
+    isLongClickable = true
+    setOnClickListener { onPress?.invoke(null, false) }
+    setOnLongClickListener {
+      onPress?.invoke(null, true)
+      true
+    }
+  }
 
   override val root: View
     get() = this
@@ -25,6 +41,13 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
   override fun create(kind: Int): View = when (kind) {
     1 -> FlumeTextView(context)
     2 -> FlumeImages.create(context)
+    3 -> FlumePressable(context).also { pressable ->
+      pressable.setOnClickListener { onPress?.invoke(pressable.pressId, false) }
+      pressable.setOnLongClickListener {
+        onPress?.invoke(pressable.pressId, true)
+        true
+      }
+    }
     else -> FlumeGroup(context)
   }
 
@@ -46,11 +69,15 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
   override fun removeAll() = removeAllViews()
 
   override fun viewStyle(view: View, backgroundColor: Int, borderColor: Int, opacity: Float, radiiPx: FloatArray, borderWidthPx: Float, elevationPx: Float) {
-    view.background = if (backgroundColor != 0 || radiiPx[0] > 0f) GradientDrawable().apply {
+    val drawn = backgroundColor != 0 || borderWidthPx > 0f || radiiPx.any { it > 0f }
+    view.background = if (drawn) GradientDrawable().apply {
       setColor(backgroundColor)
-      cornerRadius = radiiPx[0]
+      cornerRadii = floatArrayOf(radiiPx[0], radiiPx[0], radiiPx[1], radiiPx[1], radiiPx[2], radiiPx[2], radiiPx[3], radiiPx[3])
+      if (borderWidthPx > 0f) setStroke(borderWidthPx.roundToInt(), borderColor)
     } else null
+    view.elevation = elevationPx
     view.alpha = opacity
+    (view as? FlumePressable)?.baseOpacity = opacity
   }
 
   override fun text(view: View, spec: TextSpec, color: Int) {
@@ -58,12 +85,26 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
   }
 
   override fun image(view: View, spec: ImageSpec) {
-    (view as? SimpleDraweeView)?.let { FlumeImages.bind(it, spec.uri, spec.widthPx, spec.heightPx, spec.radiiPx[0]) }
+    (view as? SimpleDraweeView)?.let { FlumeImages.bind(it, spec) }
   }
 
-  override fun pressable(view: View, id: String, pressedOpacity: Float) = Unit
+  override fun pressable(view: View, id: String, pressedOpacity: Float) {
+    (view as? FlumePressable)?.let {
+      it.pressId = id
+      it.pressedOpacity = pressedOpacity
+    }
+  }
 
-  override fun accessibility(view: View, label: String?, testId: String?, role: Int, accessible: Int) = Unit
+  override fun accessibility(view: View, label: String?, testId: String?, role: Int, accessible: Int) {
+    view.contentDescription = label
+    view.tag = testId
+    view.importantForAccessibility = when (accessible) {
+      1 -> View.IMPORTANT_FOR_ACCESSIBILITY_YES
+      0 -> View.IMPORTANT_FOR_ACCESSIBILITY_NO
+      else -> View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+    }
+    view.accessibilityDelegate = if (role == 1) ButtonDelegate else null
+  }
 
   override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
     setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), rootHeightPx)
@@ -74,6 +115,13 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
     tree.frames { view, left, top, width, height ->
       view.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY))
       view.layout(left, top, left + width, top + height)
+    }
+  }
+
+  private object ButtonDelegate : View.AccessibilityDelegate() {
+    override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfo) {
+      super.onInitializeAccessibilityNodeInfo(host, info)
+      info.className = Button::class.java.name
     }
   }
 }

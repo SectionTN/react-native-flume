@@ -6,6 +6,8 @@ import android.widget.FrameLayout
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.facebook.react.bridge.ReactContext
+import com.facebook.react.uimanager.UIManagerHelper
 
 class FlumeView(context: Context) : FrameLayout(context) {
   private val measurer = FlumeTextMeasurer(context)
@@ -37,7 +39,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
   init {
     recycler.adapter = adapter
     recycler.itemAnimator = animator
+    adapter.onPress = { position, pressId, long -> emitPress(position, FlumeJni.keyAt(storeId, position), pressId, long) }
     addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+  }
+
+  fun emitPress(index: Int, key: String, pressId: String?, long: Boolean) {
+    val reactContext = context as? ReactContext ?: return
+    val dispatcher = UIManagerHelper.getEventDispatcherForReactTag(reactContext, id) ?: return
+    dispatcher.dispatchEvent(FlumePressEvent(UIManagerHelper.getSurfaceId(this), id, long, index, key, pressId))
   }
 
   override fun onAttachedToWindow() {

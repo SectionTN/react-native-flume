@@ -14,6 +14,7 @@ class FlumeAdapter(
 
   private val density = context.resources.displayMetrics.density
   private val viewport = ViewportTracker()
+  var onPress: ((position: Int, pressId: String?, long: Boolean) -> Unit)? = null
   private var storeId = 0
   private var count = 0
   private var nextCellId = 1
@@ -71,7 +72,13 @@ class FlumeAdapter(
     val cell = FlumeCellView(context, measurer)
     cell.cellId = nextCellId++
     cell.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-    return Holder(cell)
+    val holder = Holder(cell)
+    // The position is read at click time, so a recycled holder reports the item it shows now.
+    cell.onPress = { pressId, long ->
+      val position = holder.bindingAdapterPosition
+      if (position != RecyclerView.NO_POSITION) onPress?.invoke(position, pressId, long)
+    }
+    return holder
   }
 
   override fun onBindViewHolder(holder: Holder, position: Int) {

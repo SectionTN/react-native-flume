@@ -23,6 +23,11 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
     view.storeId = value
   }
 
+  override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> = mutableMapOf(
+    FlumePressEvent.PRESS to mapOf("registrationName" to "onPress"),
+    FlumePressEvent.LONG_PRESS to mapOf("registrationName" to "onLongPress"),
+  )
+
   @ReactProp(name = "itemAnimations", defaultBoolean = true)
   override fun setItemAnimations(view: FlumeView, value: Boolean) {
     view.itemAnimations = value
