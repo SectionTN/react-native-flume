@@ -23,6 +23,11 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
     view.storeId = value
   }
 
+  @ReactProp(name = "itemAnimations", defaultBoolean = true)
+  override fun setItemAnimations(view: FlumeView, value: Boolean) {
+    view.itemAnimations = value
+  }
+
   companion object {
     const val NAME = "FlumeView"
   }

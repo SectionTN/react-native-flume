@@ -2,6 +2,7 @@ package me.sectiontn.flume
 
 import android.content.Context
 import android.widget.FrameLayout
+import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -16,6 +17,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
       if (isAttachedToWindow && value != 0) adapter.attach(value)
     }
 
+  // Change animations stay off so a rebind never flickers; false removes the animator entirely.
+  private val animator = DefaultItemAnimator().apply { supportsChangeAnimations = false }
+  var itemAnimations = true
+    set(value) {
+      field = value
+      recycler.itemAnimator = if (value) animator else null
+    }
+
   private val measureAndLayout = Runnable {
     measure(
       MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
@@ -26,6 +35,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   init {
     recycler.adapter = adapter
+    recycler.itemAnimator = animator
     addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
   }
 

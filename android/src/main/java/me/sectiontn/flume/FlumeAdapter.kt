@@ -9,13 +9,17 @@ class FlumeAdapter(
   private val context: Context,
   private val measurer: FlumeTextMeasurer,
   private val recycler: RecyclerView,
-) : RecyclerView.Adapter<FlumeAdapter.Holder>(), FlumeStoreListener {
+) : RecyclerView.Adapter<FlumeAdapter.Holder>(), FlumeStoreListener, ListNotifier {
   class Holder(val cell: FlumeCellView) : RecyclerView.ViewHolder(cell)
 
   private val density = context.resources.displayMetrics.density
   private var storeId = 0
   private var count = 0
   private var nextCellId = 1
+
+  init {
+    setHasStableIds(true)
+  }
 
   fun attach(storeId: Int) {
     if (this.storeId == storeId) return
@@ -35,10 +39,24 @@ class FlumeAdapter(
 
   override fun onListChanged(reset: Boolean, removed: IntArray, inserted: IntArray, moved: IntArray, changed: IntArray, count: Int) {
     this.count = count
-    notifyDataSetChanged()
+    ListOpsApplier.apply(reset, removed, inserted, moved, changed, this)
   }
 
+  override fun reset() = notifyDataSetChanged()
+
+  override fun removed(index: Int, count: Int) = notifyItemRangeRemoved(index, count)
+
+  override fun inserted(index: Int, count: Int) = notifyItemRangeInserted(index, count)
+
+  override fun moved(from: Int, to: Int) = notifyItemMoved(from, to)
+
+  override fun changed(index: Int) = notifyItemChanged(index)
+
   override fun getItemCount(): Int = count
+
+  override fun getItemViewType(position: Int): Int = FlumeJni.viewType(storeId, position)
+
+  override fun getItemId(position: Int): Long = FlumeJni.itemId(storeId, position)
 
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
     val cell = FlumeCellView(context, measurer)
