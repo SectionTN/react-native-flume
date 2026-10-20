@@ -7,10 +7,22 @@ import type { FlumeProps } from './types';
 
 export function Flume<T>({ data, renderCell, keyExtractor, style }: FlumeProps<T>): ReactElement {
   const host = getHost();
-  const [storeId] = useState(() => host.createStore());
-  const prev = useRef<DataState<T> | undefined>(undefined);
+  const [storeId, setStoreId] = useState(() => host.createStore());
+  const released = useRef(false);
+  const prev = useRef<{ storeId: number; state?: DataState<T> }>({ storeId });
 
-  useEffect(() => () => host.releaseStore(storeId), [host, storeId]);
+  // StrictMode replays this effect after its cleanup, so a released store gets replaced.
+  useEffect(() => {
+    if (released.current) {
+      released.current = false;
+      setStoreId(host.createStore());
+      return;
+    }
+    return () => {
+      released.current = true;
+      host.releaseStore(storeId);
+    };
+  }, [host, storeId]);
 
   // Declared before the data effect so the cell is in place when the first data lands.
   useLayoutEffect(() => {
@@ -19,8 +31,9 @@ export function Flume<T>({ data, renderCell, keyExtractor, style }: FlumeProps<T
   }, [host, storeId, renderCell]);
 
   useLayoutEffect(() => {
-    const diff = diffData(prev.current, data, keyExtractor ?? defaultKey);
-    prev.current = diff.next;
+    if (prev.current.storeId !== storeId) prev.current = { storeId };
+    const diff = diffData(prev.current.state, data, keyExtractor ?? defaultKey);
+    prev.current.state = diff.next;
     host.setData(storeId, diff.keys, diff.types, diff.changedIndices, diff.changedItems);
   }, [host, storeId, data, keyExtractor]);
 
