@@ -16,9 +16,15 @@ fi
 
 RN_DIR=$(node -p "require('path').dirname(require.resolve('react-native/package.json'))")
 WORKLETS_DIR=$(node -p "require('path').dirname(require.resolve('react-native-worklets/package.json'))")
+# The jsi suite links React Native's macOS Hermes framework, so it runs on macOS only.
+HERMES_ARG=()
+if [ "$(uname -s)" = "Darwin" ]; then
+  HERMES_DIR=$(scripts/fetch-hermes.sh)
+  HERMES_ARG=(-DHERMES_DIR="$PWD/$HERMES_DIR")
+fi
 mkdir -p build
 if ! "$CMAKE" -S cpp/tests -B build/host -DCMAKE_BUILD_TYPE=Release \
-  -DREACT_NATIVE_DIR="$RN_DIR" -DWORKLETS_DIR="$WORKLETS_DIR" > build/host-configure.log 2>&1; then
+  -DREACT_NATIVE_DIR="$RN_DIR" -DWORKLETS_DIR="$WORKLETS_DIR" "${HERMES_ARG[@]}" > build/host-configure.log 2>&1; then
   tail -40 build/host-configure.log
   exit 1
 fi
@@ -27,3 +33,8 @@ if ! "$CMAKE" --build build/host -j "$(sysctl -n hw.ncpu 2>/dev/null || nproc)" 
   exit 1
 fi
 build/host/flume_tests
+if [ -x build/host/flume_jsi_tests ]; then
+  build/host/flume_jsi_tests
+else
+  echo "jsi suite skipped (macOS only)"
+fi

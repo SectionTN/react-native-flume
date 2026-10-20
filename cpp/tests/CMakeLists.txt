@@ -28,3 +28,15 @@ file(GLOB FLUME_TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/*_test.cpp")
 add_executable(flume_tests ${FLUME_TEST_SOURCES} "${CMAKE_SOURCE_DIR}/main.cpp")
 target_include_directories(flume_tests PRIVATE "${CMAKE_SOURCE_DIR}/vendor" "${CMAKE_SOURCE_DIR}")
 target_link_libraries(flume_tests PRIVATE flume_core)
+
+# The bindings suite runs on a Hermes runtime linked from React Native's macOS framework.
+if(DEFINED HERMES_DIR)
+  set(HERMES_FRAMEWORKS "${HERMES_DIR}/destroot/Library/Frameworks/macosx")
+  file(GLOB FLUME_JSI_TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/jsi/*_test.cpp")
+  add_executable(flume_jsi_tests ${FLUME_JSI_TEST_SOURCES} "${CMAKE_SOURCE_DIR}/jsi/main.cpp"
+                 "${CMAKE_SOURCE_DIR}/../bindings/JsiConverter.cpp")
+  target_include_directories(flume_jsi_tests BEFORE PRIVATE "${HERMES_DIR}/destroot/include")
+  target_include_directories(flume_jsi_tests PRIVATE "${CMAKE_SOURCE_DIR}/vendor" "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/jsi")
+  target_link_libraries(flume_jsi_tests PRIVATE flume_core "-F${HERMES_FRAMEWORKS}" "-framework hermesvm")
+  set_target_properties(flume_jsi_tests PROPERTIES BUILD_RPATH "${HERMES_FRAMEWORKS}")
+endif()
