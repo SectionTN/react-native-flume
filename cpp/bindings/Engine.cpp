@@ -237,18 +237,13 @@ void Engine::bindOnRuntime(jsi::Runtime& rt, int index) {
       current_.error = "index out of range: " + std::to_string(index);
       return;
     }
-    const std::string& key = store->keyAt(index);
-    uint64_t version = store->itemVersion(index);
-    auto it = slot.items.find(key);
-    if (it == slot.items.end() || it->second.first != version) {
-      jsi::Value materialized = toJsi(rt, store->itemAt(index));
-      if (it == slot.items.end()) {
-        it = slot.items.emplace(key, std::make_pair(version, std::move(materialized))).first;
-      } else {
-        it->second = std::make_pair(version, std::move(materialized));
-      }
+    if (slot.retainedGeneration != store->keysGeneration()) {
+      slot.items.retain(store->keys());
+      slot.retainedGeneration = store->keysGeneration();
     }
-    jsi::Value result = slot.renderCellFn->call(rt, {jsi::Value(rt, it->second.second), jsi::Value(index)});
+    const jsi::Value& item =
+        slot.items.materialize(rt, store->keyAt(index), store->itemVersion(index), store->itemAt(index));
+    jsi::Value result = slot.renderCellFn->call(rt, {jsi::Value(rt, item), jsi::Value(index)});
     ParseResult parsed = parseTree(toValue(rt, result));
     if (parsed.root == nullptr) {
       current_.error = "renderCell returned an invalid tree: " + parsed.error;
@@ -261,6 +256,8 @@ void Engine::bindOnRuntime(jsi::Runtime& rt, int index) {
     current_.error = std::string("renderCell failed: ") + e.what();
   }
 }
+
+void Engine::warn(const std::string& message) { logOnce(message); }
 
 void Engine::logOnce(const std::string& message) {
   if (!logged_.insert(message).second) return;

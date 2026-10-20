@@ -34,12 +34,14 @@ std::vector<int> intsOf(jsi::Runtime& rt, const jsi::Value& value) {
   return out;
 }
 
-std::vector<Value> valuesOf(jsi::Runtime& rt, const jsi::Value& value) {
+std::vector<Value> valuesOf(jsi::Runtime& rt, const jsi::Value& value, Engine& engine) {
   std::vector<Value> out;
   jsi::Array array = value.asObject(rt).asArray(rt);
   size_t size = array.size(rt);
   out.reserve(size);
-  for (size_t i = 0; i < size; i++) out.push_back(toValue(rt, array.getValueAtIndex(rt, i)));
+  bool truncated = false;
+  for (size_t i = 0; i < size; i++) out.push_back(toValue(rt, array.getValueAtIndex(rt, i), &truncated));
+  if (truncated) engine.warn("an item nests deeper than 64 levels and was cut there, is there a cycle?");
   return out;
 }
 
@@ -93,7 +95,7 @@ jsi::Value FlumeHost::get(jsi::Runtime& rt, const jsi::PropNameID& nameId) {
                         [&engine](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args, size_t count) {
                           if (count < 5) throw jsi::JSError(rt, "setData needs five arguments");
                           engine.setData(static_cast<int>(args[0].asNumber()), stringsOf(rt, args[1]),
-                                         stringsOf(rt, args[2]), intsOf(rt, args[3]), valuesOf(rt, args[4]));
+                                         stringsOf(rt, args[2]), intsOf(rt, args[3]), valuesOf(rt, args[4], engine));
                           return jsi::Value::undefined();
                         });
   }

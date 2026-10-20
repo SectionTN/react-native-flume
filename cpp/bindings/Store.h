@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "bindings/ItemCache.h"
 #include "core/Holder.h"
 #include "core/Layout.h"
 #include "core/Reconciler.h"
@@ -41,6 +42,8 @@ class Store : public std::enable_shared_from_this<Store> {
   const std::string& keyAt(int index) const { return keys_[index]; }
   const Value& itemAt(int index) const { return items_[index]; }
   uint64_t itemVersion(int index) const { return versions_[index]; }
+  const std::vector<std::string>& keys() const { return keys_; }
+  uint64_t keysGeneration() const { return keysGeneration_; }  // bumped when the key set changes
   std::shared_ptr<worklets::Serializable> renderCell() const;
   uint64_t renderCellVersion() const;
 
@@ -54,7 +57,8 @@ class Store : public std::enable_shared_from_this<Store> {
   struct RuntimeSlot {
     std::optional<facebook::jsi::Function> renderCellFn;
     uint64_t renderCellVersion = 0;
-    std::unordered_map<std::string, std::pair<uint64_t, facebook::jsi::Value>> items;
+    ItemCache items;
+    uint64_t retainedGeneration = 0;
   } slot;
 
  private:
@@ -75,6 +79,7 @@ class Store : public std::enable_shared_from_this<Store> {
   std::vector<Value> items_;
   std::vector<uint64_t> versions_;
   uint64_t nextVersion_ = 1;
+  uint64_t keysGeneration_ = 0;
 };
 
 }  // namespace flume

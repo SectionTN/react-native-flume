@@ -30,6 +30,7 @@ class Engine {
   void setData(int storeId, std::vector<std::string> keys, std::vector<std::string> types,
                std::vector<int> changedIndices, std::vector<Value> changedItems);
   void setCell(int storeId, std::shared_ptr<worklets::Serializable> renderCell);
+  void warn(const std::string& message);  // once per message
 
   // Flume runtime, inside the install host function
   void onInstall(facebook::jsi::Runtime& flumeRuntime);

@@ -4,19 +4,27 @@ namespace flume {
 
 namespace jsi = facebook::jsi;
 
-Value toValue(jsi::Runtime& rt, const jsi::Value& value) {
+namespace {
+
+constexpr int kMaxDepth = 64;
+
+Value toValueAt(jsi::Runtime& rt, const jsi::Value& value, int depth, bool* truncated) {
   if (value.isBool()) return Value(value.getBool());
   if (value.isNumber()) return Value(value.getNumber());
   if (value.isString()) return Value(value.getString(rt).utf8(rt));
   if (!value.isObject()) return Value();
   jsi::Object object = value.getObject(rt);
   if (object.isFunction(rt) || object.isHostObject(rt)) return Value();
+  if (depth >= kMaxDepth) {
+    if (truncated != nullptr) *truncated = true;
+    return Value();
+  }
   if (object.isArray(rt)) {
     jsi::Array array = object.getArray(rt);
     size_t size = array.size(rt);
     Value::Array items;
     items.reserve(size);
-    for (size_t i = 0; i < size; i++) items.push_back(toValue(rt, array.getValueAtIndex(rt, i)));
+    for (size_t i = 0; i < size; i++) items.push_back(toValueAt(rt, array.getValueAtIndex(rt, i), depth + 1, truncated));
     return Value(std::move(items));
   }
   jsi::Array names = object.getPropertyNames(rt);
@@ -25,9 +33,15 @@ Value toValue(jsi::Runtime& rt, const jsi::Value& value) {
   entries.reserve(size);
   for (size_t i = 0; i < size; i++) {
     jsi::String name = names.getValueAtIndex(rt, i).getString(rt);
-    entries.emplace_back(name.utf8(rt), toValue(rt, object.getProperty(rt, name)));
+    entries.emplace_back(name.utf8(rt), toValueAt(rt, object.getProperty(rt, name), depth + 1, truncated));
   }
   return Value(std::move(entries));
+}
+
+}  // namespace
+
+Value toValue(jsi::Runtime& rt, const jsi::Value& value, bool* truncated) {
+  return toValueAt(rt, value, 0, truncated);
 }
 
 jsi::Value toJsi(jsi::Runtime& rt, const Value& value) {

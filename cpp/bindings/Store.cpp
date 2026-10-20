@@ -60,13 +60,16 @@ bool Store::applyPending() {
   size_t size = pending->keys.size();
   std::vector<Value> items(size);
   std::vector<uint64_t> versions(size, 0);
+  size_t carried = 0;
   for (size_t i = 0; i < size; i++) {
     auto it = previous.find(pending->keys[i]);
     if (it != previous.end()) {
       items[i] = std::move(items_[it->second]);
       versions[i] = versions_[it->second];
+      carried++;
     }
   }
+  if (carried != size || carried != keys_.size()) keysGeneration_++;
   for (size_t i = 0; i < pending->changedIndices.size(); i++) {
     size_t index = static_cast<size_t>(pending->changedIndices[i]);
     if (index >= size) continue;
