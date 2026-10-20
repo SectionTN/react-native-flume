@@ -1,6 +1,7 @@
 package me.sectiontn.flume
 
 import android.content.Context
+import android.os.SystemClock
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 
@@ -47,7 +48,9 @@ class FlumeAdapter(
   }
 
   override fun onBindViewHolder(holder: Holder, position: Int) {
+    val start = SystemClock.elapsedRealtimeNanos()
     val batch = FlumeJni.bind(storeId, holder.cell.cellId, position, recycler.width / density) ?: return
     holder.cell.apply(batch)
+    SpikeStats.record(SystemClock.elapsedRealtimeNanos() - start, batch.stats)
   }
 }
