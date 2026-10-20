@@ -9,12 +9,19 @@ struct TextMetrics {
   float height;
 };
 
+// Everything the platform needs to build the same text layout it draws; sizes in dp.
 struct TextMeasureRequest {
   std::string_view text;
   float fontSize;
   int fontWeight;
   float maxWidth;
   int numberOfLines;
+  std::string_view fontFamily;
+  bool italic;
+  float lineHeight;  // 0 for the font's own
+  float letterSpacing;
+  int textAlign;   // TextAlign
+  int decoration;  // 1 underline, 2 line-through
 };
 
 // Implemented per platform with the same text layout the platform draws, so measured and drawn text agree.

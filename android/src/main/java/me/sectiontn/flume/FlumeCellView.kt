@@ -54,7 +54,7 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
   }
 
   override fun text(view: View, spec: TextSpec, color: Int) {
-    (view as? FlumeTextView)?.set(measurer.layoutFor(spec.text, spec.fontSizeDp, spec.fontWeight, spec.maxWidthDp, spec.numberOfLines), color)
+    (view as? FlumeTextView)?.set(measurer.layoutFor(spec), color)
   }
 
   override fun image(view: View, spec: ImageSpec) {

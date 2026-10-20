@@ -118,8 +118,11 @@ YGSize Layout::measureText(YGNodeConstRef node, float width, YGMeasureMode width
   Layout* self = mounted->layout;
   float maxWidth = widthMode == YGMeasureModeUndefined ? kUnboundedWidth : width;
   mounted->measuredMaxWidth = maxWidth;
-  TextMeasureRequest request{mounted->text, mounted->style.fontSize, mounted->style.fontWeight, maxWidth,
-                             mounted->style.numberOfLines};
+  const Style& s = mounted->style;
+  TextMeasureRequest request{mounted->text,  s.fontSize,       s.fontWeight,
+                             maxWidth,       s.numberOfLines,  s.fontFamily,
+                             s.italic,       s.lineHeight.value_or(0), s.letterSpacing.value_or(0),
+                             static_cast<int>(s.textAlign), static_cast<int>(s.decoration)};
   self->measureCalls++;
   if (const TextMetrics* hit = self->cache_.find(request)) {
     self->measureHits++;

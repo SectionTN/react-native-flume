@@ -26,6 +26,16 @@ std::string MeasureCache::keyOf(const TextMeasureRequest& request) {
   key += std::to_string(request.maxWidth);
   key += '\0';
   key += std::to_string(request.numberOfLines);
+  key += '\0';
+  key += request.fontFamily;
+  key += '\0';
+  key += request.italic ? '1' : '0';
+  key += std::to_string(request.lineHeight);
+  key += '\0';
+  key += std::to_string(request.letterSpacing);
+  key += '\0';
+  key += std::to_string(request.textAlign);
+  key += std::to_string(request.decoration);
   return key;
 }
 
