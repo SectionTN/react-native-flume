@@ -230,3 +230,49 @@ TEST_CASE("a border change re-emits the view style") {
   CHECK(op.floats[5] == 2.0f);
   CHECK(static_cast<uint32_t>(op.ints[1]) == 0xFF000000u);
 }
+
+namespace {
+
+flume::Value keyed(const char* key, const char* text) {
+  return obj({{"type", V("text")}, {"key", V(key)}, {"text", V(text)}, {"style", obj({{"fontSize", V(16)}})}});
+}
+
+flume::Value column(std::vector<flume::Value> children) {
+  return flume::Value(flume::Value::Object{
+      {"type", V("view")}, {"children", flume::Value(flume::Value::Array(children.begin(), children.end()))}});
+}
+
+}  // namespace
+
+TEST_CASE("keyed children reorder with move ops") {
+  Rig rig;
+  rig.bind(column({keyed("a", "A"), keyed("b", "B"), keyed("c", "C")}));
+  rig.bind(column({keyed("c", "C"), keyed("a", "A"), keyed("b", "B")}));
+  auto ops = opsOf(rig.batch);
+  CHECK(std::count(ops.begin(), ops.end(), 1) == 0);
+  CHECK(std::count(ops.begin(), ops.end(), 2) == 0);
+  CHECK(std::count(ops.begin(), ops.end(), 9) == 1);
+  auto move = firstOp(rig.batch, 9, 3);
+  CHECK(move.ints[0] == 0);
+  CHECK(frameOf(rig.batch, 3) == Frame{0, 0, 360, 20});
+  CHECK(frameOf(rig.batch, 1) == Frame{0, 20, 360, 20});
+}
+
+TEST_CASE("a keyed child that leaves is removed and a new key mounts at its index") {
+  Rig rig;
+  rig.bind(column({keyed("a", "A"), keyed("b", "B"), keyed("c", "C")}));
+  rig.bind(column({keyed("a", "A"), keyed("x", "X"), keyed("c", "C")}));
+  auto ops = opsOf(rig.batch);
+  CHECK(firstOp(rig.batch, 2, 2).id == 2);
+  CHECK(firstOp(rig.batch, 1, 4).ints[2] == 1);
+  CHECK(std::count(ops.begin(), ops.end(), 9) == 0);
+}
+
+TEST_CASE("a keyed child whose type changes remounts") {
+  Rig rig;
+  rig.bind(column({keyed("a", "A")}));
+  rig.bind(column({obj({{"type", V("view")}, {"key", V("a")}, {"style", obj({{"height", V(10)}})}})}));
+  auto ops = opsOf(rig.batch);
+  CHECK(std::count(ops.begin(), ops.end(), 2) == 1);
+  CHECK(std::count(ops.begin(), ops.end(), 1) == 1);
+}

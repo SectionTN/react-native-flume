@@ -22,6 +22,7 @@ class Reconciler {
  private:
   std::unique_ptr<Mounted> mountNew(Holder& holder, Node& fresh, int viewId, int parentId, int index, OpBatch& out);
   void reconcileNode(Holder& holder, Mounted& mounted, Node& fresh, OpBatch& out);
+  void reconcileChildren(Holder& holder, Mounted& mounted, Node& fresh, OpBatch& out);
   void unmount(Mounted& mounted, OpBatch& out);
   void freeTree(Mounted& mounted);
   void emitTextOf(Mounted& node, OpBatch& out);

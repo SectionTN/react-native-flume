@@ -1,6 +1,8 @@
 #include "core/Reconciler.h"
 
 #include <algorithm>
+#include <unordered_map>
+#include <vector>
 
 namespace flume {
 namespace {
@@ -168,28 +170,63 @@ void Reconciler::reconcileNode(Holder& holder, Mounted& mounted, Node& fresh, Op
     emitAccessibility(mounted, out);
   }
   mounted.key = std::move(fresh.key);
+  reconcileChildren(holder, mounted, fresh, out);
+}
 
-  size_t common = std::min(mounted.children.size(), fresh.children.size());
-  for (size_t i = 0; i < common; i++) {
-    Mounted& child = *mounted.children[i];
-    Node& freshChild = *fresh.children[i];
-    if (child.type != freshChild.type) {
-      unmount(child, out);
-      mounted.children[i] = mountNew(holder, freshChild, holder.nextViewId++, mounted.viewId, static_cast<int>(i), out);
-      YGNodeInsertChild(mounted.yoga, mounted.children[i]->yoga, i);
-    } else {
-      reconcileNode(holder, child, freshChild, out);
+// Keyed children match by key; unkeyed ones pair by ordinal and type, as React does; the rest are removed.
+void Reconciler::reconcileChildren(Holder& holder, Mounted& mounted, Node& fresh, OpBatch& out) {
+  auto& old = mounted.children;
+  std::vector<int> match(fresh.children.size(), -1);
+  std::vector<bool> claimed(old.size(), false);
+  std::unordered_map<std::string, size_t> byKey;
+  for (size_t j = 0; j < old.size(); j++) {
+    if (!old[j]->key.empty()) byKey.emplace(old[j]->key, j);
+  }
+  size_t cursor = 0;
+  for (size_t i = 0; i < fresh.children.size(); i++) {
+    const Node& f = *fresh.children[i];
+    if (!f.key.empty()) {
+      auto it = byKey.find(f.key);
+      if (it != byKey.end() && !claimed[it->second] && old[it->second]->type == f.type) {
+        match[i] = static_cast<int>(it->second);
+        claimed[it->second] = true;
+      }
+      continue;
+    }
+    while (cursor < old.size() && !old[cursor]->key.empty()) cursor++;
+    if (cursor < old.size()) {
+      if (old[cursor]->type == f.type) {
+        match[i] = static_cast<int>(cursor);
+        claimed[cursor] = true;
+      }
+      cursor++;
     }
   }
-  while (mounted.children.size() > fresh.children.size()) {
-    unmount(*mounted.children.back(), out);
-    mounted.children.pop_back();
+  // Removes go first so the indices the platform sees stay valid; YGNodeFree detaches from Yoga.
+  for (size_t j = 0; j < old.size(); j++) {
+    if (!claimed[j]) unmount(*old[j], out);
   }
-  for (size_t i = common; i < fresh.children.size(); i++) {
-    auto child = mountNew(holder, *fresh.children[i], holder.nextViewId++, mounted.viewId, static_cast<int>(i), out);
-    YGNodeInsertChild(mounted.yoga, child->yoga, i);
-    mounted.children.push_back(std::move(child));
+  std::vector<std::unique_ptr<Mounted>> next;
+  next.reserve(fresh.children.size());
+  for (size_t i = 0; i < fresh.children.size(); i++) {
+    if (match[i] < 0) {
+      auto child = mountNew(holder, *fresh.children[i], holder.nextViewId++, mounted.viewId, static_cast<int>(i), out);
+      YGNodeInsertChild(mounted.yoga, child->yoga, i);
+      next.push_back(std::move(child));
+      continue;
+    }
+    std::unique_ptr<Mounted> child = std::move(old[match[i]]);
+    reconcileNode(holder, *child, *fresh.children[i], out);
+    size_t current = 0;
+    while (YGNodeGetChild(mounted.yoga, current) != child->yoga) current++;
+    if (current != i) {
+      YGNodeRemoveChild(mounted.yoga, child->yoga);
+      YGNodeInsertChild(mounted.yoga, child->yoga, i);
+      out.move(child->viewId, static_cast<int>(i));
+    }
+    next.push_back(std::move(child));
   }
+  old = std::move(next);
 }
 
 // Children first, so the platform removes leaves before their parent. YGNodeFree detaches from the owner.
