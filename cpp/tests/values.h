@@ -20,3 +20,24 @@ inline flume::Value obj(std::initializer_list<std::pair<std::string, flume::Valu
 inline flume::Value arr(std::initializer_list<flume::Value> items) {
   return flume::Value(flume::Value::Array(items));
 }
+
+// The spec's chat cell without the pressable: row, avatar, a column with two texts.
+inline flume::Value chatCell() {
+  return obj(
+      {{"type", V("view")},
+       {"style",
+        obj({{"flexDirection", V("row")}, {"padding", V(12)}, {"gap", V(12)}, {"alignItems", V("center")}})},
+       {"children",
+        arr({obj({{"type", V("image")},
+                  {"source", V("https://x/a.png")},
+                  {"style", obj({{"width", V(40)}, {"height", V(40)}, {"borderRadius", V(20)}})}}),
+             obj({{"type", V("view")},
+                  {"style", obj({{"flex", V(1)}})},
+                  {"children",
+                   arr({obj({{"type", V("text")},
+                             {"text", V("hello")},
+                             {"style", obj({{"fontSize", V(16)}, {"color", V("#111")}})}}),
+                        obj({{"type", V("text")},
+                             {"text", V("9:41")},
+                             {"style", obj({{"fontSize", V(12)}, {"color", V("#666")}})}})})}})})}});
+}
