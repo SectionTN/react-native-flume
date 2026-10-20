@@ -18,7 +18,18 @@ TEST_CASE("functional colors and transparent") {
 }
 
 TEST_CASE("unsupported strings are skipped") {
-  CHECK_FALSE(parseColor("blue").has_value());
+  CHECK(parseColor("blue") == 0xFF0000FFu);
   CHECK_FALSE(parseColor("#12345").has_value());
   CHECK_FALSE(parseColor("").has_value());
+}
+
+TEST_CASE("keywords, hsl and hwb follow normalize-colors") {
+  CHECK(flume::parseColor("red") == 0xFFFF0000u);
+  CHECK(flume::parseColor("rebeccapurple") == 0xFF663399u);
+  CHECK(flume::parseColor("hsl(120, 100%, 50%)") == 0xFF00FF00u);
+  CHECK(flume::parseColor("hsla(120, 100%, 50%, 0.5)") == 0x8000FF00u);
+  CHECK(flume::parseColor("hwb(0, 0%, 0%)") == 0xFFFF0000u);
+  CHECK(flume::parseColor("rgba(255, 0, 0, .5)") == 0x80FF0000u);
+  CHECK_FALSE(flume::parseColor("Red").has_value());
+  CHECK_FALSE(flume::parseColor("blue ").has_value());
 }

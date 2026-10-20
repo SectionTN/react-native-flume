@@ -21,7 +21,7 @@ TEST_CASE("style from an object") {
   CHECK(s.widthPercent == 50.0f);
   CHECK_FALSE(s.width.has_value());
   CHECK(s.backgroundColor == 0xFFFFFFFFu);
-  CHECK_FALSE(s.color.has_value());
+  CHECK(s.color == 0xFF0000FFu);
 }
 
 TEST_CASE("font weights") {
