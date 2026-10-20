@@ -1,0 +1,119 @@
+{
+  "name": "react-native-flume",
+  "version": "0.0.0",
+  "description": "Native list for React Native with worklet cells",
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "exports": {
+    ".": {
+      "react-native-flume-source": "./src/index.ts",
+      "types": "./lib/typescript/src/index.d.ts",
+      "default": "./lib/module/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "android",
+    "ios",
+    "cpp",
+    "*.podspec",
+    "react-native.config.js",
+    "!android/build",
+    "!android/.cxx",
+    "!cpp/tests",
+    "!**/__tests__",
+    "!**/.*"
+  ],
+  "scripts": {
+    "example": "yarn workspace react-native-flume-example",
+    "clean": "del-cli lib build android/build android/.cxx",
+    "prepare": "bob build",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "test:cpp": "scripts/test-cpp.sh",
+    "test:android": "cd example/android && ./gradlew :react-native-flume:testReleaseUnitTest --console=plain -q"
+  },
+  "keywords": [
+    "react-native",
+    "list",
+    "recyclerview",
+    "uicollectionview",
+    "worklets",
+    "flashlist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SectionTN/react-native-flume.git"
+  },
+  "author": "Rayen Sbai <rayensbai2@gmail.com> (https://github.com/SectionTN)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SectionTN/react-native-flume/issues"
+  },
+  "homepage": "https://github.com/SectionTN/react-native-flume#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@biomejs/biome": "2.5.15",
+    "@commitlint/config-conventional": "^21.2.0",
+    "@react-native/babel-preset": "0.87.1",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.2.0",
+    "commitlint": "^21.2.1",
+    "del-cli": "^7.0.0",
+    "lefthook": "^2.1.10",
+    "react": "19.2.3",
+    "react-native": "0.87.1",
+    "react-native-builder-bob": "^0.43.2",
+    "react-native-worklets": "0.13.0",
+    "typescript": "^6.0.3",
+    "vite": "8.3.2",
+    "vitest": "5.0.5"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": ">=0.81.0",
+    "react-native-worklets": ">=0.13.0"
+  },
+  "workspaces": [
+    "example"
+  ],
+  "packageManager": "yarn@4.11.0",
+  "codegenConfig": {
+    "name": "FlumeSpec",
+    "type": "all",
+    "jsSrcsDir": "src/specs",
+    "android": {
+      "javaPackageName": "me.sectiontn.flume"
+    }
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  }
+}

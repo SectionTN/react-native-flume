@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig",
+  "exclude": ["example", "lib", "build", "vitest.config.ts"]
+}

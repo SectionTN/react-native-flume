@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Flume Example",
+    "slug": "react-native-flume-example",
+    "scheme": "flume-example",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "me.sectiontn.flume.example",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "me.sectiontn.flume.example"
+    }
+  }
+}
