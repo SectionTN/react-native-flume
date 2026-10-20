@@ -34,6 +34,12 @@ class FlumeTextMeasurer(context: Context) {
     return (width.toRawBits().toLong() shl 32) or (height.toRawBits().toLong() and 0xffffffffL)
   }
 
+  // Sizes in sp move with the font scale, so a viewport change drops every layout and paint.
+  fun invalidate() {
+    layouts.evictAll()
+    paints.clear()
+  }
+
   fun layoutFor(text: String, fontSizeDp: Float, fontWeight: Int, maxWidthDp: Float, numberOfLines: Int): StaticLayout {
     val key = "$text\u0000$fontSizeDp\u0000$fontWeight\u0000$maxWidthDp\u0000$numberOfLines"
     layouts.get(key)?.let { return it }

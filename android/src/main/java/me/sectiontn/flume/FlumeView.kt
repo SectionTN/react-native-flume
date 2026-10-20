@@ -1,6 +1,7 @@
 package me.sectiontn.flume
 
 import android.content.Context
+import android.content.res.Configuration
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -42,6 +43,16 @@ class FlumeView(context: Context) : FrameLayout(context) {
   override fun onAttachedToWindow() {
     super.onAttachedToWindow()
     if (storeId != 0) adapter.attach(storeId)
+  }
+
+  override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+    super.onSizeChanged(w, h, oldw, oldh)
+    adapter.onViewportChanged(w, resources.configuration.fontScale)
+  }
+
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    adapter.onViewportChanged(width, newConfig.fontScale)
   }
 
   override fun onDetachedFromWindow() {

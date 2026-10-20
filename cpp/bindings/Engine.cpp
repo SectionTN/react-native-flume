@@ -178,6 +178,11 @@ void Engine::releaseHolder(int storeId, int holderId) {
   store->holders.erase(it);
 }
 
+void Engine::invalidateMeasures(int storeId) {
+  auto store = find(storeId);
+  if (store != nullptr && store->layout != nullptr) store->layout->cache().clear();
+}
+
 bool Engine::bind(int storeId, int holderId, int index, float widthDp, OpBatch& out) {
   auto store = find(storeId);
   if (store == nullptr || runtime_ == nullptr || !bindFn_ || store->layout == nullptr) return false;

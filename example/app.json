@@ -4,7 +4,7 @@
     "slug": "react-native-flume-example",
     "scheme": "flume-example",
     "version": "0.1.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

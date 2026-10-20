@@ -80,6 +80,10 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
     flume::Engine::instance().releaseHolder(storeId, holderId);
   }
 
+  static void invalidateMeasures(jni::alias_ref<jclass>, jint storeId) {
+    flume::Engine::instance().invalidateMeasures(storeId);
+  }
+
   static std::unordered_map<int, std::unique_ptr<flume::android::AndroidStoreListener>>& listenersByStore() {
     static std::unordered_map<int, std::unique_ptr<flume::android::AndroidStoreListener>> listeners;
     return listeners;
@@ -96,6 +100,7 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
         makeNativeMethod("keyAt", JFlumeJni::keyAt),
         makeNativeMethod("bind", JFlumeJni::bind),
         makeNativeMethod("releaseHolder", JFlumeJni::releaseHolder),
+        makeNativeMethod("invalidateMeasures", JFlumeJni::invalidateMeasures),
     });
   }
 };

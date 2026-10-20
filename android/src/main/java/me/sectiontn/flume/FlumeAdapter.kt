@@ -13,9 +13,18 @@ class FlumeAdapter(
   class Holder(val cell: FlumeCellView) : RecyclerView.ViewHolder(cell)
 
   private val density = context.resources.displayMetrics.density
+  private val viewport = ViewportTracker()
   private var storeId = 0
   private var count = 0
   private var nextCellId = 1
+
+  // A new width or font scale drops every measured text and rebinds the visible rows at the new size.
+  fun onViewportChanged(widthPx: Int, fontScale: Float) {
+    if (!viewport.update(widthPx, fontScale)) return
+    measurer.invalidate()
+    if (storeId != 0) FlumeJni.invalidateMeasures(storeId)
+    notifyDataSetChanged()
+  }
 
   init {
     setHasStableIds(true)
@@ -66,8 +75,10 @@ class FlumeAdapter(
   }
 
   override fun onBindViewHolder(holder: Holder, position: Int) {
+    val widthPx = viewport.widthPx
+    if (widthPx == 0) return
     val start = SystemClock.elapsedRealtimeNanos()
-    val batch = FlumeJni.bind(storeId, holder.cell.cellId, position, recycler.width / density) ?: return
+    val batch = FlumeJni.bind(storeId, holder.cell.cellId, position, widthPx / density) ?: return
     holder.cell.apply(batch)
     SpikeStats.record(SystemClock.elapsedRealtimeNanos() - start, batch.stats)
   }

@@ -44,6 +44,7 @@ class Engine {
   std::string keyAt(int storeId, int position);
   bool bind(int storeId, int holderId, int index, float widthDp, OpBatch& out);
   void releaseHolder(int storeId, int holderId);
+  void invalidateMeasures(int storeId);  // clears the text measure cache
 
  private:
   Engine() = default;

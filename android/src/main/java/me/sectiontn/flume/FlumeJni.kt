@@ -31,4 +31,7 @@ object FlumeJni {
   @JvmStatic external fun bind(storeId: Int, holderId: Int, index: Int, widthDp: Float): FlumeBatch?
 
   @JvmStatic external fun releaseHolder(storeId: Int, holderId: Int)
+
+  // Drops the measure cache so the next binds measure at the current width and font scale.
+  @JvmStatic external fun invalidateMeasures(storeId: Int)
 }
