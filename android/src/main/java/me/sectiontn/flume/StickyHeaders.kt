@@ -27,6 +27,12 @@ object StickyResolver {
 }
 
 // Owns the pinned copy of the current sticky row: a holder of its own, bound through the engine like any row.
+// A drag that starts on the pinned header belongs to the list once it leaves the touch slop; a tap stays with the header.
+object PinnedDrag {
+  fun takesOver(onPinned: Boolean, dx: Float, dy: Float, slopPx: Int): Boolean =
+    onPinned && dx * dx + dy * dy > slopPx.toFloat() * slopPx
+}
+
 class StickyHeaderHost(private val view: FlumeView, val pinnedView: FlumeCellView, private val holderId: Int) {
   var indices = IntArray(0)
   var pinnedIndex = -1
@@ -38,6 +44,14 @@ class StickyHeaderHost(private val view: FlumeView, val pinnedView: FlumeCellVie
     pinnedView.onPress = { id, long ->
       if (pinnedIndex >= 0) view.emitPress(pinnedIndex, FlumeJni.keyAt(view.storeId, pinnedIndex), id, long)
     }
+  }
+
+  // Whether a touch in the host's coordinates lands on the pinned copy where it is drawn.
+  fun contains(x: Float, y: Float): Boolean {
+    if (pinnedView.visibility != View.VISIBLE) return false
+    val left = pinnedView.left + pinnedView.translationX
+    val top = pinnedView.top + pinnedView.translationY
+    return x >= left && x < left + pinnedView.width && y >= top && y < top + pinnedView.height
   }
 
   fun refresh(force: Boolean = false) {

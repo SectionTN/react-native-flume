@@ -1,6 +1,8 @@
 package me.sectiontn.flume
 
 import android.content.Context
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.content.res.Configuration
 import android.os.SystemClock
 import android.widget.FrameLayout
@@ -429,6 +431,38 @@ class FlumeView(context: Context) : FrameLayout(context) {
   override fun onAttachedToWindow() {
     super.onAttachedToWindow()
     if (storeId != 0) adapter.attach(storeId)
+  }
+
+  private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+  private var downOnPinned = false
+  private var downX = 0f
+  private var downY = 0f
+  private var forwarding = false
+
+  // A drag that starts on the pinned header scrolls the list, as it does on a ScrollView's sticky header; a tap stays with the header.
+  override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
+    when (e.actionMasked) {
+      MotionEvent.ACTION_DOWN -> {
+        downOnPinned = sticky.contains(e.x, e.y)
+        downX = e.x
+        downY = e.y
+      }
+      MotionEvent.ACTION_MOVE -> if (PinnedDrag.takesOver(downOnPinned, e.x - downX, e.y - downY, touchSlop)) {
+        downOnPinned = false
+        forwarding = true
+        val down = MotionEvent.obtain(e.downTime, e.eventTime, MotionEvent.ACTION_DOWN, downX, downY, e.metaState)
+        refreshLayout.dispatchTouchEvent(down)
+        down.recycle()
+        return true
+      }
+    }
+    return false
+  }
+
+  override fun onTouchEvent(e: MotionEvent): Boolean {
+    if (!forwarding) return super.onTouchEvent(e)
+    if (e.actionMasked == MotionEvent.ACTION_UP || e.actionMasked == MotionEvent.ACTION_CANCEL) forwarding = false
+    return refreshLayout.dispatchTouchEvent(e)
   }
 
   override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
