@@ -1,8 +1,20 @@
-import { useMemo, useState } from 'react';
+import { type FunctionComponent, useCallback, useMemo, useState } from 'react';
 import { Button, Text, TextInput, ToastAndroid, View } from 'react-native';
-import { type CellNode, cell, Flume } from 'react-native-flume';
+import { type CellNode, cell, Flume, type FlumeProps } from 'react-native-flume';
+import Animated, {
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 type Row = { id: string; title: string; body: string };
+
+const HEADER_HEIGHT = 120;
+
+// Reanimated reads the list's scroll events on the UI runtime, so the header follows them while JS is busy.
+const RowFlume: FunctionComponent<FlumeProps<Row>> = Flume;
+const AnimatedFlume = Animated.createAnimatedComponent(RowFlume);
 
 const BODIES = [
   'A short line.',
@@ -16,6 +28,13 @@ function makeRows(count = 500): Row[] {
     title: `Row ${i}`,
     body: BODIES[i % 3] ?? '',
   }));
+}
+
+function blockJs(ms: number) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    // Busy loop: the header must keep following the scroll while the JS thread is stuck here.
+  }
 }
 
 const renderRow = (item: Row): CellNode => {
@@ -42,6 +61,18 @@ export default function ScrollScreen() {
   const [onDrag, setOnDrag] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [fast, setFast] = useState(false);
+  const offset = useSharedValue(0);
+  const reportOffset = useCallback(
+    (value: number) => setStatus((s) => ({ ...s, offset: value })),
+    [],
+  );
+  const onScroll = useAnimatedScrollHandler((e) => {
+    offset.value = e.contentOffset.y;
+    scheduleOnRN(reportOffset, Math.round(e.contentOffset.y));
+  });
+  const headerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -Math.min(Math.max(offset.value, 0), HEADER_HEIGHT) }],
+  }));
   return (
     <View style={{ flex: 1 }}>
       <View
@@ -63,6 +94,7 @@ export default function ScrollScreen() {
           onPress={() => setScrollEnabled((v) => !v)}
         />
         <Button title={`Rate: ${fast ? 'fast' : 'normal'}`} onPress={() => setFast((v) => !v)} />
+        <Button title="Block JS 3 s" onPress={() => blockJs(3000)} />
       </View>
       <TextInput
         placeholder="Search"
@@ -71,31 +103,50 @@ export default function ScrollScreen() {
       <Text style={{ padding: 8 }} testID="scroll-status">
         offset {status.offset} first viewable {status.first}
       </Text>
-      <Flume
-        data={rows}
-        keyExtractor={(r) => r.id}
-        renderCell={renderRow}
-        onPress={({ item, id }) => toast(id === 'like' ? `like ${item.title}` : item.title)}
-        keyboardShouldPersistTaps={TAPS[taps]}
-        keyboardDismissMode={onDrag ? 'on-drag' : 'none'}
-        scrollEnabled={scrollEnabled}
-        decelerationRate={fast ? 'fast' : 'normal'}
-        scrollEventThrottle={16}
-        onScroll={(e) => {
-          // React Native still pools synthetic events, so the payload is read before the state update runs.
-          const offset = Math.round(e.nativeEvent.contentOffset.y);
-          setStatus((s) => ({ ...s, offset }));
-        }}
-        onScrollBeginDrag={() => toast('begin drag')}
-        onScrollEndDrag={() => toast('end drag')}
-        onMomentumScrollBegin={() => toast('momentum begin')}
-        onMomentumScrollEnd={() => toast('momentum end')}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-        onViewableItemsChanged={({ viewableItems }) =>
-          setStatus((s) => ({ ...s, first: viewableItems[0]?.index ?? -1 }))
-        }
-        style={{ flex: 1 }}
-      />
+      <View style={{ flex: 1, overflow: 'hidden' }}>
+        <Animated.View
+          style={[
+            {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: HEADER_HEIGHT,
+              zIndex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: '#0066ff',
+            },
+            headerStyle,
+          ]}
+        >
+          <Text style={{ color: '#ffffff', fontSize: 20, fontWeight: '600' }}>
+            Collapsing header
+          </Text>
+        </Animated.View>
+        <AnimatedFlume
+          data={rows}
+          keyExtractor={(r) => r.id}
+          renderCell={renderRow}
+          contentContainerStyle={{ paddingTop: HEADER_HEIGHT }}
+          onPress={({ item, id }) => toast(id === 'like' ? `like ${item.title}` : item.title)}
+          keyboardShouldPersistTaps={TAPS[taps]}
+          keyboardDismissMode={onDrag ? 'on-drag' : 'none'}
+          scrollEnabled={scrollEnabled}
+          decelerationRate={fast ? 'fast' : 'normal'}
+          scrollEventThrottle={16}
+          onScroll={onScroll}
+          onScrollBeginDrag={() => toast('begin drag')}
+          onScrollEndDrag={() => toast('end drag')}
+          onMomentumScrollBegin={() => toast('momentum begin')}
+          onMomentumScrollEnd={() => toast('momentum end')}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+          onViewableItemsChanged={({ viewableItems }) =>
+            setStatus((s) => ({ ...s, first: viewableItems[0]?.index ?? -1 }))
+          }
+          style={{ flex: 1 }}
+        />
+      </View>
     </View>
   );
 }
