@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Button, ToastAndroid, View } from 'react-native';
-import { Flume, type PressInfo } from 'react-native-flume';
-import { type Chat, makeChats, makeRenderCell } from '../chat';
+import { Flume, type FlumeRef, type PressInfo } from 'react-native-flume';
+import { type Chat, dayIndices, makeChats, makeRenderCell } from '../chat';
 
 function blockJs(ms: number) {
   const end = Date.now() + ms;
@@ -34,19 +34,44 @@ function newChat(n: number): Chat {
   };
 }
 
-// The counters live with the list so queued presses never reuse an id or a seed.
-type ListState = { chats: Chat[]; seed: number; added: number };
+// The counters live with the list so queued presses never reuse an id, a seed or an older batch.
+type ListState = { chats: Chat[]; seed: number; added: number; older: number };
 
-const toast = (message: string) => ToastAndroid.show(message, ToastAndroid.LONG);
+const toast = (message: string) => ToastAndroid.show(message, ToastAndroid.SHORT);
 
 export default function ChatScreen() {
+  const ref = useRef<FlumeRef>(null);
   const [dark, setDark] = useState(false);
   const [mounted, setMounted] = useState(true);
-  const [list, setList] = useState<ListState>(() => ({ chats: makeChats(), seed: 1, added: 0 }));
+  const [refreshing, setRefreshing] = useState(false);
+  const [list, setList] = useState<ListState>(() => ({
+    chats: makeChats(),
+    seed: 1,
+    added: 0,
+    older: 0,
+  }));
   const renderCell = useMemo(() => makeRenderCell(dark), [dark]);
+  const sticky = useMemo(() => dayIndices(list.chats), [list.chats]);
   const onPress = ({ item, id }: PressInfo<Chat>) =>
     toast(id === 'like' ? `like ${item.id}` : `open ${item.id}`);
   const onLongPress = ({ item }: PressInfo<Chat>) => toast(`long ${item.id}`);
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  };
+  // Older messages go to the content end, which the inverted list shows at the top.
+  // Three batches, then the history is complete and a pull from the oldest end can refresh.
+  const onEndReached = () => {
+    setList((s) => {
+      if (s.older >= 3) return s;
+      toast(`older loaded ${s.older + 1}`);
+      return {
+        ...s,
+        chats: [...s.chats, ...makeChats(100, 1000 + s.older * 100)],
+        older: s.older + 1,
+      };
+    });
+  };
   return (
     <View style={{ flex: 1 }}>
       <View
@@ -67,7 +92,7 @@ export default function ChatScreen() {
           }
         />
         <Button
-          title="Prepend"
+          title="New message"
           onPress={() =>
             setList((s) => ({ ...s, chats: [newChat(s.added), ...s.chats], added: s.added + 1 }))
           }
@@ -77,13 +102,24 @@ export default function ChatScreen() {
           onPress={() => setList((s) => ({ ...s, chats: s.chats.slice(1) }))}
         />
         <Button title={mounted ? 'Unmount' : 'Mount'} onPress={() => setMounted((m) => !m)} />
+        <Button title="To end" onPress={() => ref.current?.scrollToEnd()} />
+        <Button title="To 500" onPress={() => ref.current?.scrollToIndex({ index: 500 })} />
+        <Button title="To top" onPress={() => ref.current?.scrollToOffset({ offset: 0 })} />
       </View>
       {mounted ? (
         <Flume
+          ref={ref}
           data={list.chats}
           keyExtractor={(c) => c.id}
           getItemType={(c) => c.kind}
           renderCell={renderCell}
+          inverted
+          stickyHeaderIndices={sticky}
+          separator={{ size: 1, color: '#dddddd', insetStart: 64 }}
+          maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0.2 }}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          onEndReached={onEndReached}
           onPress={onPress}
           onLongPress={onLongPress}
           style={{ flex: 1 }}

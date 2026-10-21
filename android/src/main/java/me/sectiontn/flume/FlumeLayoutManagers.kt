@@ -58,3 +58,8 @@ class FlumeSpanSizeLookup(private val spanCount: () -> Int) : GridLayoutManager.
 
   override fun getSpanSize(position: Int): Int = if (isFullSpan(position)) spanCount() else 1
 }
+
+// inverted only reverses: stacking from the end on a reversed layout would start the list at its oldest end.
+object LayoutFlags {
+  fun stackFromEnd(inverted: Boolean, startRenderingFromBottom: Boolean): Boolean = !inverted && startRenderingFromBottom
+}

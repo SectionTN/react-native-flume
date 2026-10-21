@@ -26,4 +26,11 @@ class ScrollTargetsTest {
     assertEquals(0, ScrollTargets.clampIndex(-1, 10))
     assertNull(ScrollTargets.clampIndex(0, 0))
   }
+
+  @Test
+  fun aLongJumpSpeedsUpToFitTheBudget() {
+    assertEquals(0.06f, ScrollTargets.speedMsPerPx(0.06f, 1000, 400), 0.0001f)
+    assertEquals(0.004f, ScrollTargets.speedMsPerPx(0.06f, 100000, 400), 0.0001f)
+    assertEquals(0.06f, ScrollTargets.speedMsPerPx(0.06f, 0, 400), 0.0001f)
+  }
 }

@@ -71,6 +71,20 @@ class StickyHeaderHost(private val view: FlumeView, val pinnedView: FlumeCellVie
     pinnedView.apply(batch)
     pinnedIndex = index
     pinnedLength = if (horizontal) pinnedView.rootWidthPx else pinnedView.rootHeightPx
+    layoutPinned(horizontal)
+  }
+
+  // A bind often runs inside the host's own layout pass, which drops the layout request it makes, so the copy is measured here.
+  private fun layoutPinned(horizontal: Boolean) {
+    val recycler = view.recycler
+    val geometry = view.geometry
+    pinnedView.forceLayout()
+    val widthSpec = if (horizontal) View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED) else View.MeasureSpec.makeMeasureSpec(geometry.innerWidthPx, View.MeasureSpec.EXACTLY)
+    val heightSpec = if (horizontal) View.MeasureSpec.makeMeasureSpec(geometry.innerHeightPx, View.MeasureSpec.EXACTLY) else View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+    pinnedView.measure(widthSpec, heightSpec)
+    val left = recycler.paddingLeft
+    val top = recycler.paddingTop
+    pinnedView.layout(left, top, left + pinnedView.measuredWidth, top + pinnedView.measuredHeight)
   }
 
   // The copy sits at the leading edge inside the content padding, full width or full height.

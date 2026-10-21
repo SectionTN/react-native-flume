@@ -11,9 +11,14 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.Event
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class FlumeView(context: Context) : FrameLayout(context) {
+  private companion object {
+    const val SMOOTH_SCROLL_BUDGET_MS = 400
+  }
+
   private val measurer = FlumeTextMeasurer(context)
   private val density = context.resources.displayMetrics.density
   val recycler = FlumeRecyclerView(context).apply { isNestedScrollingEnabled = false }
@@ -249,7 +254,12 @@ class FlumeView(context: Context) : FrameLayout(context) {
     recycler.stopScroll()
     val viewOffsetPx = (viewOffsetDp * density).roundToInt()
     if (animated) {
-      val scroller = FlumeSmoothScroller(context, viewPosition, viewOffsetPx, inverted)
+      val frames = childFrames()
+      val first = layoutManager.findFirstVisibleItemPosition()
+      val rowPx = if (frames.isEmpty()) 0 else frames.sumOf { it.end - it.start } / frames.size
+      val distancePx = if (first == RecyclerView.NO_POSITION) 0 else abs(target - first) * rowPx
+      val speed = ScrollTargets.speedMsPerPx(25f / resources.displayMetrics.densityDpi, distancePx, SMOOTH_SCROLL_BUDGET_MS)
+      val scroller = FlumeSmoothScroller(context, viewPosition, viewOffsetPx, inverted, speed)
       scroller.targetPosition = target
       layoutManager.startSmoothScroll(scroller)
       return
@@ -374,7 +384,9 @@ class FlumeView(context: Context) : FrameLayout(context) {
     layoutManager = if (numColumns > 1) {
       FlumeGridLayoutManager(context, numColumns, orientation, inverted)
     } else {
-      FlumeLinearLayoutManager(context, orientation, inverted).apply { stackFromEnd = inverted || anchorConfig.startRenderingFromBottom }
+      FlumeLinearLayoutManager(context, orientation, inverted).apply {
+        stackFromEnd = LayoutFlags.stackFromEnd(inverted, anchorConfig.startRenderingFromBottom)
+      }
     }
     applyDrawDistance()
     hookLayoutManager()

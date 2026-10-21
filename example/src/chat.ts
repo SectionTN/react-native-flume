@@ -2,7 +2,7 @@ import { type CellNode, cell } from 'react-native-flume';
 
 export type Chat = {
   id: string;
-  kind: 'message' | 'voice';
+  kind: 'message' | 'voice' | 'day';
   text: string;
   time: string;
   avatar: string;
@@ -14,15 +14,19 @@ const WORDS =
     ' ',
   );
 
-// Deterministic data: one, two and three line messages at 16 sp on a 360 dp screen, every fifth one a voice note.
-export function makeChats(count = 1000): Chat[] {
-  let seed = 42;
+const MESSAGES_PER_DAY = 40;
+
+// Deterministic data from firstIndex on: one, two and three line messages, every fifth one a voice note,
+// and a day bar after every 40 messages, which the inverted chat pins above the day it closes.
+export function makeChats(count = 1000, firstIndex = 0): Chat[] {
+  let seed = 42 + firstIndex;
   const rand = () => {
     seed = (seed * 1103515245 + 12345) % 2147483648;
     return seed / 2147483648;
   };
   const chats: Chat[] = [];
-  for (let i = 0; i < count; i++) {
+  for (let n = 0; n < count; n++) {
+    const i = firstIndex + n;
     const band = rand();
     const target =
       band < 0.4 ? 20 + rand() * 20 : band < 0.75 ? 60 + rand() * 40 : 120 + rand() * 40;
@@ -46,8 +50,20 @@ export function makeChats(count = 1000): Chat[] {
         ? `${Math.floor(rand() * 3)}:${String(Math.floor(rand() * 60)).padStart(2, '0')}`
         : undefined,
     });
+    if ((i + 1) % MESSAGES_PER_DAY === 0) {
+      const day = (i + 1) / MESSAGES_PER_DAY;
+      chats.push({ id: `d${day}`, kind: 'day', text: `Day ${day}`, time: '', avatar: '' });
+    }
   }
   return chats;
+}
+
+export function dayIndices(chats: readonly Chat[]): number[] {
+  const out: number[] = [];
+  chats.forEach((chat, index) => {
+    if (chat.kind === 'day') out.push(index);
+  });
+  return out;
 }
 
 export function makeRenderCell(dark: boolean) {
@@ -55,8 +71,18 @@ export function makeRenderCell(dark: boolean) {
   const timeColor = dark ? '#aaaaaa' : '#666666';
   const accent = dark ? '#6ea8ff' : '#0066ff';
   const track = dark ? '#3a3a3a' : '#dddddd';
+  const bar = dark ? '#1c1c1c' : '#f2f2f2';
+  const chip = dark ? '#444444' : '#dddddd';
   return (item: Chat, _index: number): CellNode => {
     'worklet';
+    if (item.kind === 'day') {
+      return cell.view({ alignItems: 'center', paddingVertical: 6, backgroundColor: bar }, [
+        cell.view(
+          { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, backgroundColor: chip },
+          [cell.text(item.text, { fontSize: 12, fontWeight: '600', color: timeColor })],
+        ),
+      ]);
+    }
     const body =
       item.kind === 'voice'
         ? cell.view({ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }, [

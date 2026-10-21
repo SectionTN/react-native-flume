@@ -90,7 +90,11 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
   }
 
   override fun text(view: View, spec: TextSpec, color: Int) {
-    (view as? FlumeTextView)?.set(measurer.layoutFor(spec), color)
+    (view as? FlumeTextView)?.let {
+      it.set(measurer.layoutFor(spec), color)
+      // A custom-drawn text exposes nothing by itself; the description is what TalkBack names a pressable from.
+      it.contentDescription = spec.text
+    }
   }
 
   override fun image(view: View, spec: ImageSpec) {
