@@ -97,6 +97,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
       for (i in 0 until recycler.childCount) (recycler.getChildAt(i) as? FlumeCellView)?.rowsPressable = value
     }
 
+  var anchorConfig = AnchorConfig()
+    set(value) {
+      val rebuild = value.startRenderingFromBottom != field.startRenderingFromBottom
+      field = value
+      adapter.anchorConfig = value
+      if (rebuild) rebuildLayoutManager()
+    }
+
   var decelerationRate = 0.998
     set(value) {
       field = value
@@ -137,6 +145,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     recycler.clipToPadding = false
     adapter.onPress = { position, pressId, long -> emitPress(position, FlumeJni.keyAt(storeId, position), pressId, long) }
     adapter.onFirstData = { applyInitialScroll() }
+    adapter.onAutoscroll = { index, viewPosition, animated -> scrollToIndex(index, animated, viewPosition, 0.0) }
     refreshLayout.addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     refreshLayout.setOnRefreshListener { dispatch(FlumeRefreshEvent(UIManagerHelper.getSurfaceId(this), id)) }
     addView(refreshLayout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -365,7 +374,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     layoutManager = if (numColumns > 1) {
       FlumeGridLayoutManager(context, numColumns, orientation, inverted)
     } else {
-      FlumeLinearLayoutManager(context, orientation, inverted).apply { stackFromEnd = inverted }
+      FlumeLinearLayoutManager(context, orientation, inverted).apply { stackFromEnd = inverted || anchorConfig.startRenderingFromBottom }
     }
     applyDrawDistance()
     hookLayoutManager()

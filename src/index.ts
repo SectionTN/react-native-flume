@@ -8,6 +8,7 @@ export type {
   CellTextOptions,
   FlumeProps,
   FlumeRef,
+  MaintainVisibleContentPosition,
   PressInfo,
   ScrollHandler,
   ViewabilityConfig,

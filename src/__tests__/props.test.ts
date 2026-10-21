@@ -163,3 +163,15 @@ describe('nativeProps scroll props', () => {
     });
   });
 });
+
+describe('nativeProps anchoring', () => {
+  it('passes maintainVisibleContentPosition through', () => {
+    const warn = vi.fn();
+    expect(
+      nativeProps(
+        { data: [], maintainVisibleContentPosition: { autoscrollToBottomThreshold: 0.2 } },
+        warn,
+      ).maintainVisibleContentPosition,
+    ).toEqual({ autoscrollToBottomThreshold: 0.2 });
+  });
+});

@@ -68,6 +68,13 @@ export interface NativeProps extends ViewProps {
   keyboardShouldPersistTaps?: CodegenTypes.WithDefault<'always' | 'never' | 'handled', 'never'>;
   // Rows are clickable only when the list has a press handler.
   rowsPressable?: CodegenTypes.WithDefault<boolean, false>;
+  maintainVisibleContentPosition?: Readonly<{
+    disabled?: boolean;
+    autoscrollToTopThreshold?: CodegenTypes.Double;
+    autoscrollToBottomThreshold?: CodegenTypes.Double;
+    animateAutoScrollToBottom?: boolean;
+    startRenderingFromBottom?: boolean;
+  }>;
   viewabilityConfig?: Readonly<{
     itemVisiblePercentThreshold?: CodegenTypes.Double;
     viewAreaCoveragePercentThreshold?: CodegenTypes.Double;

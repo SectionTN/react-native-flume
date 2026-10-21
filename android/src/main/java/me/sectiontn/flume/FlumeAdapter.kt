@@ -2,7 +2,9 @@ package me.sectiontn.flume
 
 import android.content.Context
 import android.os.SystemClock
+import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 class FlumeAdapter(
@@ -20,6 +22,8 @@ class FlumeAdapter(
   var onFirstData: (() -> Unit)? = null
   var onDataChanged: ((reset: Boolean) -> Unit)? = null
   var rowsPressable = false
+  var anchorConfig = AnchorConfig()
+  var onAutoscroll: ((index: Int, viewPosition: Float, animated: Boolean) -> Unit)? = null
   private val storeId get() = attached.storeId
   private var count = 0
   private var nextCellId = 1
@@ -63,9 +67,59 @@ class FlumeAdapter(
   }
 
   override fun onListChanged(reset: Boolean, removed: IntArray, inserted: IntArray, moved: IntArray, changed: IntArray, count: Int) {
+    val before = if (reset) null else anchorState()
     setCount(count)
     ListOpsApplier.apply(reset, removed, inserted, moved, changed, this)
+    anchor(before, inserted, count)
     onDataChanged?.invoke(reset)
+  }
+
+  // Inserts touching the content start or end map to the visual edges through the orientation.
+  private fun anchor(before: AnchorState?, inserted: IntArray, count: Int) {
+    var atStart = false
+    var atEnd = false
+    for (i in inserted.indices step 2) {
+      if (inserted[i] == 0) atStart = true
+      if (inserted[i] + inserted[i + 1] == count) atEnd = true
+    }
+    val inverted = geometry.inverted
+    val decision = AnchorPolicy.decide(anchorConfig, before, if (inverted) atEnd else atStart, if (inverted) atStart else atEnd)
+    decision.restore?.let { (position, offset) -> (recycler.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, offset) }
+    decision.scrollTo?.let { edge ->
+      val (index, viewPosition) = AnchorTargets.indexFor(edge, count, inverted)
+      recycler.post { onAutoscroll?.invoke(index, viewPosition, decision.animated) }
+    }
+  }
+
+  // The visually topmost row still in view, with its offset the way the layout manager restores it.
+  private fun anchorState(): AnchorState? {
+    val lm = recycler.layoutManager as? LinearLayoutManager ?: return null
+    val horizontal = geometry.horizontal
+    val padStart = if (horizontal) recycler.paddingLeft else recycler.paddingTop
+    var top: View? = null
+    var topStart = Int.MAX_VALUE
+    for (i in 0 until lm.childCount) {
+      val child = lm.getChildAt(i) ?: continue
+      val start = if (horizontal) lm.getDecoratedLeft(child) else lm.getDecoratedTop(child)
+      val end = if (horizontal) lm.getDecoratedRight(child) else lm.getDecoratedBottom(child)
+      if (end <= padStart || start >= topStart) continue
+      topStart = start
+      top = child
+    }
+    val child = top ?: return null
+    val position = lm.getPosition(child)
+    if (position == RecyclerView.NO_POSITION) return null
+    val offset = if (!lm.reverseLayout) {
+      topStart - padStart
+    } else if (horizontal) {
+      recycler.width - recycler.paddingRight - lm.getDecoratedRight(child)
+    } else {
+      recycler.height - recycler.paddingBottom - lm.getDecoratedBottom(child)
+    }
+    val scrollOffset = if (horizontal) recycler.computeHorizontalScrollOffset() else recycler.computeVerticalScrollOffset()
+    val range = if (horizontal) recycler.computeHorizontalScrollRange() else recycler.computeVerticalScrollRange()
+    val extent = if (horizontal) recycler.computeHorizontalScrollExtent() else recycler.computeVerticalScrollExtent()
+    return AnchorState(position, offset, scrollOffset, range - scrollOffset - extent, if (horizontal) geometry.innerWidthPx else geometry.innerHeightPx)
   }
 
   fun allocateHolderId(): Int = nextCellId++

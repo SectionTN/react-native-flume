@@ -128,6 +128,20 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
   private fun ReadableMap?.doubleOrNull(key: String): Double? =
     if (this != null && hasKey(key) && !isNull(key)) getDouble(key) else null
 
+  private fun ReadableMap?.boolOr(key: String, default: Boolean): Boolean =
+    if (this != null && hasKey(key) && !isNull(key)) getBoolean(key) else default
+
+  @ReactProp(name = "maintainVisibleContentPosition")
+  override fun setMaintainVisibleContentPosition(view: FlumeView, value: ReadableMap?) {
+    view.anchorConfig = AnchorConfig(
+      disabled = value.boolOr("disabled", false),
+      autoscrollToTopThreshold = value.doubleOrNull("autoscrollToTopThreshold"),
+      autoscrollToBottomThreshold = value.doubleOrNull("autoscrollToBottomThreshold"),
+      animateAutoScrollToBottom = value.boolOr("animateAutoScrollToBottom", true),
+      startRenderingFromBottom = value.boolOr("startRenderingFromBottom", false),
+    )
+  }
+
   @ReactProp(name = "endReachedThreshold", defaultDouble = 2.0)
   override fun setEndReachedThreshold(view: FlumeView, value: Double) {
     view.endReachedThresholdViewports = value

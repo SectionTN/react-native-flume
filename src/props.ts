@@ -48,6 +48,7 @@ export type FlatProps = Pick<
   | 'keyboardDismissMode'
   | 'keyboardShouldPersistTaps'
   | 'rowsPressable'
+  | 'maintainVisibleContentPosition'
 >;
 
 const PADDING_KEYS = new Set([
@@ -173,5 +174,6 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     keyboardDismissMode: props.keyboardDismissMode === 'on-drag' ? 'on-drag' : 'none',
     keyboardShouldPersistTaps: props.keyboardShouldPersistTaps ?? 'never',
     rowsPressable: props.onPress !== undefined || props.onLongPress !== undefined,
+    maintainVisibleContentPosition: props.maintainVisibleContentPosition,
   };
 }

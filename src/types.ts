@@ -177,6 +177,15 @@ export type FlumeRef = {
   getAnimatableRef(): unknown;
 };
 
+// FlashList v2 shape: thresholds are fractions of the viewport at the visual edges; enabled by default.
+export type MaintainVisibleContentPosition = {
+  disabled?: boolean;
+  autoscrollToTopThreshold?: number;
+  autoscrollToBottomThreshold?: number;
+  animateAutoScrollToBottom?: boolean;
+  startRenderingFromBottom?: boolean;
+};
+
 export type ScrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 
 export type FlumeProps<T> = {
@@ -230,6 +239,7 @@ export type FlumeProps<T> = {
   showsHorizontalScrollIndicator?: boolean;
   keyboardDismissMode?: 'none' | 'on-drag';
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
+  maintainVisibleContentPosition?: MaintainVisibleContentPosition;
   onLayout?: (event: LayoutChangeEvent) => void;
   testID?: string;
   accessibilityLabel?: string;
