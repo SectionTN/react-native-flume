@@ -70,6 +70,18 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
     view.initialScrollIndex = value
   }
 
+  @ReactProp(name = "separatorSize")
+  override fun setSeparatorSize(view: FlumeView, value: Double) = view.setSeparator(sizeDp = value)
+
+  @ReactProp(name = "separatorColor", customType = "Color")
+  override fun setSeparatorColor(view: FlumeView, value: Int?) = view.setSeparator(color = value ?: 0)
+
+  @ReactProp(name = "separatorInsetStart")
+  override fun setSeparatorInsetStart(view: FlumeView, value: Double) = view.setSeparator(insetStartDp = value)
+
+  @ReactProp(name = "separatorInsetEnd")
+  override fun setSeparatorInsetEnd(view: FlumeView, value: Double) = view.setSeparator(insetEndDp = value)
+
   companion object {
     const val NAME = "FlumeView"
   }

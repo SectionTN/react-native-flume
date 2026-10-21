@@ -168,6 +168,8 @@ export type FlumeProps<T> = {
   // How far past the viewport, in dp, cells are bound ahead; the default is one viewport.
   drawDistance?: number;
   initialScrollIndex?: number;
+  // A native line between consecutive rows, inset along the cross axis from the start and end edges.
+  separator?: { size: number; color?: string; insetStart?: number; insetEnd?: number };
   onLayout?: (event: LayoutChangeEvent) => void;
   testID?: string;
   accessibilityLabel?: string;

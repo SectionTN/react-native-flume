@@ -18,6 +18,11 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private var layoutManager: LinearLayoutManager = FlumeLinearLayoutManager(context, RecyclerView.VERTICAL, false)
   private val paddingPx = IntArray(4)
   private var initialScrollPending = false
+  private var separator: SeparatorDecoration? = null
+  private var separatorSizeDp = 0.0
+  private var separatorColor = 0
+  private var separatorInsetStartDp = 0.0
+  private var separatorInsetEndDp = 0.0
 
   var storeId = 0
     set(value) {
@@ -80,6 +85,22 @@ class FlumeView(context: Context) : FrameLayout(context) {
     adapter.onPress = { position, pressId, long -> emitPress(position, FlumeJni.keyAt(storeId, position), pressId, long) }
     adapter.onFirstData = { applyInitialScroll() }
     addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+  }
+
+  fun setSeparator(sizeDp: Double? = null, color: Int? = null, insetStartDp: Double? = null, insetEndDp: Double? = null) {
+    if (sizeDp != null) separatorSizeDp = sizeDp
+    if (color != null) separatorColor = color
+    if (insetStartDp != null) separatorInsetStartDp = insetStartDp
+    if (insetEndDp != null) separatorInsetEndDp = insetEndDp
+    separator?.let { recycler.removeItemDecoration(it) }
+    val sizePx = (separatorSizeDp * density).roundToInt()
+    separator = if (sizePx > 0) {
+      SeparatorDecoration(sizePx, separatorColor, (separatorInsetStartDp * density).roundToInt(), (separatorInsetEndDp * density).roundToInt())
+    } else {
+      null
+    }
+    separator?.let { recycler.addItemDecoration(it) }
+    recycler.invalidateItemDecorations()
   }
 
   // Edges are 0 left, 1 top, 2 right, 3 bottom, in dp.

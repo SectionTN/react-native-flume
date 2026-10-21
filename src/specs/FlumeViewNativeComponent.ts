@@ -1,4 +1,4 @@
-import type { CodegenTypes, HostComponent, ViewProps } from 'react-native';
+import type { CodegenTypes, ColorValue, HostComponent, ViewProps } from 'react-native';
 import { codegenNativeComponent } from 'react-native';
 
 // A press on a row: the pressable id is '' for a press on the cell outside any pressable.
@@ -21,6 +21,10 @@ export interface NativeProps extends ViewProps {
   // In dp; -1 means one viewport.
   drawDistance?: CodegenTypes.WithDefault<CodegenTypes.Double, -1>;
   initialScrollIndex?: CodegenTypes.WithDefault<CodegenTypes.Int32, -1>;
+  separatorSize?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  separatorColor?: ColorValue;
+  separatorInsetStart?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  separatorInsetEnd?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   onPress?: CodegenTypes.DirectEventHandler<PressEvent>;
   onLongPress?: CodegenTypes.DirectEventHandler<PressEvent>;
 }

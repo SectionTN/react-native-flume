@@ -24,6 +24,10 @@ export type FlatProps = Pick<
   | 'contentPaddingRight'
   | 'drawDistance'
   | 'initialScrollIndex'
+  | 'separatorSize'
+  | 'separatorColor'
+  | 'separatorInsetStart'
+  | 'separatorInsetEnd'
 >;
 
 const PADDING_KEYS = new Set([
@@ -95,5 +99,9 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     contentPaddingRight: padding.right,
     drawDistance: props.drawDistance ?? -1,
     initialScrollIndex: props.initialScrollIndex ?? -1,
+    separatorSize: props.separator?.size ?? 0,
+    separatorColor: props.separator?.color,
+    separatorInsetStart: props.separator?.insetStart ?? 0,
+    separatorInsetEnd: props.separator?.insetEnd ?? 0,
   };
 }

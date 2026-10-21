@@ -60,3 +60,17 @@ describe('nativeProps', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('backgroundColor'));
   });
 });
+
+describe('nativeProps separator', () => {
+  it('maps separator to flat props', () => {
+    const warn = vi.fn();
+    expect(
+      nativeProps({ data: [], separator: { size: 1, color: '#ddd', insetStart: 72 } }, warn),
+    ).toMatchObject({
+      separatorSize: 1,
+      separatorColor: '#ddd',
+      separatorInsetStart: 72,
+      separatorInsetEnd: 0,
+    });
+  });
+});
