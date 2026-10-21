@@ -7,6 +7,8 @@ class CellTree<V : Any>(private val views: CellViews<V>, private val density: Fl
   private val byId = HashMap<Int, V>()
   private val parents = HashMap<Int, V>()
   private val frames = HashMap<Int, IntArray>()
+  var rootWidthPx = 0
+    private set
   var rootHeightPx = 0
     private set
 
@@ -40,7 +42,12 @@ class CellTree<V : Any>(private val views: CellViews<V>, private val density: Fl
           val top = (floats[f + 1] * density).roundToInt()
           val width = (floats[f + 2] * density).roundToInt()
           val height = (floats[f + 3] * density).roundToInt()
-          if (id == 0) rootHeightPx = height else frames[id] = intArrayOf(left, top, width, height)
+          if (id == 0) {
+            rootWidthPx = width
+            rootHeightPx = height
+          } else {
+            frames[id] = intArrayOf(left, top, width, height)
+          }
           i += 2
           f += 4
         }
@@ -109,7 +116,7 @@ class CellTree<V : Any>(private val views: CellViews<V>, private val density: Fl
     return rootHeightPx
   }
 
-  // Every tracked view with its frame in px; the root's own frame is its height only.
+  // Every tracked view with its frame in px; the root's own frame is its size only.
   fun frames(block: (view: V, left: Int, top: Int, width: Int, height: Int) -> Unit) {
     for ((id, frame) in frames) byId[id]?.let { block(it, frame[0], frame[1], frame[2], frame[3]) }
   }
@@ -120,6 +127,7 @@ class CellTree<V : Any>(private val views: CellViews<V>, private val density: Fl
     byId.clear()
     parents.clear()
     frames.clear()
+    rootWidthPx = 0
     rootHeightPx = 0
     views.removeAll()
   }

@@ -21,7 +21,7 @@ class Layout {
   void destroyNode(YGNodeRef node);       // after the node left its parent
   void applyStyle(YGNodeRef node, const Style& style);
   void markTextDirty(YGNodeRef node);
-  void layout(Mounted& root, float width);
+  void layout(Mounted& root, float width, float height);  // NaN on an axis means automatic, as YGUndefined
   void readFrames(Mounted& root, OpBatch& out);  // Frame ops for nodes with a new layout, root size into out
   MeasureCache& cache() { return cache_; }
 

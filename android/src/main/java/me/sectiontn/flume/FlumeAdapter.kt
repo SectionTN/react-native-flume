@@ -87,7 +87,7 @@ class FlumeAdapter(
     val widthPx = viewport.widthPx
     if (widthPx == 0) return
     val start = SystemClock.elapsedRealtimeNanos()
-    val batch = FlumeJni.bind(storeId, holder.cell.cellId, position, widthPx / density) ?: return
+    val batch = FlumeJni.bind(storeId, holder.cell.cellId, position, widthPx / density, Float.NaN) ?: return
     holder.cell.apply(batch)
     SpikeStats.record(SystemClock.elapsedRealtimeNanos() - start, batch.stats)
   }

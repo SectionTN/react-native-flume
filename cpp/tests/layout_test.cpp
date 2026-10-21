@@ -56,7 +56,7 @@ TEST_CASE("lays out the chat cell at 360") {
   auto parsed = flume::parseTree(chatCell());
   auto root = mount(layout, *parsed.root, nextId, true);
   flume::OpBatch batch;
-  layout.layout(*root, 360);
+  layout.layout(*root, 360, NAN);
   layout.readFrames(*root, batch);
   CHECK(batch.rootWidth == 360.0f);
   CHECK(batch.rootHeight == 64.0f);
@@ -77,7 +77,7 @@ TEST_CASE("a three-line text grows the row past the image") {
   auto parsed = flume::parseTree(chatCellWithText(std::string(100, 'a')));
   auto root = mount(layout, *parsed.root, nextId, true);
   flume::OpBatch batch;
-  layout.layout(*root, 360);
+  layout.layout(*root, 360, NAN);
   layout.readFrames(*root, batch);
   CHECK(batch.rootHeight == 100.0f);
   CHECK(frameOf(batch, 1) == Frame{12, 30, 40, 40});
@@ -92,10 +92,10 @@ TEST_CASE("an unchanged layout emits no frames") {
   auto parsed = flume::parseTree(chatCell());
   auto root = mount(layout, *parsed.root, nextId, true);
   flume::OpBatch first;
-  layout.layout(*root, 360);
+  layout.layout(*root, 360, NAN);
   layout.readFrames(*root, first);
   flume::OpBatch second;
-  layout.layout(*root, 360);
+  layout.layout(*root, 360, NAN);
   layout.readFrames(*root, second);
   CHECK(first.opCount() == 5);
   CHECK(second.opCount() == 0);
@@ -108,12 +108,12 @@ TEST_CASE("the measure cache answers a repeated measure") {
   int nextId = 1;
   auto parsed = flume::parseTree(chatCell());
   auto root = mount(layout, *parsed.root, nextId, true);
-  layout.layout(*root, 360);
+  layout.layout(*root, 360, NAN);
   int callsAfterFirst = fake.calls;
   layout.measureCalls = 0;
   layout.measureHits = 0;
   layout.markTextDirty(root->children[1]->children[0]->yoga);
-  layout.layout(*root, 360);
+  layout.layout(*root, 360, NAN);
   CHECK(fake.calls == callsAfterFirst);
   CHECK(layout.measureCalls == 1);
   CHECK(layout.measureHits == 1);
@@ -130,7 +130,7 @@ flume::OpBatch framesAt(const flume::Value& tree, float width) {
   REQUIRE(parsed.root);
   auto root = mount(layout, *parsed.root, nextId, true);
   flume::OpBatch batch;
-  layout.layout(*root, width);
+  layout.layout(*root, width, NAN);
   layout.readFrames(*root, batch);
   return batch;
 }
@@ -167,4 +167,22 @@ TEST_CASE("border width insets the children") {
                                {obj({{"type", V("text")}, {"text", V("hello")}, {"style", obj({{"fontSize", V(16)}})}})}),
                         360);
   CHECK(frameOf(batch, 1) == Frame{4, 4, 352, 20});
+}
+
+TEST_CASE("a row laid out at a fixed height takes its content width") {
+  FakeMeasurer fake;
+  flume::Layout layout(fake, 1);
+  int nextId = 1;
+  auto parsed = flume::parseTree(obj(
+      {{"type", V("view")},
+       {"style", obj({{"flexDirection", V("row")}, {"padding", V(8)}, {"gap", V(4)}})},
+       {"children", arr({obj({{"type", V("text")}, {"text", V("abcd")}, {"style", obj({{"fontSize", V(10)}})}}),
+                         obj({{"type", V("text")}, {"text", V("ab")}, {"style", obj({{"fontSize", V(10)}})}})})}}));
+  REQUIRE(parsed.root);
+  auto root = mount(layout, *parsed.root, nextId, true);
+  flume::OpBatch batch;
+  layout.layout(*root, NAN, 48);
+  layout.readFrames(*root, batch);
+  CHECK(batch.rootWidth == 50);
+  CHECK(batch.rootHeight == 48);
 }

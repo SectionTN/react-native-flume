@@ -90,8 +90,8 @@ void Layout::applyStyle(YGNodeRef node, const Style& s) {
   }
 }
 
-void Layout::layout(Mounted& root, float width) {
-  YGNodeCalculateLayout(root.yoga, width, YGUndefined, YGDirectionLTR);
+void Layout::layout(Mounted& root, float width, float height) {
+  YGNodeCalculateLayout(root.yoga, width, height, YGDirectionLTR);
 }
 
 void Layout::readFrames(Mounted& root, OpBatch& out) {

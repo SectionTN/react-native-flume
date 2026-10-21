@@ -46,7 +46,7 @@ class Engine {
   int viewType(int storeId, int position);     // 0 for an unknown position
   int64_t itemId(int storeId, int position);   // -1 for an unknown position
   std::string keyAt(int storeId, int position);
-  bool bind(int storeId, int holderId, int index, float widthDp, OpBatch& out);
+  bool bind(int storeId, int holderId, int index, float widthDp, float heightDp, OpBatch& out);
   void releaseHolder(int storeId, int holderId);
   void invalidateMeasures(int storeId);  // clears the text measure cache
 

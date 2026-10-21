@@ -183,7 +183,7 @@ void Engine::invalidateMeasures(int storeId) {
   if (store != nullptr && store->layout != nullptr) store->layout->cache().clear();
 }
 
-bool Engine::bind(int storeId, int holderId, int index, float widthDp, OpBatch& out) {
+bool Engine::bind(int storeId, int holderId, int index, float widthDp, float heightDp, OpBatch& out) {
   auto store = find(storeId);
   if (store == nullptr || runtime_ == nullptr || !bindFn_ || store->layout == nullptr) return false;
   auto& slot = store->holders[holderId];
@@ -212,7 +212,7 @@ bool Engine::bind(int storeId, int holderId, int index, float widthDp, OpBatch& 
   }
   int64_t t2 = nowNs();
   if (holder.root != nullptr) {
-    store->layout->layout(*holder.root, widthDp);
+    store->layout->layout(*holder.root, widthDp, heightDp);
     store->layout->readFrames(*holder.root, out);
     store->reconciler->emitAfterLayout(holder, out);
   }

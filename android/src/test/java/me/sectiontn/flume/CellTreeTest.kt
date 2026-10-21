@@ -99,4 +99,11 @@ class CellTreeTextTest {
     assertEquals("hello", spec?.text)
     assertEquals(false, spec?.allowFontScaling)
   }
+
+  @Test
+  fun theRootFrameSetsBothSizes() {
+    tree.apply(batch(intArrayOf(1, 1, 0, 0, 0, 3, 0), floatArrayOf(0f, 0f, 120f, 48f), first = true))
+    assertEquals(240, tree.rootWidthPx)
+    assertEquals(96, tree.rootHeightPx)
+  }
 }

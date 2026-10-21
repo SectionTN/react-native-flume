@@ -73,9 +73,9 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
   }
 
   static jni::local_ref<JFlumeBatch> bind(jni::alias_ref<jclass>, jint storeId, jint holderId, jint index,
-                                          jfloat widthDp) {
+                                          jfloat widthDp, jfloat heightDp) {
     flume::OpBatch batch;
-    if (!flume::Engine::instance().bind(storeId, holderId, index, widthDp, batch)) return nullptr;
+    if (!flume::Engine::instance().bind(storeId, holderId, index, widthDp, heightDp, batch)) return nullptr;
     return JFlumeBatch::create(batch);
   }
 

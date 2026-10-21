@@ -28,7 +28,7 @@ struct Rig {
     auto parsed = flume::parseTree(tree);
     REQUIRE(parsed.root);
     rec.reconcile(holder, std::move(parsed.root), batch);
-    layout.layout(*holder.root, width);
+    layout.layout(*holder.root, width, NAN);
     layout.readFrames(*holder.root, batch);
     rec.emitAfterLayout(holder, batch);
   }

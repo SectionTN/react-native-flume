@@ -14,8 +14,8 @@ import kotlin.math.roundToInt
 class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) : FlumeGroup(context), CellViews<View> {
   private val density = context.resources.displayMetrics.density
   private val tree = CellTree(this, density)
-  private var rootHeightPx = 0
   var cellId = 0
+  var horizontal = false
 
   // Receives the pressable id (null for the cell itself) and whether it was a long press.
   var onPress: ((id: String?, long: Boolean) -> Unit)? = null
@@ -34,7 +34,7 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
     get() = this
 
   fun apply(batch: FlumeBatch) {
-    rootHeightPx = tree.apply(batch)
+    tree.apply(batch)
     requestLayout()
   }
 
@@ -107,7 +107,8 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
   }
 
   override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-    setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), rootHeightPx)
+    if (horizontal) setMeasuredDimension(tree.rootWidthPx, MeasureSpec.getSize(heightMeasureSpec))
+    else setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), tree.rootHeightPx)
   }
 
   // Every descendant is placed here from its Yoga frame; FlumeGroup containers do no layout of their own.

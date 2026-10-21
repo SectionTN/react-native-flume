@@ -28,7 +28,7 @@ object FlumeJni {
   @JvmStatic external fun keyAt(storeId: Int, position: Int): String
 
   // Null when the store is gone.
-  @JvmStatic external fun bind(storeId: Int, holderId: Int, index: Int, widthDp: Float): FlumeBatch?
+  @JvmStatic external fun bind(storeId: Int, holderId: Int, index: Int, widthDp: Float, heightDp: Float): FlumeBatch?
 
   @JvmStatic external fun releaseHolder(storeId: Int, holderId: Int)
 
