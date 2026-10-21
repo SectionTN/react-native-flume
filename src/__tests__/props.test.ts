@@ -83,3 +83,14 @@ describe('nativeProps sticky headers', () => {
     ).toEqual([0, 4, 8]);
   });
 });
+
+describe('nativeProps scroll events', () => {
+  it('enables scroll events only with a handler', () => {
+    const warn = vi.fn();
+    expect(nativeProps({ data: [] }, warn).emitScrollEvents).toBe(false);
+    expect(nativeProps({ data: [], onMomentumScrollEnd: () => {} }, warn)).toMatchObject({
+      emitScrollEvents: true,
+      scrollEventThrottle: 16,
+    });
+  });
+});

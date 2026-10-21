@@ -1,5 +1,11 @@
 import type { ReactElement } from 'react';
-import type { LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native';
+import type {
+  LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  StyleProp,
+  ViewStyle,
+} from 'react-native';
 
 export type CellDimension = number | `${number}%`;
 // Yoga takes auto on these keys only, as React Native does.
@@ -148,6 +154,8 @@ export type CellPressableProps = CellStyle & { id: string; pressedOpacity?: numb
 
 export type PressInfo<T> = { item: T; index: number; id?: string };
 
+export type ScrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+
 export type FlumeProps<T> = {
   data: readonly T[];
   renderCell?: (item: T, index: number) => CellNode;
@@ -171,6 +179,13 @@ export type FlumeProps<T> = {
   // A native line between consecutive rows, inset along the cross axis from the start and end edges.
   separator?: { size: number; color?: string; insetStart?: number; insetEnd?: number };
   stickyHeaderIndices?: number[];
+  // The ScrollView events with the ScrollView payload; contentOffset counts from the content start.
+  onScroll?: ScrollHandler;
+  onScrollBeginDrag?: ScrollHandler;
+  onScrollEndDrag?: ScrollHandler;
+  onMomentumScrollBegin?: ScrollHandler;
+  onMomentumScrollEnd?: ScrollHandler;
+  scrollEventThrottle?: number;
   onLayout?: (event: LayoutChangeEvent) => void;
   testID?: string;
   accessibilityLabel?: string;

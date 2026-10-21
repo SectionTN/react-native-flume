@@ -2,12 +2,14 @@ package me.sectiontn.flume
 
 import android.content.Context
 import android.content.res.Configuration
+import android.os.SystemClock
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.uimanager.UIManagerHelper
+import com.facebook.react.uimanager.events.Event
 import kotlin.math.roundToInt
 
 class FlumeView(context: Context) : FrameLayout(context) {
@@ -21,6 +23,15 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private var separator: SeparatorDecoration? = null
   private val sticky = StickyHeaderHost(this, FlumeCellView(context, measurer), adapter.allocateHolderId())
   private var stickySet: Set<Int> = emptySet()
+  private var throttle = ScrollThrottle(16)
+  private var scrollState = RecyclerView.SCROLL_STATE_IDLE
+  var emitScrollEvents = false
+  var onScrollState: ((Int) -> Unit)? = null
+  var scrollEventThrottleMs = 16L
+    set(value) {
+      field = value
+      throttle = ScrollThrottle(value)
+    }
   val geometry get() = adapter.geometry
   private var separatorSizeDp = 0.0
   private var separatorColor = 0
@@ -91,7 +102,18 @@ class FlumeView(context: Context) : FrameLayout(context) {
     addView(sticky.pinnedView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     adapter.onDataChanged = { sticky.refresh(force = true) }
     recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-      override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) = sticky.refresh()
+      override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+        sticky.refresh()
+        if (emitScrollEvents && throttle.shouldEmit(SystemClock.uptimeMillis())) emitScroll(ScrollKind.SCROLL)
+      }
+
+      // Drag and momentum events are per gesture and always sent; a suppressed scroll event is flushed on idle.
+      override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+        for (kind in ScrollStateMachine.transition(scrollState, newState)) emitScroll(kind)
+        scrollState = newState
+        if (newState == RecyclerView.SCROLL_STATE_IDLE && throttle.flush() && emitScrollEvents) emitScroll(ScrollKind.SCROLL)
+        onScrollState?.invoke(newState)
+      }
     })
     hookLayoutManager()
   }
@@ -173,10 +195,23 @@ class FlumeView(context: Context) : FrameLayout(context) {
     if (initialScrollIndex < adapter.itemCount) layoutManager.scrollToPositionWithOffset(initialScrollIndex, 0)
   }
 
-  fun emitPress(index: Int, key: String, pressId: String?, long: Boolean) {
+  fun emitPress(index: Int, key: String, pressId: String?, long: Boolean) =
+    dispatch(FlumePressEvent(UIManagerHelper.getSurfaceId(this), id, long, index, key, pressId))
+
+  private fun emitScroll(kind: ScrollKind) {
+    val horizontal = geometry.horizontal
+    val offsetPx = if (horizontal) recycler.computeHorizontalScrollOffset() else recycler.computeVerticalScrollOffset()
+    val rangePx = if (horizontal) recycler.computeHorizontalScrollRange() else recycler.computeVerticalScrollRange()
+    val extentPx = if (horizontal) recycler.computeHorizontalScrollExtent() else recycler.computeVerticalScrollExtent()
+    val offsetDp = ScrollMetrics.fromContentStart(offsetPx, rangePx, extentPx, inverted) / density
+    val contentWidthDp = (if (horizontal) rangePx else geometry.innerWidthPx) / density
+    val contentHeightDp = (if (horizontal) geometry.innerHeightPx else rangePx) / density
+    dispatch(FlumeScrollEvent(UIManagerHelper.getSurfaceId(this), id, kind, horizontal, offsetDp, contentWidthDp, contentHeightDp, recycler.width / density, recycler.height / density))
+  }
+
+  fun dispatch(event: Event<*>) {
     val reactContext = context as? ReactContext ?: return
-    val dispatcher = UIManagerHelper.getEventDispatcherForReactTag(reactContext, id) ?: return
-    dispatcher.dispatchEvent(FlumePressEvent(UIManagerHelper.getSurfaceId(this), id, long, index, key, pressId))
+    UIManagerHelper.getEventDispatcherForReactTag(reactContext, id)?.dispatchEvent(event)
   }
 
   override fun onAttachedToWindow() {

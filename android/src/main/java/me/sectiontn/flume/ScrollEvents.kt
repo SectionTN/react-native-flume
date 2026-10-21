@@ -1,0 +1,100 @@
+package me.sectiontn.flume
+
+import androidx.recyclerview.widget.RecyclerView
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.WritableMap
+import com.facebook.react.uimanager.events.Event
+import kotlin.math.max
+
+enum class ScrollKind(val eventName: String) {
+  SCROLL("topScroll"),
+  BEGIN_DRAG("topScrollBeginDrag"),
+  END_DRAG("topScrollEndDrag"),
+  MOMENTUM_BEGIN("topMomentumScrollBegin"),
+  MOMENTUM_END("topMomentumScrollEnd"),
+}
+
+// The ScrollView events a RecyclerView state change stands for; a caught fling ends its momentum before the drag.
+object ScrollStateMachine {
+  fun transition(from: Int, to: Int): List<ScrollKind> {
+    if (from == to) return emptyList()
+    val out = mutableListOf<ScrollKind>()
+    if (from == RecyclerView.SCROLL_STATE_DRAGGING) out += ScrollKind.END_DRAG
+    if (from == RecyclerView.SCROLL_STATE_SETTLING) out += ScrollKind.MOMENTUM_END
+    if (to == RecyclerView.SCROLL_STATE_DRAGGING) out += ScrollKind.BEGIN_DRAG
+    if (to == RecyclerView.SCROLL_STATE_SETTLING) out += ScrollKind.MOMENTUM_BEGIN
+    return out
+  }
+}
+
+// At most one scroll event per interval; a suppressed one is flushed when the scroll settles.
+class ScrollThrottle(private val intervalMs: Long) {
+  private var lastMs = Long.MIN_VALUE
+  private var suppressed = false
+
+  fun shouldEmit(nowMs: Long): Boolean {
+    if (lastMs == Long.MIN_VALUE || nowMs - lastMs >= intervalMs) {
+      lastMs = nowMs
+      suppressed = false
+      return true
+    }
+    suppressed = true
+    return false
+  }
+
+  fun flush(): Boolean {
+    val had = suppressed
+    suppressed = false
+    return had
+  }
+}
+
+// RecyclerView measures from the visual top; an inverted list reports its offset from the content start instead.
+object ScrollMetrics {
+  fun fromContentStart(offsetPx: Int, rangePx: Int, extentPx: Int, inverted: Boolean): Int =
+    if (inverted) max(0, rangePx - extentPx - offsetPx) else offsetPx
+}
+
+// The ScrollView payload in dp, so a Reanimated scroll handler reads it unchanged.
+class FlumeScrollEvent(
+  surfaceId: Int,
+  viewTag: Int,
+  private val kind: ScrollKind,
+  private val horizontal: Boolean,
+  private val offsetDp: Float,
+  private val contentWidthDp: Float,
+  private val contentHeightDp: Float,
+  private val widthDp: Float,
+  private val heightDp: Float,
+) : Event<FlumeScrollEvent>(surfaceId, viewTag) {
+  override fun getEventName(): String = kind.eventName
+
+  override fun canCoalesce(): Boolean = kind == ScrollKind.SCROLL
+
+  override fun getEventData(): WritableMap = Arguments.createMap().apply {
+    putMap("contentInset", sides(0f, 0f, 0f, 0f))
+    putMap("contentOffset", point(if (horizontal) offsetDp else 0f, if (horizontal) 0f else offsetDp))
+    putMap("contentSize", size(contentWidthDp, contentHeightDp))
+    putMap("layoutMeasurement", size(widthDp, heightDp))
+    putMap("velocity", point(0f, 0f))
+    putInt("target", viewTag)
+    putDouble("timestamp", timestampMs.toDouble())
+  }
+
+  private fun point(x: Float, y: Float): WritableMap = Arguments.createMap().apply {
+    putDouble("x", x.toDouble())
+    putDouble("y", y.toDouble())
+  }
+
+  private fun size(width: Float, height: Float): WritableMap = Arguments.createMap().apply {
+    putDouble("width", width.toDouble())
+    putDouble("height", height.toDouble())
+  }
+
+  private fun sides(top: Float, left: Float, bottom: Float, right: Float): WritableMap = Arguments.createMap().apply {
+    putDouble("top", top.toDouble())
+    putDouble("left", left.toDouble())
+    putDouble("bottom", bottom.toDouble())
+    putDouble("right", right.toDouble())
+  }
+}

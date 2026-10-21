@@ -27,6 +27,11 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
   override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> = mutableMapOf(
     FlumePressEvent.PRESS to mapOf("registrationName" to "onPress"),
     FlumePressEvent.LONG_PRESS to mapOf("registrationName" to "onLongPress"),
+    ScrollKind.SCROLL.eventName to mapOf("registrationName" to "onScroll"),
+    ScrollKind.BEGIN_DRAG.eventName to mapOf("registrationName" to "onScrollBeginDrag"),
+    ScrollKind.END_DRAG.eventName to mapOf("registrationName" to "onScrollEndDrag"),
+    ScrollKind.MOMENTUM_BEGIN.eventName to mapOf("registrationName" to "onMomentumScrollBegin"),
+    ScrollKind.MOMENTUM_END.eventName to mapOf("registrationName" to "onMomentumScrollEnd"),
   )
 
   @ReactProp(name = "itemAnimations", defaultBoolean = true)
@@ -86,6 +91,16 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
   @ReactProp(name = "stickyHeaderIndices")
   override fun setStickyHeaderIndices(view: FlumeView, value: ReadableArray?) {
     view.stickyHeaderIndices = IntArray(value?.size() ?: 0) { value!!.getInt(it) }
+  }
+
+  @ReactProp(name = "scrollEventThrottle", defaultDouble = 16.0)
+  override fun setScrollEventThrottle(view: FlumeView, value: Double) {
+    view.scrollEventThrottleMs = value.toLong()
+  }
+
+  @ReactProp(name = "emitScrollEvents")
+  override fun setEmitScrollEvents(view: FlumeView, value: Boolean) {
+    view.emitScrollEvents = value
   }
 
   companion object {

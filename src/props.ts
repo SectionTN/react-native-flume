@@ -29,6 +29,8 @@ export type FlatProps = Pick<
   | 'separatorInsetStart'
   | 'separatorInsetEnd'
   | 'stickyHeaderIndices'
+  | 'scrollEventThrottle'
+  | 'emitScrollEvents'
 >;
 
 const PADDING_KEYS = new Set([
@@ -105,5 +107,12 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     separatorInsetStart: props.separator?.insetStart ?? 0,
     separatorInsetEnd: props.separator?.insetEnd ?? 0,
     stickyHeaderIndices: [...new Set(props.stickyHeaderIndices ?? [])].sort((a, b) => a - b),
+    scrollEventThrottle: props.scrollEventThrottle ?? 16,
+    emitScrollEvents:
+      props.onScroll !== undefined ||
+      props.onScrollBeginDrag !== undefined ||
+      props.onScrollEndDrag !== undefined ||
+      props.onMomentumScrollBegin !== undefined ||
+      props.onMomentumScrollEnd !== undefined,
   };
 }

@@ -2,7 +2,10 @@ import { type ReactElement, useEffect, useLayoutEffect, useRef, useState } from 
 import { createSerializable } from 'react-native-worklets';
 import { type DataState, diffData } from './data';
 import { nativeProps } from './props';
-import FlumeViewNativeComponent, { type PressEvent } from './specs/FlumeViewNativeComponent';
+import FlumeViewNativeComponent, {
+  type NativeProps,
+  type PressEvent,
+} from './specs/FlumeViewNativeComponent';
 import { getHost, isDev } from './store';
 import type { FlumeProps, PressInfo } from './types';
 
@@ -20,6 +23,11 @@ export function Flume<T>(props: FlumeProps<T>): ReactElement {
     onLayout,
     testID,
     accessibilityLabel,
+    onScroll,
+    onScrollBeginDrag,
+    onScrollEndDrag,
+    onMomentumScrollBegin,
+    onMomentumScrollEnd,
   } = props;
   const host = getHost();
   const [storeId, setStoreId] = useState(() => host.createStore());
@@ -97,6 +105,11 @@ export function Flume<T>(props: FlumeProps<T>): ReactElement {
       onLayout={onLayout}
       testID={testID}
       accessibilityLabel={accessibilityLabel}
+      onScroll={onScroll as NativeProps['onScroll']}
+      onScrollBeginDrag={onScrollBeginDrag as NativeProps['onScrollBeginDrag']}
+      onScrollEndDrag={onScrollEndDrag as NativeProps['onScrollEndDrag']}
+      onMomentumScrollBegin={onMomentumScrollBegin as NativeProps['onMomentumScrollBegin']}
+      onMomentumScrollEnd={onMomentumScrollEnd as NativeProps['onMomentumScrollEnd']}
     />
   );
 }
