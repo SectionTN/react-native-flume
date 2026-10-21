@@ -156,6 +156,47 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
   @ReactProp(name = "refreshProgressViewOffset")
   override fun setRefreshProgressViewOffset(view: FlumeView, value: Double) = view.setRefreshProgressViewOffset(value)
 
+  @ReactProp(name = "scrollEnabled", defaultBoolean = true)
+  override fun setScrollEnabled(view: FlumeView, value: Boolean) {
+    view.recycler.scrollEnabled = value
+  }
+
+  @ReactProp(name = "nestedScrollEnabled")
+  override fun setNestedScrollEnabled(view: FlumeView, value: Boolean) {
+    view.recycler.isNestedScrollingEnabled = value
+  }
+
+  @ReactProp(name = "overScrollMode")
+  override fun setOverScrollMode(view: FlumeView, value: String?) = view.setListOverScrollMode(value)
+
+  @ReactProp(name = "decelerationRate", defaultDouble = 0.998)
+  override fun setDecelerationRate(view: FlumeView, value: Double) {
+    view.decelerationRate = value
+  }
+
+  @ReactProp(name = "showsVerticalScrollIndicator", defaultBoolean = true)
+  override fun setShowsVerticalScrollIndicator(view: FlumeView, value: Boolean) {
+    view.recycler.isVerticalScrollBarEnabled = value
+  }
+
+  @ReactProp(name = "showsHorizontalScrollIndicator", defaultBoolean = true)
+  override fun setShowsHorizontalScrollIndicator(view: FlumeView, value: Boolean) {
+    view.recycler.isHorizontalScrollBarEnabled = value
+  }
+
+  @ReactProp(name = "keyboardDismissMode")
+  override fun setKeyboardDismissMode(view: FlumeView, value: String?) {
+    view.keyboardDismissOnDrag = value == "on-drag"
+  }
+
+  @ReactProp(name = "keyboardShouldPersistTaps")
+  override fun setKeyboardShouldPersistTaps(view: FlumeView, value: String?) = view.setKeyboardShouldPersistTaps(value)
+
+  @ReactProp(name = "rowsPressable")
+  override fun setRowsPressable(view: FlumeView, value: Boolean) {
+    view.rowsPressable = value
+  }
+
   companion object {
     const val NAME = "FlumeView"
   }

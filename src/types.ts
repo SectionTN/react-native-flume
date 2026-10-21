@@ -208,6 +208,14 @@ export type FlumeProps<T> = {
   onRefresh?: () => void;
   // tintColor is iOS; colors and progressViewOffset drive the Android spinner.
   refreshControl?: { tintColor?: string; colors?: string[]; progressViewOffset?: number };
+  scrollEnabled?: boolean;
+  nestedScrollEnabled?: boolean;
+  overScrollMode?: 'auto' | 'always' | 'never';
+  decelerationRate?: 'normal' | 'fast' | number;
+  showsVerticalScrollIndicator?: boolean;
+  showsHorizontalScrollIndicator?: boolean;
+  keyboardDismissMode?: 'none' | 'on-drag';
+  keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
   onLayout?: (event: LayoutChangeEvent) => void;
   testID?: string;
   accessibilityLabel?: string;

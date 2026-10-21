@@ -20,9 +20,15 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
   // Receives the pressable id (null for the cell itself) and whether it was a long press.
   var onPress: ((id: String?, long: Boolean) -> Unit)? = null
 
+  // Rows are clickable only when the list has a press handler, so TalkBack and the keyboard see them right.
+  var rowsPressable = false
+    set(value) {
+      field = value
+      isClickable = value
+      isLongClickable = value
+    }
+
   init {
-    isClickable = true
-    isLongClickable = true
     setOnClickListener { onPress?.invoke(null, false) }
     setOnLongClickListener {
       onPress?.invoke(null, true)
@@ -107,6 +113,18 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
       else -> View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
     }
     view.accessibilityDelegate = if (role == 1) ButtonDelegate else null
+  }
+
+  fun hasPressableAt(x: Int, y: Int): Boolean = findPressable(this, x, y)
+
+  private fun findPressable(group: ViewGroup, x: Int, y: Int): Boolean {
+    for (i in 0 until group.childCount) {
+      val child = group.getChildAt(i)
+      if (x < child.left || x >= child.right || y < child.top || y >= child.bottom) continue
+      if (child is FlumePressable) return true
+      if (child is ViewGroup && findPressable(child, x - child.left, y - child.top)) return true
+    }
+    return false
   }
 
   override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

@@ -39,6 +39,15 @@ export type FlatProps = Pick<
   | 'refreshing'
   | 'refreshColors'
   | 'refreshProgressViewOffset'
+  | 'scrollEnabled'
+  | 'nestedScrollEnabled'
+  | 'overScrollMode'
+  | 'decelerationRate'
+  | 'showsVerticalScrollIndicator'
+  | 'showsHorizontalScrollIndicator'
+  | 'keyboardDismissMode'
+  | 'keyboardShouldPersistTaps'
+  | 'rowsPressable'
 >;
 
 const PADDING_KEYS = new Set([
@@ -107,6 +116,13 @@ function viewability(
   return rest;
 }
 
+// React Native's constants: normal is 0.998 and fast 0.99.
+function decelerationRate(rate: 'normal' | 'fast' | number | undefined): number {
+  if (rate === 'fast') return 0.99;
+  if (rate === undefined || rate === 'normal') return 0.998;
+  return rate;
+}
+
 export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
   const horizontal = props.horizontal === true;
   let numColumns = props.numColumns ?? 1;
@@ -148,5 +164,14 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     refreshing: props.refreshing === true,
     refreshColors: props.refreshControl?.colors,
     refreshProgressViewOffset: props.refreshControl?.progressViewOffset ?? 0,
+    scrollEnabled: props.scrollEnabled !== false,
+    nestedScrollEnabled: props.nestedScrollEnabled === true,
+    overScrollMode: props.overScrollMode ?? 'auto',
+    decelerationRate: decelerationRate(props.decelerationRate),
+    showsVerticalScrollIndicator: props.showsVerticalScrollIndicator !== false,
+    showsHorizontalScrollIndicator: props.showsHorizontalScrollIndicator !== false,
+    keyboardDismissMode: props.keyboardDismissMode === 'on-drag' ? 'on-drag' : 'none',
+    keyboardShouldPersistTaps: props.keyboardShouldPersistTaps ?? 'never',
+    rowsPressable: props.onPress !== undefined || props.onLongPress !== undefined,
   };
 }

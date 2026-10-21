@@ -56,6 +56,17 @@ export interface NativeProps extends ViewProps {
   refreshing?: CodegenTypes.WithDefault<boolean, false>;
   refreshColors?: ReadonlyArray<ColorValue>;
   refreshProgressViewOffset?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  scrollEnabled?: CodegenTypes.WithDefault<boolean, true>;
+  nestedScrollEnabled?: CodegenTypes.WithDefault<boolean, false>;
+  overScrollMode?: CodegenTypes.WithDefault<'auto' | 'always' | 'never', 'auto'>;
+  // React Native's numbers: normal is 0.998, fast 0.99; Android scales the fling velocity from it.
+  decelerationRate?: CodegenTypes.WithDefault<CodegenTypes.Double, 0.998>;
+  showsVerticalScrollIndicator?: CodegenTypes.WithDefault<boolean, true>;
+  showsHorizontalScrollIndicator?: CodegenTypes.WithDefault<boolean, true>;
+  keyboardDismissMode?: CodegenTypes.WithDefault<'none' | 'on-drag', 'none'>;
+  keyboardShouldPersistTaps?: CodegenTypes.WithDefault<'always' | 'never' | 'handled', 'never'>;
+  // Rows are clickable only when the list has a press handler.
+  rowsPressable?: CodegenTypes.WithDefault<boolean, false>;
   viewabilityConfig?: Readonly<{
     itemVisiblePercentThreshold?: CodegenTypes.Double;
     viewAreaCoveragePercentThreshold?: CodegenTypes.Double;

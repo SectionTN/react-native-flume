@@ -16,7 +16,7 @@ import kotlin.math.roundToInt
 class FlumeView(context: Context) : FrameLayout(context) {
   private val measurer = FlumeTextMeasurer(context)
   private val density = context.resources.displayMetrics.density
-  val recycler = RecyclerView(context)
+  val recycler = FlumeRecyclerView(context).apply { isNestedScrollingEnabled = false }
   private val refreshLayout = SwipeRefreshLayout(context).apply { isEnabled = false }
   private var didLayout = false
   private var refreshProgressViewOffsetDp = 0.0
@@ -86,6 +86,22 @@ class FlumeView(context: Context) : FrameLayout(context) {
       applyDrawDistance()
     }
 
+  var keyboardDismissOnDrag = false
+
+  var rowsPressable = false
+    set(value) {
+      field = value
+      adapter.rowsPressable = value
+      sticky.pinnedView.rowsPressable = value
+      for (i in 0 until recycler.childCount) (recycler.getChildAt(i) as? FlumeCellView)?.rowsPressable = value
+    }
+
+  var decelerationRate = 0.998
+    set(value) {
+      field = value
+      recycler.flingFactor = FlingFactor.of(value)
+    }
+
   var refreshEnabled = false
     set(value) {
       field = value
@@ -143,6 +159,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
         if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
           viewability.interacted = true
           evaluateViewability()
+          if (keyboardDismissOnDrag) recycler.dismissKeyboard()
         }
         if (newState == RecyclerView.SCROLL_STATE_IDLE && throttle.flush() && emitScrollEvents) emitScroll(ScrollKind.SCROLL)
         onScrollState?.invoke(newState)
@@ -211,6 +228,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
         ChildFrame(position, lm.getDecoratedTop(child) - recycler.paddingTop + ty, lm.getDecoratedBottom(child) - recycler.paddingTop + ty)
       }
     }
+  }
+
+  fun setListOverScrollMode(value: String?) {
+    recycler.overScrollMode = OverScroll.mode(value)
+  }
+
+  fun setKeyboardShouldPersistTaps(value: String?) {
+    recycler.keyboardShouldPersistTaps = KeyboardTapPolicy.mode(value)
   }
 
   fun setRefreshColors(colors: IntArray?) {

@@ -19,6 +19,7 @@ class FlumeAdapter(
   var isFullSpan: (Int) -> Boolean = { false }
   var onFirstData: (() -> Unit)? = null
   var onDataChanged: ((reset: Boolean) -> Unit)? = null
+  var rowsPressable = false
   private val storeId get() = attached.storeId
   private var count = 0
   private var nextCellId = 1
@@ -100,6 +101,7 @@ class FlumeAdapter(
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
     val cell = FlumeCellView(context, measurer)
     cell.cellId = nextCellId++
+    cell.rowsPressable = rowsPressable
     orient(cell)
     val holder = Holder(cell)
     // The position is read at click time, so a recycled holder reports the item it shows now.
@@ -123,6 +125,7 @@ class FlumeAdapter(
   override fun onBindViewHolder(holder: Holder, position: Int) {
     if (!geometry.ready) return
     if (holder.cell.horizontal != geometry.horizontal) orient(holder.cell)
+    holder.cell.rowsPressable = rowsPressable
     val start = SystemClock.elapsedRealtimeNanos()
     val batch = FlumeJni.bind(storeId, holder.cell.cellId, position, geometry.cellWidthDp(isFullSpan(position)), geometry.cellHeightDp()) ?: return
     holder.cell.apply(batch)

@@ -138,3 +138,28 @@ describe('nativeProps refresh', () => {
     });
   });
 });
+
+describe('nativeProps scroll props', () => {
+  it('maps the scroll props', () => {
+    const warn = vi.fn();
+    expect(
+      nativeProps(
+        {
+          data: [],
+          decelerationRate: 'fast',
+          keyboardShouldPersistTaps: 'handled',
+          onPress: () => {},
+        },
+        warn,
+      ),
+    ).toMatchObject({
+      decelerationRate: 0.99,
+      keyboardShouldPersistTaps: 'handled',
+      rowsPressable: true,
+    });
+    expect(nativeProps({ data: [], decelerationRate: 0.995 }, warn)).toMatchObject({
+      decelerationRate: 0.995,
+      rowsPressable: false,
+    });
+  });
+});
