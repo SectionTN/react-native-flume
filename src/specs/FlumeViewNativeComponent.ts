@@ -11,6 +11,16 @@ export type PressEvent = Readonly<{
 export interface NativeProps extends ViewProps {
   storeId?: CodegenTypes.WithDefault<CodegenTypes.Int32, 0>;
   itemAnimations?: CodegenTypes.WithDefault<boolean, true>;
+  horizontal?: CodegenTypes.WithDefault<boolean, false>;
+  numColumns?: CodegenTypes.WithDefault<CodegenTypes.Int32, 1>;
+  inverted?: CodegenTypes.WithDefault<boolean, false>;
+  contentPaddingTop?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  contentPaddingLeft?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  contentPaddingBottom?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  contentPaddingRight?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  // In dp; -1 means one viewport.
+  drawDistance?: CodegenTypes.WithDefault<CodegenTypes.Double, -1>;
+  initialScrollIndex?: CodegenTypes.WithDefault<CodegenTypes.Int32, -1>;
   onPress?: CodegenTypes.DirectEventHandler<PressEvent>;
   onLongPress?: CodegenTypes.DirectEventHandler<PressEvent>;
 }

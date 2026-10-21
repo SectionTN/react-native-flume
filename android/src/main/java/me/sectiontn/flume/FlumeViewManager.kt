@@ -33,6 +33,43 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
     view.itemAnimations = value
   }
 
+  @ReactProp(name = "horizontal")
+  override fun setHorizontal(view: FlumeView, value: Boolean) {
+    view.horizontal = value
+  }
+
+  @ReactProp(name = "numColumns", defaultInt = 1)
+  override fun setNumColumns(view: FlumeView, value: Int) {
+    view.numColumns = value
+  }
+
+  @ReactProp(name = "inverted")
+  override fun setInverted(view: FlumeView, value: Boolean) {
+    view.inverted = value
+  }
+
+  @ReactProp(name = "contentPaddingTop")
+  override fun setContentPaddingTop(view: FlumeView, value: Double) = view.setContentPadding(1, value)
+
+  @ReactProp(name = "contentPaddingLeft")
+  override fun setContentPaddingLeft(view: FlumeView, value: Double) = view.setContentPadding(0, value)
+
+  @ReactProp(name = "contentPaddingBottom")
+  override fun setContentPaddingBottom(view: FlumeView, value: Double) = view.setContentPadding(3, value)
+
+  @ReactProp(name = "contentPaddingRight")
+  override fun setContentPaddingRight(view: FlumeView, value: Double) = view.setContentPadding(2, value)
+
+  @ReactProp(name = "drawDistance", defaultDouble = -1.0)
+  override fun setDrawDistance(view: FlumeView, value: Double) {
+    view.drawDistanceDp = value
+  }
+
+  @ReactProp(name = "initialScrollIndex", defaultInt = -1)
+  override fun setInitialScrollIndex(view: FlumeView, value: Int) {
+    view.initialScrollIndex = value
+  }
+
   companion object {
     const val NAME = "FlumeView"
   }

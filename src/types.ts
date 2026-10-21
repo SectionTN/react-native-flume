@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native';
 
 export type CellDimension = number | `${number}%`;
 // Yoga takes auto on these keys only, as React Native does.
@@ -160,4 +160,15 @@ export type FlumeProps<T> = {
   onPress?: (info: PressInfo<T>) => void;
   onLongPress?: (info: PressInfo<T>) => void;
   style?: StyleProp<ViewStyle>;
+  horizontal?: boolean;
+  numColumns?: number;
+  inverted?: boolean;
+  // Padding only, as the spec says; other keys warn in development.
+  contentContainerStyle?: StyleProp<ViewStyle>;
+  // How far past the viewport, in dp, cells are bound ahead; the default is one viewport.
+  drawDistance?: number;
+  initialScrollIndex?: number;
+  onLayout?: (event: LayoutChangeEvent) => void;
+  testID?: string;
+  accessibilityLabel?: string;
 };

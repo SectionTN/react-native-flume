@@ -1,32 +1,41 @@
 import { type ReactElement, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createSerializable } from 'react-native-worklets';
 import { type DataState, diffData } from './data';
+import { nativeProps } from './props';
 import FlumeViewNativeComponent, { type PressEvent } from './specs/FlumeViewNativeComponent';
 import { getHost, isDev } from './store';
 import type { FlumeProps, PressInfo } from './types';
 
-export function Flume<T>({
-  data,
-  renderCell,
-  renderItem,
-  keyExtractor,
-  getItemType,
-  itemAnimations = true,
-  onPress,
-  onLongPress,
-  style,
-}: FlumeProps<T>): ReactElement {
+export function Flume<T>(props: FlumeProps<T>): ReactElement {
+  const {
+    data,
+    renderCell,
+    renderItem,
+    keyExtractor,
+    getItemType,
+    itemAnimations = true,
+    onPress,
+    onLongPress,
+    style,
+    onLayout,
+    testID,
+    accessibilityLabel,
+  } = props;
   const host = getHost();
   const [storeId, setStoreId] = useState(() => host.createStore());
   const released = useRef(false);
   const prev = useRef<{ storeId: number; state?: DataState<T> }>({ storeId });
-  const warned = useRef({ renderItem: false, duplicates: false });
+  const warned = useRef({ duplicates: false, messages: new Set<string>() });
 
-  if (isDev && renderCell !== undefined && renderItem !== undefined && !warned.current.renderItem) {
-    warned.current.renderItem = true;
-    console.warn(
-      'react-native-flume: renderItem is ignored when renderCell is given; use reactCells to mix the two',
-    );
+  // Each distinct message warns once per mount, in development only.
+  const warn = (message: string) => {
+    if (!isDev || warned.current.messages.has(message)) return;
+    warned.current.messages.add(message);
+    console.warn(`react-native-flume: ${message}`);
+  };
+
+  if (renderCell !== undefined && renderItem !== undefined) {
+    warn('renderItem is ignored when renderCell is given; use reactCells to mix the two');
   }
 
   // StrictMode replays this effect after its cleanup, so a released store gets replaced.
@@ -79,11 +88,15 @@ export function Flume<T>({
 
   return (
     <FlumeViewNativeComponent
+      {...nativeProps(props, warn)}
       storeId={storeId}
       itemAnimations={itemAnimations}
       onPress={press(onPress)}
       onLongPress={press(onLongPress)}
       style={style}
+      onLayout={onLayout}
+      testID={testID}
+      accessibilityLabel={accessibilityLabel}
     />
   );
 }

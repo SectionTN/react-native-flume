@@ -138,3 +138,29 @@ describe('Flume props', () => {
     expect(error).toHaveBeenCalledWith('react-native-flume: boom');
   });
 });
+
+describe('Flume host props', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('forwards the host props', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const tree = await mount(
+      createElement(Flume, {
+        data: [item],
+        renderCell,
+        testID: 'list',
+        accessibilityLabel: 'Chats',
+        horizontal: true,
+      }),
+    );
+    const native = tree.root.find((node) => String(node.type) === 'FlumeView');
+    expect(native.props).toMatchObject({
+      testID: 'list',
+      accessibilityLabel: 'Chats',
+      horizontal: true,
+    });
+  });
+});
