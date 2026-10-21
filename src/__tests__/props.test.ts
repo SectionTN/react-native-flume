@@ -74,3 +74,12 @@ describe('nativeProps separator', () => {
     });
   });
 });
+
+describe('nativeProps sticky headers', () => {
+  it('sorts and dedups sticky header indices', () => {
+    const warn = vi.fn();
+    expect(
+      nativeProps({ data: [], stickyHeaderIndices: [8, 0, 4, 4] }, warn).stickyHeaderIndices,
+    ).toEqual([0, 4, 8]);
+  });
+});

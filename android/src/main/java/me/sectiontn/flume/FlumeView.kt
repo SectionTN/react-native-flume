@@ -19,6 +19,9 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private val paddingPx = IntArray(4)
   private var initialScrollPending = false
   private var separator: SeparatorDecoration? = null
+  private val sticky = StickyHeaderHost(this, FlumeCellView(context, measurer), adapter.allocateHolderId())
+  private var stickySet: Set<Int> = emptySet()
+  val geometry get() = adapter.geometry
   private var separatorSizeDp = 0.0
   private var separatorColor = 0
   private var separatorInsetStartDp = 0.0
@@ -85,6 +88,37 @@ class FlumeView(context: Context) : FrameLayout(context) {
     adapter.onPress = { position, pressId, long -> emitPress(position, FlumeJni.keyAt(storeId, position), pressId, long) }
     adapter.onFirstData = { applyInitialScroll() }
     addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    addView(sticky.pinnedView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+    adapter.onDataChanged = { sticky.refresh(force = true) }
+    recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+      override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) = sticky.refresh()
+    })
+    hookLayoutManager()
+  }
+
+  // Layout completion drives the pinned header and, later, the scroll targets; a grid also needs the span lookup.
+  private fun hookLayoutManager() {
+    when (val lm = layoutManager) {
+      is FlumeLinearLayoutManager -> lm.onLaidOut = { sticky.refresh() }
+      is FlumeGridLayoutManager -> lm.onLaidOut = { sticky.refresh() }
+    }
+    applyFullSpan()
+  }
+
+  var stickyHeaderIndices = IntArray(0)
+    set(value) {
+      field = value
+      val previous = stickySet
+      stickySet = value.toHashSet()
+      adapter.isFullSpan = { stickySet.contains(it) }
+      applyFullSpan()
+      sticky.indices = value
+      adapter.onStickyChanged(previous, stickySet)
+      sticky.refresh(force = true)
+    }
+
+  private fun applyFullSpan() {
+    (layoutManager as? FlumeGridLayoutManager)?.fullSpanLookup?.isFullSpan = adapter.isFullSpan
   }
 
   fun setSeparator(sizeDp: Double? = null, color: Int? = null, insetStartDp: Double? = null, insetEndDp: Double? = null) {
@@ -119,6 +153,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
       FlumeLinearLayoutManager(context, orientation, inverted).apply { stackFromEnd = inverted }
     }
     applyDrawDistance()
+    hookLayoutManager()
     recycler.layoutManager = layoutManager
     adapter.configure(horizontal, numColumns, inverted, paddingPx)
   }

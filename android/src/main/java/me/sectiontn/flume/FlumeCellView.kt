@@ -33,6 +33,9 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
   override val root: View
     get() = this
 
+  val rootWidthPx: Int get() = tree.rootWidthPx
+  val rootHeightPx: Int get() = tree.rootHeightPx
+
   fun apply(batch: FlumeBatch) {
     tree.apply(batch)
     requestLayout()

@@ -28,6 +28,7 @@ export type FlatProps = Pick<
   | 'separatorColor'
   | 'separatorInsetStart'
   | 'separatorInsetEnd'
+  | 'stickyHeaderIndices'
 >;
 
 const PADDING_KEYS = new Set([
@@ -103,5 +104,6 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     separatorColor: props.separator?.color,
     separatorInsetStart: props.separator?.insetStart ?? 0,
     separatorInsetEnd: props.separator?.insetEnd ?? 0,
+    stickyHeaderIndices: [...new Set(props.stickyHeaderIndices ?? [])].sort((a, b) => a - b),
   };
 }

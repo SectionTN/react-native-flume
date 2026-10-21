@@ -25,6 +25,7 @@ export interface NativeProps extends ViewProps {
   separatorColor?: ColorValue;
   separatorInsetStart?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   separatorInsetEnd?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  stickyHeaderIndices?: ReadonlyArray<CodegenTypes.Int32>;
   onPress?: CodegenTypes.DirectEventHandler<PressEvent>;
   onLongPress?: CodegenTypes.DirectEventHandler<PressEvent>;
 }

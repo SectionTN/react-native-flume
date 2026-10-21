@@ -170,6 +170,7 @@ export type FlumeProps<T> = {
   initialScrollIndex?: number;
   // A native line between consecutive rows, inset along the cross axis from the start and end edges.
   separator?: { size: number; color?: string; insetStart?: number; insetEnd?: number };
+  stickyHeaderIndices?: number[];
   onLayout?: (event: LayoutChangeEvent) => void;
   testID?: string;
   accessibilityLabel?: string;

@@ -1,5 +1,6 @@
 package me.sectiontn.flume
 
+import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
@@ -81,6 +82,11 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
 
   @ReactProp(name = "separatorInsetEnd")
   override fun setSeparatorInsetEnd(view: FlumeView, value: Double) = view.setSeparator(insetEndDp = value)
+
+  @ReactProp(name = "stickyHeaderIndices")
+  override fun setStickyHeaderIndices(view: FlumeView, value: ReadableArray?) {
+    view.stickyHeaderIndices = IntArray(value?.size() ?: 0) { value!!.getInt(it) }
+  }
 
   companion object {
     const val NAME = "FlumeView"

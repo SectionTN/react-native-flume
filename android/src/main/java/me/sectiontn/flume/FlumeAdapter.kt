@@ -18,6 +18,7 @@ class FlumeAdapter(
   var onPress: ((position: Int, pressId: String?, long: Boolean) -> Unit)? = null
   var isFullSpan: (Int) -> Boolean = { false }
   var onFirstData: (() -> Unit)? = null
+  var onDataChanged: (() -> Unit)? = null
   private val storeId get() = attached.storeId
   private var count = 0
   private var nextCellId = 1
@@ -50,6 +51,7 @@ class FlumeAdapter(
     if (reload || attachedCount != count) {
       setCount(attachedCount)
       notifyDataSetChanged()
+      onDataChanged?.invoke()
     }
   }
 
@@ -62,6 +64,15 @@ class FlumeAdapter(
   override fun onListChanged(reset: Boolean, removed: IntArray, inserted: IntArray, moved: IntArray, changed: IntArray, count: Int) {
     setCount(count)
     ListOpsApplier.apply(reset, removed, inserted, moved, changed, this)
+    onDataChanged?.invoke()
+  }
+
+  fun allocateHolderId(): Int = nextCellId++
+
+  // Sticky rows bind at the full width in a grid, so a change of the set rebinds the rows that switched.
+  fun onStickyChanged(previous: Set<Int>, next: Set<Int>) {
+    if (geometry.numColumns <= 1) return
+    for (position in (previous - next) + (next - previous)) if (position < count) notifyItemChanged(position)
   }
 
   private fun setCount(next: Int) {
