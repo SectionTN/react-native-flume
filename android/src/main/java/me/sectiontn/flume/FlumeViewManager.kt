@@ -1,6 +1,7 @@
 package me.sectiontn.flume
 
 import com.facebook.react.bridge.ReadableArray
+import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
@@ -32,6 +33,7 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
     ScrollKind.END_DRAG.eventName to mapOf("registrationName" to "onScrollEndDrag"),
     ScrollKind.MOMENTUM_BEGIN.eventName to mapOf("registrationName" to "onMomentumScrollBegin"),
     ScrollKind.MOMENTUM_END.eventName to mapOf("registrationName" to "onMomentumScrollEnd"),
+    FlumeViewabilityEvent.NAME to mapOf("registrationName" to "onViewableItemsChanged"),
   )
 
   @ReactProp(name = "itemAnimations", defaultBoolean = true)
@@ -102,6 +104,26 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
   override fun setEmitScrollEvents(view: FlumeView, value: Boolean) {
     view.emitScrollEvents = value
   }
+
+  @ReactProp(name = "emitViewabilityEvents")
+  override fun setEmitViewabilityEvents(view: FlumeView, value: Boolean) {
+    view.emitViewabilityEvents = value
+  }
+
+  @ReactProp(name = "viewabilityConfig")
+  override fun setViewabilityConfig(view: FlumeView, value: ReadableMap?) {
+    view.setViewabilityConfig(
+      ViewabilityConfig(
+        itemVisiblePercentThreshold = value.doubleOrNull("itemVisiblePercentThreshold"),
+        viewAreaCoveragePercentThreshold = value.doubleOrNull("viewAreaCoveragePercentThreshold"),
+        minimumViewTime = value.doubleOrNull("minimumViewTime")?.toLong() ?: 0,
+        waitForInteraction = value != null && value.hasKey("waitForInteraction") && !value.isNull("waitForInteraction") && value.getBoolean("waitForInteraction"),
+      ),
+    )
+  }
+
+  private fun ReadableMap?.doubleOrNull(key: String): Double? =
+    if (this != null && hasKey(key) && !isNull(key)) getDouble(key) else null
 
   companion object {
     const val NAME = "FlumeView"

@@ -164,3 +164,32 @@ describe('Flume host props', () => {
     });
   });
 });
+
+describe('Flume viewability', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('maps viewable keys to items', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const onViewableItemsChanged = vi.fn();
+    const tree = await mount(
+      createElement(Flume, { data: [item], renderCell, onViewableItemsChanged }),
+    );
+    const native = tree.root.find((node) => String(node.type) === 'FlumeView');
+    native.props.onViewableItemsChanged({
+      nativeEvent: {
+        viewable: [{ index: 0, key: 'a', isViewable: true }],
+        changed: [
+          { index: 0, key: 'a', isViewable: true },
+          { index: 5, key: 'gone', isViewable: false },
+        ],
+      },
+    });
+    expect(onViewableItemsChanged).toHaveBeenCalledWith({
+      viewableItems: [{ item, key: 'a', index: 0, isViewable: true }],
+      changed: [{ item, key: 'a', index: 0, isViewable: true }],
+    });
+  });
+});

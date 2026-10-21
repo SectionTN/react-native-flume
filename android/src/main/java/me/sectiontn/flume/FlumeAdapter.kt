@@ -18,7 +18,7 @@ class FlumeAdapter(
   var onPress: ((position: Int, pressId: String?, long: Boolean) -> Unit)? = null
   var isFullSpan: (Int) -> Boolean = { false }
   var onFirstData: (() -> Unit)? = null
-  var onDataChanged: (() -> Unit)? = null
+  var onDataChanged: ((reset: Boolean) -> Unit)? = null
   private val storeId get() = attached.storeId
   private var count = 0
   private var nextCellId = 1
@@ -51,7 +51,7 @@ class FlumeAdapter(
     if (reload || attachedCount != count) {
       setCount(attachedCount)
       notifyDataSetChanged()
-      onDataChanged?.invoke()
+      onDataChanged?.invoke(true)
     }
   }
 
@@ -64,7 +64,7 @@ class FlumeAdapter(
   override fun onListChanged(reset: Boolean, removed: IntArray, inserted: IntArray, moved: IntArray, changed: IntArray, count: Int) {
     setCount(count)
     ListOpsApplier.apply(reset, removed, inserted, moved, changed, this)
-    onDataChanged?.invoke()
+    onDataChanged?.invoke(reset)
   }
 
   fun allocateHolderId(): Int = nextCellId++

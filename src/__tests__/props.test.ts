@@ -94,3 +94,26 @@ describe('nativeProps scroll events', () => {
     });
   });
 });
+
+describe('nativeProps viewability', () => {
+  it('warns when both viewability thresholds are set', () => {
+    const warn = vi.fn();
+    expect(
+      nativeProps(
+        {
+          data: [],
+          onViewableItemsChanged: () => {},
+          viewabilityConfig: {
+            itemVisiblePercentThreshold: 50,
+            viewAreaCoveragePercentThreshold: 10,
+          },
+        },
+        warn,
+      ),
+    ).toMatchObject({
+      emitViewabilityEvents: true,
+      viewabilityConfig: { itemVisiblePercentThreshold: 50 },
+    });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('exactly one'));
+  });
+});

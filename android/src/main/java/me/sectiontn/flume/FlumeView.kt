@@ -26,6 +26,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private var throttle = ScrollThrottle(16)
   private var scrollState = RecyclerView.SCROLL_STATE_IDLE
   var emitScrollEvents = false
+  private val viewability = ViewabilityTracker(ViewabilityConfig())
+  var emitViewabilityEvents = false
   var onScrollState: ((Int) -> Unit)? = null
   var scrollEventThrottleMs = 16L
     set(value) {
@@ -100,17 +102,25 @@ class FlumeView(context: Context) : FrameLayout(context) {
     adapter.onFirstData = { applyInitialScroll() }
     addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     addView(sticky.pinnedView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-    adapter.onDataChanged = { sticky.refresh(force = true) }
+    adapter.onDataChanged = { reset ->
+      if (reset) viewability.reset()
+      sticky.refresh(force = true)
+    }
     recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
       override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
         sticky.refresh()
         if (emitScrollEvents && throttle.shouldEmit(SystemClock.uptimeMillis())) emitScroll(ScrollKind.SCROLL)
+        evaluateViewability()
       }
 
       // Drag and momentum events are per gesture and always sent; a suppressed scroll event is flushed on idle.
       override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
         for (kind in ScrollStateMachine.transition(scrollState, newState)) emitScroll(kind)
         scrollState = newState
+        if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+          viewability.interacted = true
+          evaluateViewability()
+        }
         if (newState == RecyclerView.SCROLL_STATE_IDLE && throttle.flush() && emitScrollEvents) emitScroll(ScrollKind.SCROLL)
         onScrollState?.invoke(newState)
       }
@@ -121,8 +131,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
   // Layout completion drives the pinned header and, later, the scroll targets; a grid also needs the span lookup.
   private fun hookLayoutManager() {
     when (val lm = layoutManager) {
-      is FlumeLinearLayoutManager -> lm.onLaidOut = { sticky.refresh() }
-      is FlumeGridLayoutManager -> lm.onLaidOut = { sticky.refresh() }
+      is FlumeLinearLayoutManager -> lm.onLaidOut = { onLaidOut() }
+      is FlumeGridLayoutManager -> lm.onLaidOut = { onLaidOut() }
     }
     applyFullSpan()
   }
@@ -138,6 +148,56 @@ class FlumeView(context: Context) : FrameLayout(context) {
       adapter.onStickyChanged(previous, stickySet)
       sticky.refresh(force = true)
     }
+
+  private fun onLaidOut() {
+    sticky.refresh()
+    evaluateViewability()
+  }
+
+  // The laid-out rows along the scroll axis, in px from the padded leading edge, translation included.
+  fun childFrames(): List<ChildFrame> {
+    val lm = recycler.layoutManager as? LinearLayoutManager ?: return emptyList()
+    val horizontal = lm.orientation == RecyclerView.HORIZONTAL
+    return (0 until lm.childCount).mapNotNull { i ->
+      val child = lm.getChildAt(i) ?: return@mapNotNull null
+      val position = lm.getPosition(child)
+      if (position == RecyclerView.NO_POSITION) return@mapNotNull null
+      if (horizontal) {
+        val tx = child.translationX.toInt()
+        ChildFrame(position, lm.getDecoratedLeft(child) - recycler.paddingLeft + tx, lm.getDecoratedRight(child) - recycler.paddingLeft + tx)
+      } else {
+        val ty = child.translationY.toInt()
+        ChildFrame(position, lm.getDecoratedTop(child) - recycler.paddingTop + ty, lm.getDecoratedBottom(child) - recycler.paddingTop + ty)
+      }
+    }
+  }
+
+  fun setViewabilityConfig(config: ViewabilityConfig) {
+    viewability.config = config
+  }
+
+  // A changed set is reported after minimumViewTime, as computed at the change, the way FlatList does.
+  private fun evaluateViewability() {
+    if (!emitViewabilityEvents || storeId == 0) return
+    val viewport = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
+    val viewable = viewability.compute(viewport, childFrames())
+    if (!viewability.changed(viewable)) return
+    val delay = viewability.config.minimumViewTime
+    if (delay > 0) postDelayed({ emitViewability(viewable) }, delay) else emitViewability(viewable)
+  }
+
+  private fun emitViewability(viewable: IntArray) {
+    val report = viewability.report(viewable) ?: return
+    val keyOf = { index: Int -> FlumeJni.keyAt(storeId, index) }
+    dispatch(
+      FlumeViewabilityEvent(
+        UIManagerHelper.getSurfaceId(this),
+        id,
+        report.viewable.map { it to keyOf(it) },
+        report.changed.map { Triple(it.position, keyOf(it.position), it.isViewable) },
+      ),
+    )
+  }
 
   private fun applyFullSpan() {
     (layoutManager as? FlumeGridLayoutManager)?.fullSpanLookup?.isFullSpan = adapter.isFullSpan

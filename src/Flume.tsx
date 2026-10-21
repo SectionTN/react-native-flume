@@ -5,9 +5,10 @@ import { nativeProps } from './props';
 import FlumeViewNativeComponent, {
   type NativeProps,
   type PressEvent,
+  type ViewabilityEvent,
 } from './specs/FlumeViewNativeComponent';
 import { getHost, isDev } from './store';
-import type { FlumeProps, PressInfo } from './types';
+import type { FlumeProps, PressInfo, ViewToken } from './types';
 
 export function Flume<T>(props: FlumeProps<T>): ReactElement {
   const {
@@ -28,6 +29,7 @@ export function Flume<T>(props: FlumeProps<T>): ReactElement {
     onScrollEndDrag,
     onMomentumScrollBegin,
     onMomentumScrollEnd,
+    onViewableItemsChanged,
   } = props;
   const host = getHost();
   const [storeId, setStoreId] = useState(() => host.createStore());
@@ -94,6 +96,22 @@ export function Flume<T>(props: FlumeProps<T>): ReactElement {
           if (item !== undefined) handler({ item, index, id: id === '' ? undefined : id });
         };
 
+  // Native reports keys; an item that already left the data is dropped from the tokens.
+  const viewability =
+    onViewableItemsChanged === undefined
+      ? undefined
+      : (event: { nativeEvent: ViewabilityEvent }) => {
+          const tokens = (entries: ViewabilityEvent['viewable']): ViewToken<T>[] =>
+            entries.flatMap(({ index, key, isViewable }) => {
+              const item = prev.current.state?.byKey.get(key);
+              return item === undefined ? [] : [{ item, key, index, isViewable }];
+            });
+          onViewableItemsChanged({
+            viewableItems: tokens(event.nativeEvent.viewable),
+            changed: tokens(event.nativeEvent.changed),
+          });
+        };
+
   return (
     <FlumeViewNativeComponent
       {...nativeProps(props, warn)}
@@ -110,6 +128,7 @@ export function Flume<T>(props: FlumeProps<T>): ReactElement {
       onScrollEndDrag={onScrollEndDrag as NativeProps['onScrollEndDrag']}
       onMomentumScrollBegin={onMomentumScrollBegin as NativeProps['onMomentumScrollBegin']}
       onMomentumScrollEnd={onMomentumScrollEnd as NativeProps['onMomentumScrollEnd']}
+      onViewableItemsChanged={viewability}
     />
   );
 }

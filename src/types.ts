@@ -154,6 +154,15 @@ export type CellPressableProps = CellStyle & { id: string; pressedOpacity?: numb
 
 export type PressInfo<T> = { item: T; index: number; id?: string };
 
+export type ViewToken<T> = { item: T; key: string; index: number; isViewable: boolean };
+
+export type ViewabilityConfig = {
+  itemVisiblePercentThreshold?: number;
+  viewAreaCoveragePercentThreshold?: number;
+  minimumViewTime?: number;
+  waitForInteraction?: boolean;
+};
+
 export type ScrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 
 export type FlumeProps<T> = {
@@ -186,6 +195,11 @@ export type FlumeProps<T> = {
   onMomentumScrollBegin?: ScrollHandler;
   onMomentumScrollEnd?: ScrollHandler;
   scrollEventThrottle?: number;
+  onViewableItemsChanged?: (info: {
+    viewableItems: ViewToken<T>[];
+    changed: ViewToken<T>[];
+  }) => void;
+  viewabilityConfig?: ViewabilityConfig;
   onLayout?: (event: LayoutChangeEvent) => void;
   testID?: string;
   accessibilityLabel?: string;

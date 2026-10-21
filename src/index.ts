@@ -8,4 +8,7 @@ export type {
   CellTextOptions,
   FlumeProps,
   PressInfo,
+  ScrollHandler,
+  ViewabilityConfig,
+  ViewToken,
 } from './types';

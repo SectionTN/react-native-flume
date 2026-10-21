@@ -1,6 +1,6 @@
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { NativeProps } from './specs/FlumeViewNativeComponent';
-import type { FlumeProps } from './types';
+import type { FlumeProps, ViewabilityConfig } from './types';
 
 export type Warn = (message: string) => void;
 
@@ -31,6 +31,8 @@ export type FlatProps = Pick<
   | 'stickyHeaderIndices'
   | 'scrollEventThrottle'
   | 'emitScrollEvents'
+  | 'emitViewabilityEvents'
+  | 'viewabilityConfig'
 >;
 
 const PADDING_KEYS = new Set([
@@ -81,6 +83,24 @@ export function contentPadding(style: StyleProp<ViewStyle> | undefined): Content
   };
 }
 
+// FlatList takes exactly one threshold; with both, the item one wins and development warns.
+function viewability(
+  config: ViewabilityConfig | undefined,
+  warn: Warn,
+): ViewabilityConfig | undefined {
+  if (config === undefined) return undefined;
+  if (
+    config.itemVisiblePercentThreshold === undefined ||
+    config.viewAreaCoveragePercentThreshold === undefined
+  )
+    return config;
+  warn(
+    'viewabilityConfig takes exactly one of itemVisiblePercentThreshold and viewAreaCoveragePercentThreshold; using itemVisiblePercentThreshold',
+  );
+  const { viewAreaCoveragePercentThreshold: _ignored, ...rest } = config;
+  return rest;
+}
+
 export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
   const horizontal = props.horizontal === true;
   let numColumns = props.numColumns ?? 1;
@@ -114,5 +134,7 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
       props.onScrollEndDrag !== undefined ||
       props.onMomentumScrollBegin !== undefined ||
       props.onMomentumScrollEnd !== undefined,
+    emitViewabilityEvents: props.onViewableItemsChanged !== undefined,
+    viewabilityConfig: viewability(props.viewabilityConfig, warn),
   };
 }

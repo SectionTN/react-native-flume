@@ -49,18 +49,7 @@ class StickyHeaderHost(private val view: FlumeView, val pinnedView: FlumeCellVie
       return
     }
     val horizontal = lm.orientation == RecyclerView.HORIZONTAL
-    val frames = (0 until lm.childCount).mapNotNull { i ->
-      val child = lm.getChildAt(i) ?: return@mapNotNull null
-      val position = lm.getPosition(child)
-      if (position == RecyclerView.NO_POSITION) return@mapNotNull null
-      if (horizontal) {
-        val tx = child.translationX.toInt()
-        ChildFrame(position, lm.getDecoratedLeft(child) - recycler.paddingLeft + tx, lm.getDecoratedRight(child) - recycler.paddingLeft + tx)
-      } else {
-        val ty = child.translationY.toInt()
-        ChildFrame(position, lm.getDecoratedTop(child) - recycler.paddingTop + ty, lm.getDecoratedBottom(child) - recycler.paddingTop + ty)
-      }
-    }
+    val frames = view.childFrames()
     var result = StickyResolver.resolve(indices, frames, count, lm.reverseLayout, pinnedLength)
     if (result == null) {
       hide()
