@@ -28,6 +28,9 @@ class FlumeView(context: Context) : FrameLayout(context) {
   var emitScrollEvents = false
   private val viewability = ViewabilityTracker(ViewabilityConfig())
   var emitViewabilityEvents = false
+  private val edges = EdgeTracker()
+  var endReachedThresholdViewports = 2.0
+  var startReachedThresholdViewports = 2.0
   var onScrollState: ((Int) -> Unit)? = null
   var scrollEventThrottleMs = 16L
     set(value) {
@@ -111,6 +114,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
         sticky.refresh()
         if (emitScrollEvents && throttle.shouldEmit(SystemClock.uptimeMillis())) emitScroll(ScrollKind.SCROLL)
         evaluateViewability()
+        evaluateEdges()
       }
 
       // Drag and momentum events are per gesture and always sent; a suppressed scroll event is flushed on idle.
@@ -152,6 +156,24 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private fun onLaidOut() {
     sticky.refresh()
     evaluateViewability()
+    evaluateEdges()
+  }
+
+  // Offset, range and extent along the scroll axis, as RecyclerView estimates them from the laid-out rows.
+  private fun scrollMetrics(): Triple<Int, Int, Int> = if (geometry.horizontal) {
+    Triple(recycler.computeHorizontalScrollOffset(), recycler.computeHorizontalScrollRange(), recycler.computeHorizontalScrollExtent())
+  } else {
+    Triple(recycler.computeVerticalScrollOffset(), recycler.computeVerticalScrollRange(), recycler.computeVerticalScrollExtent())
+  }
+
+  private fun evaluateEdges() {
+    if (storeId == 0 || !geometry.ready) return
+    val (offsetPx, rangePx, extentPx) = scrollMetrics()
+    val distances = ListDistances.of(offsetPx, rangePx, extentPx, inverted)
+    val visible = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
+    val hits = edges.update(distances, visible, rangePx, startReachedThresholdViewports, endReachedThresholdViewports)
+    if (hits.end) dispatch(FlumeEdgeEvent(UIManagerHelper.getSurfaceId(this), id, true, distances.fromEndPx / density))
+    if (hits.start) dispatch(FlumeEdgeEvent(UIManagerHelper.getSurfaceId(this), id, false, distances.fromStartPx / density))
   }
 
   // The laid-out rows along the scroll axis, in px from the padded leading edge, translation included.
@@ -260,9 +282,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   private fun emitScroll(kind: ScrollKind) {
     val horizontal = geometry.horizontal
-    val offsetPx = if (horizontal) recycler.computeHorizontalScrollOffset() else recycler.computeVerticalScrollOffset()
-    val rangePx = if (horizontal) recycler.computeHorizontalScrollRange() else recycler.computeVerticalScrollRange()
-    val extentPx = if (horizontal) recycler.computeHorizontalScrollExtent() else recycler.computeVerticalScrollExtent()
+    val (offsetPx, rangePx, extentPx) = scrollMetrics()
     val offsetDp = ScrollMetrics.fromContentStart(offsetPx, rangePx, extentPx, inverted) / density
     val contentWidthDp = (if (horizontal) rangePx else geometry.innerWidthPx) / density
     val contentHeightDp = (if (horizontal) geometry.innerHeightPx else rangePx) / density

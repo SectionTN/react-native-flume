@@ -193,3 +193,19 @@ describe('Flume viewability', () => {
     });
   });
 });
+
+describe('Flume edges', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('unwraps the end reached event', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const onEndReached = vi.fn();
+    const tree = await mount(createElement(Flume, { data: [item], renderCell, onEndReached }));
+    const native = tree.root.find((node) => String(node.type) === 'FlumeView');
+    native.props.onEndReached({ nativeEvent: { distanceFromEnd: 12 } });
+    expect(onEndReached).toHaveBeenCalledWith({ distanceFromEnd: 12 });
+  });
+});

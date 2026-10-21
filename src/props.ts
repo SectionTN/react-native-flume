@@ -33,6 +33,8 @@ export type FlatProps = Pick<
   | 'emitScrollEvents'
   | 'emitViewabilityEvents'
   | 'viewabilityConfig'
+  | 'endReachedThreshold'
+  | 'startReachedThreshold'
 >;
 
 const PADDING_KEYS = new Set([
@@ -136,5 +138,7 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
       props.onMomentumScrollEnd !== undefined,
     emitViewabilityEvents: props.onViewableItemsChanged !== undefined,
     viewabilityConfig: viewability(props.viewabilityConfig, warn),
+    endReachedThreshold: props.onEndReachedThreshold ?? 2,
+    startReachedThreshold: props.onStartReachedThreshold ?? 2,
   };
 }

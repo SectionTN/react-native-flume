@@ -34,6 +34,8 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
     ScrollKind.MOMENTUM_BEGIN.eventName to mapOf("registrationName" to "onMomentumScrollBegin"),
     ScrollKind.MOMENTUM_END.eventName to mapOf("registrationName" to "onMomentumScrollEnd"),
     FlumeViewabilityEvent.NAME to mapOf("registrationName" to "onViewableItemsChanged"),
+    FlumeEdgeEvent.END to mapOf("registrationName" to "onEndReached"),
+    FlumeEdgeEvent.START to mapOf("registrationName" to "onStartReached"),
   )
 
   @ReactProp(name = "itemAnimations", defaultBoolean = true)
@@ -124,6 +126,16 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
 
   private fun ReadableMap?.doubleOrNull(key: String): Double? =
     if (this != null && hasKey(key) && !isNull(key)) getDouble(key) else null
+
+  @ReactProp(name = "endReachedThreshold", defaultDouble = 2.0)
+  override fun setEndReachedThreshold(view: FlumeView, value: Double) {
+    view.endReachedThresholdViewports = value
+  }
+
+  @ReactProp(name = "startReachedThreshold", defaultDouble = 2.0)
+  override fun setStartReachedThreshold(view: FlumeView, value: Double) {
+    view.startReachedThresholdViewports = value
+  }
 
   companion object {
     const val NAME = "FlumeView"

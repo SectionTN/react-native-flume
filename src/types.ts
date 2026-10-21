@@ -200,6 +200,10 @@ export type FlumeProps<T> = {
     changed: ViewToken<T>[];
   }) => void;
   viewabilityConfig?: ViewabilityConfig;
+  onEndReached?: (info: { distanceFromEnd: number }) => void;
+  onEndReachedThreshold?: number;
+  onStartReached?: (info: { distanceFromStart: number }) => void;
+  onStartReachedThreshold?: number;
   onLayout?: (event: LayoutChangeEvent) => void;
   testID?: string;
   accessibilityLabel?: string;

@@ -49,6 +49,9 @@ export interface NativeProps extends ViewProps {
   // Scroll events reach JS only when a handler is set; drag and momentum events are per gesture.
   emitScrollEvents?: CodegenTypes.WithDefault<boolean, false>;
   emitViewabilityEvents?: CodegenTypes.WithDefault<boolean, false>;
+  // In viewports, as FlatList counts them.
+  endReachedThreshold?: CodegenTypes.WithDefault<CodegenTypes.Double, 2>;
+  startReachedThreshold?: CodegenTypes.WithDefault<CodegenTypes.Double, 2>;
   viewabilityConfig?: Readonly<{
     itemVisiblePercentThreshold?: CodegenTypes.Double;
     viewAreaCoveragePercentThreshold?: CodegenTypes.Double;
@@ -63,6 +66,12 @@ export interface NativeProps extends ViewProps {
   onMomentumScrollBegin?: CodegenTypes.DirectEventHandler<ScrollEvent>;
   onMomentumScrollEnd?: CodegenTypes.DirectEventHandler<ScrollEvent>;
   onViewableItemsChanged?: CodegenTypes.DirectEventHandler<ViewabilityEvent>;
+  onEndReached?: CodegenTypes.DirectEventHandler<
+    Readonly<{ distanceFromEnd: CodegenTypes.Double }>
+  >;
+  onStartReached?: CodegenTypes.DirectEventHandler<
+    Readonly<{ distanceFromStart: CodegenTypes.Double }>
+  >;
 }
 
 export default codegenNativeComponent<NativeProps>('FlumeView') as HostComponent<NativeProps>;

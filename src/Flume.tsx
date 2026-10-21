@@ -30,6 +30,8 @@ export function Flume<T>(props: FlumeProps<T>): ReactElement {
     onMomentumScrollBegin,
     onMomentumScrollEnd,
     onViewableItemsChanged,
+    onEndReached,
+    onStartReached,
   } = props;
   const host = getHost();
   const [storeId, setStoreId] = useState(() => host.createStore());
@@ -129,6 +131,16 @@ export function Flume<T>(props: FlumeProps<T>): ReactElement {
       onMomentumScrollBegin={onMomentumScrollBegin as NativeProps['onMomentumScrollBegin']}
       onMomentumScrollEnd={onMomentumScrollEnd as NativeProps['onMomentumScrollEnd']}
       onViewableItemsChanged={viewability}
+      onEndReached={
+        onEndReached === undefined
+          ? undefined
+          : (event) => onEndReached({ distanceFromEnd: event.nativeEvent.distanceFromEnd })
+      }
+      onStartReached={
+        onStartReached === undefined
+          ? undefined
+          : (event) => onStartReached({ distanceFromStart: event.nativeEvent.distanceFromStart })
+      }
     />
   );
 }
