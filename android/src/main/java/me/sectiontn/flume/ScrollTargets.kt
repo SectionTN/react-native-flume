@@ -8,6 +8,9 @@ import kotlin.math.roundToInt
 
 // viewPosition is in content order: 0 puts the item's start edge at the list's start edge, 1 its end at the end.
 object ScrollTargets {
+  // An offset at or before the content start is the first row, which a position scroll reaches exactly; a further offset is an estimate.
+  fun startRow(targetPx: Int): Int? = if (targetPx <= 0) 0 else null
+
   fun clampIndex(index: Int, count: Int): Int? = if (count <= 0) null else index.coerceIn(0, count - 1)
 
   // A ScrollView animates any distance in a fixed time; a long jump speeds up so it fits the budget.

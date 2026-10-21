@@ -33,4 +33,11 @@ class ScrollTargetsTest {
     assertEquals(0.004f, ScrollTargets.speedMsPerPx(0.06f, 100000, 400), 0.0001f)
     assertEquals(0.06f, ScrollTargets.speedMsPerPx(0.06f, 0, 400), 0.0001f)
   }
+
+  @Test
+  fun aTargetAtOrBeforeTheStartIsTheFirstRow() {
+    assertEquals(0, ScrollTargets.startRow(0))
+    assertEquals(0, ScrollTargets.startRow(-40))
+    assertNull(ScrollTargets.startRow(1))
+  }
 }

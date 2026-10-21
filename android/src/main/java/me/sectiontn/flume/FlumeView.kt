@@ -280,8 +280,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
     viewability.interacted = true
     recycler.stopScroll()
     val targetPx = (offsetDp * density).roundToInt()
-    if (targetPx <= 0 && !animated) {
-      layoutManager.scrollToPositionWithOffset(0, 0)
+    ScrollTargets.startRow(targetPx)?.let { row ->
+      scrollToIndex(row, animated, 0f, 0.0)
       return
     }
     val (offsetPx, rangePx, extentPx) = scrollMetrics()
