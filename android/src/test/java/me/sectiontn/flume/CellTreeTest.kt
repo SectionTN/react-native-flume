@@ -31,8 +31,8 @@ class FakeViews : CellViews<FakeView> {
   override fun accessibility(view: FakeView, label: String?, testId: String?, role: Int, accessible: Int) = Unit
 }
 
-private fun batch(ints: IntArray, floats: FloatArray = FloatArray(0), first: Boolean = false) =
-  FlumeBatch(ints, floats, emptyArray(), 0f, 0f, longArrayOf(0, 0, 0, 0, 0, if (first) 1 else 0))
+private fun batch(ints: IntArray, floats: FloatArray = FloatArray(0), first: Boolean = false, strings: Array<String> = emptyArray()) =
+  FlumeBatch(ints, floats, strings, 0f, 0f, longArrayOf(0, 0, 0, 0, 0, if (first) 1 else 0))
 
 class CellTreeTest {
   private val views = FakeViews()
@@ -84,5 +84,19 @@ class CellTreeTest {
   fun theRootFrameSetsTheCellHeight() {
     assertEquals(128, tree.apply(batch(intArrayOf(3, 0), floatArrayOf(0f, 0f, 360f, 64f), first = true)))
     assertNull(views.root.text)
+  }
+}
+
+class CellTreeTextTest {
+  private val views = FakeViews()
+  private val tree = CellTree(views, 2f)
+
+  @Test
+  fun aTextOpCarriesAllowFontScaling() {
+    val ints = intArrayOf(1, 1, 1, 0, 0, 5, 1, 0, 0xff000000.toInt(), 400, 0, -1, 0, 0, 0, 0)
+    tree.apply(batch(ints, floatArrayOf(14f, 100f, 0f, 0f), first = true, strings = arrayOf("hello")))
+    val spec = views.created[0].text
+    assertEquals("hello", spec?.text)
+    assertEquals(false, spec?.allowFontScaling)
   }
 }

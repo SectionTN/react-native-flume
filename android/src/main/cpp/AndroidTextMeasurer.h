@@ -16,11 +16,11 @@ struct JFlumeTextMeasurer : facebook::jni::JavaClass<JFlumeTextMeasurer> {
   jlong measure(const TextMeasureRequest& r) const {
     static const auto method =
         javaClassStatic()
-            ->getMethod<jlong(jstring, jfloat, jint, jfloat, jint, jstring, jboolean, jfloat, jfloat, jint, jint)>("measure");
+            ->getMethod<jlong(jstring, jfloat, jint, jfloat, jint, jstring, jboolean, jfloat, jfloat, jint, jint, jboolean)>("measure");
     auto text = facebook::jni::make_jstring(std::string(r.text));
     auto family = facebook::jni::make_jstring(std::string(r.fontFamily));
     return method(self(), text.get(), r.fontSize, r.fontWeight, r.maxWidth, r.numberOfLines, family.get(), r.italic,
-                  r.lineHeight, r.letterSpacing, r.textAlign, r.decoration);
+                  r.lineHeight, r.letterSpacing, r.textAlign, r.decoration, r.allowFontScaling);
   }
 };
 

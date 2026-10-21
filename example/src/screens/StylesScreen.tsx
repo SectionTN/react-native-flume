@@ -89,6 +89,11 @@ function text(): CellNode {
       cell.text('Right', { flex: 1, textAlign: 'right', color: '#111111' }),
     ]),
     cell.text(LONG, { numberOfLines: 2, ellipsizeMode: 'tail', fontSize: 15, color: '#111111' }),
+    cell.text(
+      'Fixed at 14 dp whatever the font scale',
+      { fontSize: 14, color: '#111111' },
+      { allowFontScaling: false },
+    ),
   ]);
 }
 

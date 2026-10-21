@@ -22,6 +22,7 @@ struct TextMeasureRequest {
   float letterSpacing;
   int textAlign;   // TextAlign
   int decoration;  // 1 underline, 2 line-through
+  bool allowFontScaling = true;  // false keeps the sizes in dp whatever the font scale
 };
 
 // Implemented per platform with the same text layout the platform draws, so measured and drawn text agree.

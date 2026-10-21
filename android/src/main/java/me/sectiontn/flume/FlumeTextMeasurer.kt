@@ -28,7 +28,7 @@ class FlumeTextMeasurer(private val context: Context) {
   private val layouts = LruCache<TextSpec, StaticLayout>(512)
   private val paints = HashMap<PaintKey, TextPaint>()
 
-  private data class PaintKey(val fontSizeDp: Float, val fontWeight: Int, val fontFamily: String?, val italic: Boolean, val letterSpacingDp: Float, val decoration: Int)
+  private data class PaintKey(val fontSizeDp: Float, val fontWeight: Int, val fontFamily: String?, val italic: Boolean, val letterSpacingDp: Float, val decoration: Int, val allowFontScaling: Boolean)
 
   // Width float bits in the high 32 bits, height in the low 32, both dp.
   @DoNotStrip
@@ -44,8 +44,9 @@ class FlumeTextMeasurer(private val context: Context) {
     letterSpacingDp: Float,
     textAlign: Int,
     decoration: Int,
+    allowFontScaling: Boolean,
   ): Long {
-    val spec = TextSpec(text, fontSizeDp, fontWeight, fontFamily.ifEmpty { null }, italic, lineHeightDp, letterSpacingDp, textAlign, decoration, maxWidthDp, numberOfLines)
+    val spec = TextSpec(text, fontSizeDp, fontWeight, fontFamily.ifEmpty { null }, italic, lineHeightDp, letterSpacingDp, textAlign, decoration, maxWidthDp, numberOfLines, allowFontScaling)
     val layout = layoutFor(spec)
     var widest = 0f
     for (line in 0 until layout.lineCount) widest = max(widest, layout.getLineWidth(line))
@@ -65,7 +66,7 @@ class FlumeTextMeasurer(private val context: Context) {
     val widthPx = max(0, min(floor(spec.maxWidthDp * density).toInt(), 1 shl 24))
     val source: CharSequence = if (spec.lineHeightDp > 0f) {
       SpannableString(spec.text).apply {
-        setSpan(FlumeLineHeightSpan(sp(spec.lineHeightDp).roundToInt()), 0, length, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
+        setSpan(FlumeLineHeightSpan(scaled(spec.lineHeightDp, spec.allowFontScaling).roundToInt()), 0, length, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
       }
     } else {
       spec.text
@@ -86,16 +87,17 @@ class FlumeTextMeasurer(private val context: Context) {
     return layout
   }
 
-  private fun sp(value: Float): Float = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, value, metrics)
+  // sp follows the system font scale the way <Text> does; allowFontScaling false keeps dp.
+  private fun scaled(value: Float, allowFontScaling: Boolean): Float =
+    if (allowFontScaling) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, value, metrics) else value * density
 
   private fun paintFor(spec: TextSpec): TextPaint {
-    val key = PaintKey(spec.fontSizeDp, spec.fontWeight, spec.fontFamily, spec.italic, spec.letterSpacingDp, spec.decoration)
+    val key = PaintKey(spec.fontSizeDp, spec.fontWeight, spec.fontFamily, spec.italic, spec.letterSpacingDp, spec.decoration, spec.allowFontScaling)
     return paints.getOrPut(key) {
       TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-        // sp, so text follows the system font scale the way <Text> does.
-        textSize = sp(spec.fontSizeDp)
+        textSize = scaled(spec.fontSizeDp, spec.allowFontScaling)
         typeface = typefaceFor(spec.fontFamily, spec.fontWeight, spec.italic)
-        if (spec.letterSpacingDp != 0f) letterSpacing = sp(spec.letterSpacingDp) / textSize
+        if (spec.letterSpacingDp != 0f) letterSpacing = scaled(spec.letterSpacingDp, spec.allowFontScaling) / textSize
         isUnderlineText = spec.decoration and 1 != 0
         isStrikeThruText = spec.decoration and 2 != 0
       }

@@ -64,6 +64,7 @@ bool hasAccessibility(const Mounted& m) {
 void copyProps(Mounted& mounted, Node& fresh) {
   mounted.style = fresh.style;
   mounted.text = std::move(fresh.text);
+  mounted.allowFontScaling = fresh.allowFontScaling;
   mounted.imageUri = std::move(fresh.imageUri);
   mounted.resizeMode = fresh.resizeMode;
   mounted.tintColor = fresh.tintColor;
@@ -148,6 +149,11 @@ void Reconciler::reconcileNode(Holder& holder, Mounted& mounted, Node& fresh, Op
   }
   if (mounted.type == NodeType::Text && mounted.text != fresh.text) {
     mounted.text = std::move(fresh.text);
+    mounted.textDirty = true;
+    layout_.markTextDirty(mounted.yoga);
+  }
+  if (mounted.type == NodeType::Text && mounted.allowFontScaling != fresh.allowFontScaling) {
+    mounted.allowFontScaling = fresh.allowFontScaling;
     mounted.textDirty = true;
     layout_.markTextDirty(mounted.yoga);
   }
@@ -255,7 +261,7 @@ void Reconciler::emitTextOf(Mounted& node, OpBatch& out) {
   if (node.type == NodeType::Text) {
     float maxWidth = node.measuredMaxWidth > 0 ? node.measuredMaxWidth : YGNodeLayoutGetWidth(node.yoga);
     if (node.textDirty || maxWidth != node.emittedMaxWidth) {
-      out.text(node.viewId, node.text, node.style, maxWidth);
+      out.text(node.viewId, node.text, node.style, maxWidth, node.allowFontScaling);
       node.textDirty = false;
       node.emittedMaxWidth = maxWidth;
     }

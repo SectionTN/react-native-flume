@@ -30,7 +30,7 @@ using Headers = std::vector<std::pair<std::string, std::string>>;
 // Remove 2: ints [2, id]
 // Frame 3: ints [3, id]; floats [x, y, w, h]
 // ViewStyle 4: ints [4, id, backgroundColor, borderColor]; floats [opacity, rTL, rTR, rBR, rBL, borderWidth, elevation]
-// Text 5: ints [5, id, textIdx, color, weight, lines, familyIdx (-1 none), italic, align, decoration]; floats [fontSize, maxWidth, lineHeight (0 none), letterSpacing]
+// Text 5: ints [5, id, textIdx, color, weight, lines, familyIdx (-1 none), italic, align, decoration, fontScaling]; floats [fontSize, maxWidth, lineHeight (0 none), letterSpacing]
 // Image 6: ints [6, id, uriIdx, resizeMode, hasTint, tint, headerCount, (keyIdx, valueIdx)...]; floats [w, h, rTL, rTR, rBR, rBL]
 // Pressable 7: ints [7, id, pressIdIdx]; floats [pressedOpacity]
 // Accessibility 8: ints [8, id, labelIdx (-1 none), testIdIdx (-1 none), role (0 none, 1 button), accessible (-1 unset, 0, 1)]
@@ -47,7 +47,7 @@ struct OpBatch {
   void remove(int id);
   void frame(int id, float x, float y, float w, float h);
   void viewStyle(int id, const Style& s);
-  void text(int id, const std::string& text, const Style& s, float maxWidth);
+  void text(int id, const std::string& text, const Style& s, float maxWidth, bool allowFontScaling);
   void image(int id, const std::string& uri, const Style& s, ResizeMode mode, std::optional<uint32_t> tint,
              const Headers& headers);
   void pressable(int id, const std::string& pressId, float pressedOpacity);

@@ -21,6 +21,7 @@ struct Mounted {
   NodeType type = NodeType::View;
   Style style;
   std::string text;
+  bool allowFontScaling = true;
   std::string imageUri;
   ResizeMode resizeMode = ResizeMode::Cover;
   std::optional<uint32_t> tintColor;

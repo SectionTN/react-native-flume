@@ -13,6 +13,7 @@ data class TextSpec(
   val decoration: Int,
   val maxWidthDp: Float,
   val numberOfLines: Int,
+  val allowFontScaling: Boolean = true,
 )
 
 // One image node as the Image op describes it, px units.

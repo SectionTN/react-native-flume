@@ -33,10 +33,10 @@ void OpBatch::viewStyle(int id, const Style& s) {
   count_++;
 }
 
-void OpBatch::text(int id, const std::string& text, const Style& s, float maxWidth) {
+void OpBatch::text(int id, const std::string& text, const Style& s, float maxWidth, bool allowFontScaling) {
   ints.insert(ints.end(), {code(Op::Text), id, addString(text), color(s.color, 0xFF000000u), s.fontWeight, s.numberOfLines,
                            addStringOrNone(s.fontFamily), s.italic ? 1 : 0, static_cast<int32_t>(s.textAlign),
-                           static_cast<int32_t>(s.decoration)});
+                           static_cast<int32_t>(s.decoration), allowFontScaling ? 1 : 0});
   floats.insert(floats.end(), {s.fontSize, maxWidth, s.lineHeight.value_or(0), s.letterSpacing.value_or(0)});
   count_++;
 }

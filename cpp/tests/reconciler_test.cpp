@@ -182,7 +182,7 @@ TEST_CASE("a pressable mounts with its id and pressed opacity") {
 
 TEST_CASE("a text op carries the font options") {
   Rig rig;
-  rig.bind(obj({{"type", V("text")}, {"text", V("a")},
+  rig.bind(obj({{"type", V("text")}, {"text", V("a")}, {"allowFontScaling", V(false)},
                 {"style", obj({{"fontFamily", V("Inter")}, {"fontStyle", V("italic")}, {"lineHeight", V(20)},
                                {"letterSpacing", V(0.5)}, {"textAlign", V("center")}, {"textDecorationLine", V("underline line-through")}})}}));
   auto op = textOp(rig.batch, 0);
@@ -192,6 +192,7 @@ TEST_CASE("a text op carries the font options") {
   CHECK(op.ints[7] == 3);
   CHECK(op.floats[2] == 20.0f);
   CHECK(op.floats[3] == 0.5f);
+  CHECK(op.ints[8] == 0);
 }
 
 TEST_CASE("an image op carries resize mode, tint and headers") {
@@ -275,4 +276,10 @@ TEST_CASE("a keyed child whose type changes remounts") {
   auto ops = opsOf(rig.batch);
   CHECK(std::count(ops.begin(), ops.end(), 2) == 1);
   CHECK(std::count(ops.begin(), ops.end(), 1) == 1);
+}
+
+TEST_CASE("a text scales with the font by default") {
+  Rig rig;
+  rig.bind(obj({{"type", V("text")}, {"text", V("a")}}));
+  CHECK(textOp(rig.batch, 0).ints[8] == 1);
 }

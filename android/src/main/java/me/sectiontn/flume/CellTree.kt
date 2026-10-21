@@ -63,9 +63,10 @@ class CellTree<V : Any>(private val views: CellViews<V>, private val density: Fl
             decoration = ints[i + 9],
             maxWidthDp = floats[f + 1],
             numberOfLines = ints[i + 5],
+            allowFontScaling = ints[i + 10] == 1,
           )
           target(id)?.let { views.text(it, spec, ints[i + 3]) }
-          i += 10
+          i += 11
           f += 4
         }
         6 -> {

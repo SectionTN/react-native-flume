@@ -35,7 +35,7 @@ inline std::vector<DecodedOp> decode(const flume::OpBatch& batch) {
       case 2: break;
       case 3: takeFloats(op, 4); break;
       case 4: takeInts(op, 2); takeFloats(op, 7); break;
-      case 5: takeInts(op, 8); takeFloats(op, 4); break;
+      case 5: takeInts(op, 9); takeFloats(op, 4); break;
       case 6: takeInts(op, 5); takeInts(op, 2 * std::max(op.ints[4], 0)); takeFloats(op, 6); break;
       case 7: takeInts(op, 1); takeFloats(op, 1); break;
       case 8: takeInts(op, 4); break;
