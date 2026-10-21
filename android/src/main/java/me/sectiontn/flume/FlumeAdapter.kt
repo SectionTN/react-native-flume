@@ -14,8 +14,9 @@ class FlumeAdapter(
 
   private val density = context.resources.displayMetrics.density
   private val viewport = ViewportTracker()
+  private val attached = AttachTracker()
   var onPress: ((position: Int, pressId: String?, long: Boolean) -> Unit)? = null
-  private var storeId = 0
+  private val storeId get() = attached.storeId
   private var count = 0
   private var nextCellId = 1
 
@@ -31,20 +32,21 @@ class FlumeAdapter(
     setHasStableIds(true)
   }
 
-  // Re-attaching the same store keeps the holders and their trees; the engine only re-registers the listener.
+  // The holders and their trees survive a detach; a re-attach reloads the rows from the engine's current order.
   fun attach(storeId: Int) {
-    val changed = this.storeId != storeId
-    if (changed && this.storeId != 0) detach()
-    this.storeId = storeId
-    val attached = FlumeJni.attach(storeId, this, measurer, density)
-    if (changed || attached != count) {
-      count = attached
+    if (this.storeId != 0 && this.storeId != storeId) detach()
+    val reload = attached.onAttach(storeId)
+    val attachedCount = FlumeJni.attach(storeId, this, measurer, density)
+    if (reload || attachedCount != count) {
+      count = attachedCount
       notifyDataSetChanged()
     }
   }
 
   fun detach() {
-    if (storeId != 0) FlumeJni.detach(storeId)
+    if (storeId == 0) return
+    FlumeJni.detach(storeId)
+    attached.onDetach()
   }
 
   override fun onListChanged(reset: Boolean, removed: IntArray, inserted: IntArray, moved: IntArray, changed: IntArray, count: Int) {
