@@ -1,13 +1,20 @@
 import { type CellNode, cell } from 'react-native-flume';
 
-export type Chat = { id: string; text: string; time: string; avatar: string };
+export type Chat = {
+  id: string;
+  kind: 'message' | 'voice';
+  text: string;
+  time: string;
+  avatar: string;
+  duration?: string;
+};
 
 const WORDS =
   'the quick brown fox jumps over a lazy dog while the river keeps running past old stones and new bridges under a pale evening sky where swallows turn and the town settles into its slow quiet hour'.split(
     ' ',
   );
 
-// Deterministic data: one, two and three line messages at 16 sp on a 360 dp screen.
+// Deterministic data: one, two and three line messages at 16 sp on a 360 dp screen, every fifth one a voice note.
 export function makeChats(count = 1000): Chat[] {
   let seed = 42;
   const rand = () => {
@@ -28,11 +35,16 @@ export function makeChats(count = 1000): Chat[] {
     else if (extra < 0.08) text += ` ${'x'.repeat(40)}`;
     const minute = (i * 7) % 60;
     const hour = 8 + ((i * 3) % 12);
+    const voice = i % 5 === 4;
     chats.push({
       id: `m${i}`,
+      kind: voice ? 'voice' : 'message',
       text,
       time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
       avatar: `https://i.pravatar.cc/80?img=${(i % 20) + 1}`,
+      duration: voice
+        ? `${Math.floor(rand() * 3)}:${String(Math.floor(rand() * 60)).padStart(2, '0')}`
+        : undefined,
     });
   }
   return chats;
@@ -41,13 +53,26 @@ export function makeChats(count = 1000): Chat[] {
 export function makeRenderCell(dark: boolean) {
   const textColor = dark ? '#eeeeee' : '#111111';
   const timeColor = dark ? '#aaaaaa' : '#666666';
+  const accent = dark ? '#6ea8ff' : '#0066ff';
+  const track = dark ? '#3a3a3a' : '#dddddd';
   return (item: Chat, _index: number): CellNode => {
     'worklet';
+    const body =
+      item.kind === 'voice'
+        ? cell.view({ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }, [
+            cell.text('▶', { fontSize: 18, color: accent }),
+            cell.view({ flex: 1, height: 4, borderRadius: 2, backgroundColor: track }),
+            cell.text(item.duration ?? '', { fontSize: 12, color: timeColor }),
+          ])
+        : cell.view({ flex: 1 }, [
+            cell.text(item.text, { fontSize: 16, color: textColor }),
+            cell.text(item.time, { fontSize: 12, color: timeColor }),
+          ]);
     return cell.view({ flexDirection: 'row', padding: 12, gap: 12, alignItems: 'center' }, [
       cell.image({ source: item.avatar, width: 40, height: 40, borderRadius: 20 }),
-      cell.view({ flex: 1 }, [
-        cell.text(item.text, { fontSize: 16, color: textColor }),
-        cell.text(item.time, { fontSize: 12, color: timeColor }),
+      body,
+      cell.pressable({ id: 'like', padding: 8 }, [
+        cell.text('Like', { color: accent, fontWeight: '600' }),
       ]),
     ]);
   };

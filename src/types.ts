@@ -2,6 +2,8 @@ import type { ReactElement } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 
 export type CellDimension = number | `${number}%`;
+// Yoga takes auto on these keys only, as React Native does.
+export type CellAutoDimension = CellDimension | 'auto';
 
 export type CellFontWeight =
   | 'normal'
@@ -49,23 +51,23 @@ export type CellStyle = {
     | 'space-evenly';
   flexGrow?: number;
   flexShrink?: number;
-  flexBasis?: CellDimension;
-  width?: CellDimension;
-  height?: CellDimension;
+  flexBasis?: CellAutoDimension;
+  width?: CellAutoDimension;
+  height?: CellAutoDimension;
   minWidth?: CellDimension;
   minHeight?: CellDimension;
   maxWidth?: CellDimension;
   maxHeight?: CellDimension;
   aspectRatio?: number;
-  margin?: CellDimension;
-  marginTop?: CellDimension;
-  marginBottom?: CellDimension;
-  marginLeft?: CellDimension;
-  marginRight?: CellDimension;
-  marginStart?: CellDimension;
-  marginEnd?: CellDimension;
-  marginHorizontal?: CellDimension;
-  marginVertical?: CellDimension;
+  margin?: CellAutoDimension;
+  marginTop?: CellAutoDimension;
+  marginBottom?: CellAutoDimension;
+  marginLeft?: CellAutoDimension;
+  marginRight?: CellAutoDimension;
+  marginStart?: CellAutoDimension;
+  marginEnd?: CellAutoDimension;
+  marginHorizontal?: CellAutoDimension;
+  marginVertical?: CellAutoDimension;
   padding?: CellDimension;
   paddingTop?: CellDimension;
   paddingBottom?: CellDimension;
