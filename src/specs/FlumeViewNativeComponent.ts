@@ -52,6 +52,10 @@ export interface NativeProps extends ViewProps {
   // In viewports, as FlatList counts them.
   endReachedThreshold?: CodegenTypes.WithDefault<CodegenTypes.Double, 2>;
   startReachedThreshold?: CodegenTypes.WithDefault<CodegenTypes.Double, 2>;
+  refreshEnabled?: CodegenTypes.WithDefault<boolean, false>;
+  refreshing?: CodegenTypes.WithDefault<boolean, false>;
+  refreshColors?: ReadonlyArray<ColorValue>;
+  refreshProgressViewOffset?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   viewabilityConfig?: Readonly<{
     itemVisiblePercentThreshold?: CodegenTypes.Double;
     viewAreaCoveragePercentThreshold?: CodegenTypes.Double;
@@ -72,6 +76,7 @@ export interface NativeProps extends ViewProps {
   onStartReached?: CodegenTypes.DirectEventHandler<
     Readonly<{ distanceFromStart: CodegenTypes.Double }>
   >;
+  onRefresh?: CodegenTypes.DirectEventHandler<null>;
 }
 
 export default codegenNativeComponent<NativeProps>('FlumeView') as HostComponent<NativeProps>;

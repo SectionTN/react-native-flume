@@ -204,6 +204,10 @@ export type FlumeProps<T> = {
   onEndReachedThreshold?: number;
   onStartReached?: (info: { distanceFromStart: number }) => void;
   onStartReachedThreshold?: number;
+  refreshing?: boolean;
+  onRefresh?: () => void;
+  // tintColor is iOS; colors and progressViewOffset drive the Android spinner.
+  refreshControl?: { tintColor?: string; colors?: string[]; progressViewOffset?: number };
   onLayout?: (event: LayoutChangeEvent) => void;
   testID?: string;
   accessibilityLabel?: string;

@@ -32,6 +32,7 @@ export function Flume<T>(props: FlumeProps<T>): ReactElement {
     onViewableItemsChanged,
     onEndReached,
     onStartReached,
+    onRefresh,
   } = props;
   const host = getHost();
   const [storeId, setStoreId] = useState(() => host.createStore());
@@ -141,6 +142,7 @@ export function Flume<T>(props: FlumeProps<T>): ReactElement {
           ? undefined
           : (event) => onStartReached({ distanceFromStart: event.nativeEvent.distanceFromStart })
       }
+      onRefresh={onRefresh === undefined ? undefined : () => onRefresh()}
     />
   );
 }

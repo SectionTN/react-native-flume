@@ -7,6 +7,7 @@ import android.widget.FrameLayout
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.Event
@@ -16,6 +17,9 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private val measurer = FlumeTextMeasurer(context)
   private val density = context.resources.displayMetrics.density
   val recycler = RecyclerView(context)
+  private val refreshLayout = SwipeRefreshLayout(context).apply { isEnabled = false }
+  private var didLayout = false
+  private var refreshProgressViewOffsetDp = 0.0
   private val adapter = FlumeAdapter(context, measurer, recycler)
   private var layoutManager: LinearLayoutManager = FlumeLinearLayoutManager(context, RecyclerView.VERTICAL, false)
   private val paddingPx = IntArray(4)
@@ -82,6 +86,19 @@ class FlumeView(context: Context) : FrameLayout(context) {
       applyDrawDistance()
     }
 
+  var refreshEnabled = false
+    set(value) {
+      field = value
+      refreshLayout.isEnabled = value
+    }
+
+  // The circle needs a measured layout, as React Native waits for one too.
+  var refreshing = false
+    set(value) {
+      field = value
+      if (didLayout) refreshLayout.isRefreshing = value
+    }
+
   var initialScrollIndex = -1
     set(value) {
       field = value
@@ -103,7 +120,9 @@ class FlumeView(context: Context) : FrameLayout(context) {
     recycler.clipToPadding = false
     adapter.onPress = { position, pressId, long -> emitPress(position, FlumeJni.keyAt(storeId, position), pressId, long) }
     adapter.onFirstData = { applyInitialScroll() }
-    addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    refreshLayout.addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    refreshLayout.setOnRefreshListener { dispatch(FlumeRefreshEvent(UIManagerHelper.getSurfaceId(this), id)) }
+    addView(refreshLayout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     addView(sticky.pinnedView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     adapter.onDataChanged = { reset ->
       if (reset) viewability.reset()
@@ -192,6 +211,28 @@ class FlumeView(context: Context) : FrameLayout(context) {
         ChildFrame(position, lm.getDecoratedTop(child) - recycler.paddingTop + ty, lm.getDecoratedBottom(child) - recycler.paddingTop + ty)
       }
     }
+  }
+
+  fun setRefreshColors(colors: IntArray?) {
+    if (colors == null || colors.isEmpty()) refreshLayout.setColorSchemeColors() else refreshLayout.setColorSchemeColors(*colors)
+  }
+
+  fun setRefreshProgressViewOffset(offsetDp: Double) {
+    refreshProgressViewOffsetDp = offsetDp
+    if (didLayout) applyRefreshOffset()
+  }
+
+  private fun applyRefreshOffset() {
+    val (start, end) = RefreshOffsets.of(refreshProgressViewOffsetDp, density, refreshLayout.progressCircleDiameter)
+    refreshLayout.setProgressViewOffset(false, start, end)
+  }
+
+  override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+    super.onLayout(changed, left, top, right, bottom)
+    if (didLayout) return
+    didLayout = true
+    if (refreshProgressViewOffsetDp != 0.0) applyRefreshOffset()
+    if (refreshing) refreshLayout.isRefreshing = true
   }
 
   fun setViewabilityConfig(config: ViewabilityConfig) {

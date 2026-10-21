@@ -36,6 +36,7 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
     FlumeViewabilityEvent.NAME to mapOf("registrationName" to "onViewableItemsChanged"),
     FlumeEdgeEvent.END to mapOf("registrationName" to "onEndReached"),
     FlumeEdgeEvent.START to mapOf("registrationName" to "onStartReached"),
+    FlumeRefreshEvent.NAME to mapOf("registrationName" to "onRefresh"),
   )
 
   @ReactProp(name = "itemAnimations", defaultBoolean = true)
@@ -136,6 +137,24 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
   override fun setStartReachedThreshold(view: FlumeView, value: Double) {
     view.startReachedThresholdViewports = value
   }
+
+  @ReactProp(name = "refreshEnabled")
+  override fun setRefreshEnabled(view: FlumeView, value: Boolean) {
+    view.refreshEnabled = value
+  }
+
+  @ReactProp(name = "refreshing")
+  override fun setRefreshing(view: FlumeView, value: Boolean) {
+    view.refreshing = value
+  }
+
+  @ReactProp(name = "refreshColors", customType = "ColorArray")
+  override fun setRefreshColors(view: FlumeView, value: ReadableArray?) {
+    view.setRefreshColors(value?.let { array -> IntArray(array.size()) { array.getInt(it) } })
+  }
+
+  @ReactProp(name = "refreshProgressViewOffset")
+  override fun setRefreshProgressViewOffset(view: FlumeView, value: Double) = view.setRefreshProgressViewOffset(value)
 
   companion object {
     const val NAME = "FlumeView"

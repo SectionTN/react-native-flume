@@ -117,3 +117,24 @@ describe('nativeProps viewability', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('exactly one'));
   });
 });
+
+describe('nativeProps refresh', () => {
+  it('enables refresh only with onRefresh', () => {
+    const warn = vi.fn();
+    expect(nativeProps({ data: [], refreshing: true }, warn).refreshEnabled).toBe(false);
+    expect(
+      nativeProps(
+        {
+          data: [],
+          onRefresh: () => {},
+          refreshControl: { colors: ['#f00'], progressViewOffset: 20 },
+        },
+        warn,
+      ),
+    ).toMatchObject({
+      refreshEnabled: true,
+      refreshColors: ['#f00'],
+      refreshProgressViewOffset: 20,
+    });
+  });
+});

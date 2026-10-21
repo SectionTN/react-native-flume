@@ -35,6 +35,10 @@ export type FlatProps = Pick<
   | 'viewabilityConfig'
   | 'endReachedThreshold'
   | 'startReachedThreshold'
+  | 'refreshEnabled'
+  | 'refreshing'
+  | 'refreshColors'
+  | 'refreshProgressViewOffset'
 >;
 
 const PADDING_KEYS = new Set([
@@ -140,5 +144,9 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     viewabilityConfig: viewability(props.viewabilityConfig, warn),
     endReachedThreshold: props.onEndReachedThreshold ?? 2,
     startReachedThreshold: props.onStartReachedThreshold ?? 2,
+    refreshEnabled: props.onRefresh !== undefined,
+    refreshing: props.refreshing === true,
+    refreshColors: props.refreshControl?.colors,
+    refreshProgressViewOffset: props.refreshControl?.progressViewOffset ?? 0,
   };
 }
