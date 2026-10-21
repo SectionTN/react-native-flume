@@ -9,11 +9,11 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "bindings/Store.h"
 #include "core/Node.h"
+#include "core/OnceSet.h"
 #include "core/OpBatch.h"
 #include "core/TextMeasurer.h"
 
@@ -56,7 +56,7 @@ class Engine {
   void scheduleRefresh(const std::shared_ptr<Store>& store, bool always);
   void bindOnRuntime(facebook::jsi::Runtime& rt, int index);
   void releaseOnRuntime(int storeId);
-  void logOnce(const std::string& message);
+  void logLine(const std::string& message);
 
   struct Current {
     std::shared_ptr<Store> store;
@@ -75,7 +75,7 @@ class Engine {
   std::optional<facebook::jsi::Function> bindFn_;
   std::optional<facebook::jsi::Function> releaseFn_;
   Current current_;
-  std::unordered_set<std::string> logged_;
+  OnceSet logged_;
 };
 
 }  // namespace flume

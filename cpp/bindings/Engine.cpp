@@ -292,7 +292,7 @@ void Engine::setReporter(jsi::Function reporter) {
 }
 
 void Engine::report(int level, const std::string& message) {
-  if (!logged_.insert(message).second) return;
+  if (!logged_.first(message)) return;
   std::shared_ptr<jsi::Function> reporter;
   std::shared_ptr<facebook::react::CallInvoker> invoker;
   {
@@ -301,8 +301,7 @@ void Engine::report(int level, const std::string& message) {
     invoker = callInvoker_;
   }
   if (reporter == nullptr || invoker == nullptr) {
-    logged_.erase(message);
-    logOnce(message);
+    logLine(message);
     return;
   }
   invoker->invokeAsync([reporter, level, message](jsi::Runtime& rt) {
@@ -310,8 +309,7 @@ void Engine::report(int level, const std::string& message) {
   });
 }
 
-void Engine::logOnce(const std::string& message) {
-  if (!logged_.insert(message).second) return;
+void Engine::logLine(const std::string& message) {
 #ifdef __ANDROID__
   __android_log_print(ANDROID_LOG_WARN, "Flume", "%s", message.c_str());
 #else
