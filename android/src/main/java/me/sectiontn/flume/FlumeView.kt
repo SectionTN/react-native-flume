@@ -27,6 +27,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private var separator: SeparatorDecoration? = null
   private val sticky = StickyHeaderHost(this, FlumeCellView(context, measurer), adapter.allocateHolderId())
   private var stickySet: Set<Int> = emptySet()
+  private val measureHolderId = adapter.allocateHolderId()
   private var throttle = ScrollThrottle(16)
   private var scrollState = RecyclerView.SCROLL_STATE_IDLE
   var emitScrollEvents = false
@@ -141,7 +142,10 @@ class FlumeView(context: Context) : FrameLayout(context) {
     addView(refreshLayout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     addView(sticky.pinnedView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     adapter.onDataChanged = { reset ->
-      if (reset) viewability.reset()
+      if (reset) {
+        viewability.reset()
+        recycler.stopScroll()
+      }
       sticky.refresh(force = true)
     }
     recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -229,6 +233,47 @@ class FlumeView(context: Context) : FrameLayout(context) {
       }
     }
   }
+
+  fun scrollToIndex(index: Int, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
+    val target = ScrollTargets.clampIndex(index, adapter.itemCount) ?: return
+    viewability.interacted = true
+    recycler.stopScroll()
+    val viewOffsetPx = (viewOffsetDp * density).roundToInt()
+    if (animated) {
+      val scroller = FlumeSmoothScroller(context, viewPosition, viewOffsetPx, inverted)
+      scroller.targetPosition = target
+      layoutManager.startSmoothScroll(scroller)
+      return
+    }
+    val viewportPx = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
+    layoutManager.scrollToPositionWithOffset(target, ScrollTargets.offsetPx(viewPosition, viewOffsetPx, viewportPx, measureRowPx(target)))
+  }
+
+  // Binds the row into a scratch holder so a worklet row lands exactly; 0 before the engine can bind.
+  private fun measureRowPx(index: Int): Int {
+    if (storeId == 0 || !geometry.ready) return 0
+    val batch = FlumeJni.bind(storeId, measureHolderId, index, geometry.cellWidthDp(adapter.isFullSpan(index)), geometry.cellHeightDp()) ?: return 0
+    return ((if (geometry.horizontal) batch.rootWidth else batch.rootHeight) * density).roundToInt()
+  }
+
+  // Offsets count from the content start; the visual delta flips for an inverted list.
+  fun scrollToOffset(offsetDp: Double, animated: Boolean) {
+    viewability.interacted = true
+    recycler.stopScroll()
+    val targetPx = (offsetDp * density).roundToInt()
+    if (targetPx <= 0 && !animated) {
+      layoutManager.scrollToPositionWithOffset(0, 0)
+      return
+    }
+    val (offsetPx, rangePx, extentPx) = scrollMetrics()
+    val delta = targetPx - ScrollMetrics.fromContentStart(offsetPx, rangePx, extentPx, inverted)
+    val visual = if (inverted) -delta else delta
+    val dx = if (geometry.horizontal) visual else 0
+    val dy = if (geometry.horizontal) 0 else visual
+    if (animated) recycler.smoothScrollBy(dx, dy) else recycler.scrollBy(dx, dy)
+  }
+
+  fun scrollToEnd(animated: Boolean) = scrollToIndex(adapter.itemCount - 1, animated, 1f, 0.0)
 
   fun setListOverScrollMode(value: String?) {
     recycler.overScrollMode = OverScroll.mode(value)

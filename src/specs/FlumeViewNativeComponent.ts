@@ -1,5 +1,6 @@
+import type * as React from 'react';
 import type { CodegenTypes, ColorValue, HostComponent, ViewProps } from 'react-native';
-import { codegenNativeComponent } from 'react-native';
+import { codegenNativeCommands, codegenNativeComponent } from 'react-native';
 
 // A press on a row: the pressable id is '' for a press on the cell outside any pressable.
 export type PressEvent = Readonly<{
@@ -90,4 +91,27 @@ export interface NativeProps extends ViewProps {
   onRefresh?: CodegenTypes.DirectEventHandler<null>;
 }
 
-export default codegenNativeComponent<NativeProps>('FlumeView') as HostComponent<NativeProps>;
+type FlumeViewType = HostComponent<NativeProps>;
+
+// viewPosition is in content order; offsets are in dp.
+interface NativeCommands {
+  scrollToIndex: (
+    viewRef: React.ElementRef<FlumeViewType>,
+    index: CodegenTypes.Int32,
+    animated: boolean,
+    viewPosition: CodegenTypes.Double,
+    viewOffset: CodegenTypes.Double,
+  ) => void;
+  scrollToOffset: (
+    viewRef: React.ElementRef<FlumeViewType>,
+    offset: CodegenTypes.Double,
+    animated: boolean,
+  ) => void;
+  scrollToEnd: (viewRef: React.ElementRef<FlumeViewType>, animated: boolean) => void;
+}
+
+export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
+  supportedCommands: ['scrollToIndex', 'scrollToOffset', 'scrollToEnd'],
+});
+
+export default codegenNativeComponent<NativeProps>('FlumeView') as FlumeViewType;

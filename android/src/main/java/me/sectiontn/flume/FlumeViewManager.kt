@@ -197,6 +197,13 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
     view.rowsPressable = value
   }
 
+  override fun scrollToIndex(view: FlumeView, index: Int, animated: Boolean, viewPosition: Double, viewOffset: Double) =
+    view.scrollToIndex(index, animated, viewPosition.toFloat(), viewOffset)
+
+  override fun scrollToOffset(view: FlumeView, offset: Double, animated: Boolean) = view.scrollToOffset(offset, animated)
+
+  override fun scrollToEnd(view: FlumeView, animated: Boolean) = view.scrollToEnd(animated)
+
   companion object {
     const val NAME = "FlumeView"
   }

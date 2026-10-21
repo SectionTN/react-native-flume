@@ -163,6 +163,20 @@ export type ViewabilityConfig = {
   waitForInteraction?: boolean;
 };
 
+// scrollToIndex is exact for worklet rows; the last two members serve Animated and Reanimated, which read them by name.
+export type FlumeRef = {
+  scrollToIndex(params: {
+    index: number;
+    animated?: boolean;
+    viewPosition?: number;
+    viewOffset?: number;
+  }): void;
+  scrollToOffset(params: { offset: number; animated?: boolean }): void;
+  scrollToEnd(params?: { animated?: boolean }): void;
+  getScrollableNode(): unknown;
+  getAnimatableRef(): unknown;
+};
+
 export type ScrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 
 export type FlumeProps<T> = {

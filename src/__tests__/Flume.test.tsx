@@ -1,7 +1,8 @@
-import { createElement, StrictMode } from 'react';
+import { createElement, createRef, StrictMode } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FlumeHost } from '../store';
+import type { FlumeRef } from '../types';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -12,7 +13,10 @@ vi.mock('react-native-worklets', () => ({
   runOnRuntimeSync: (_runtime: unknown, worklet: () => void) => worklet(),
 }));
 vi.mock('../specs/NativeFlume', () => ({ default: {} }));
-vi.mock('../specs/FlumeViewNativeComponent', () => ({ default: 'FlumeView' }));
+vi.mock('../specs/FlumeViewNativeComponent', () => ({
+  default: 'FlumeView',
+  Commands: { scrollToIndex: vi.fn(), scrollToOffset: vi.fn(), scrollToEnd: vi.fn() },
+}));
 
 type DataCall = { storeId: number; keys: string[]; changedIndices: number[]; alive: boolean };
 type CellCall = { storeId: number; alive: boolean };
@@ -58,10 +62,11 @@ function installHost() {
 const item = { id: 'a' };
 const renderCell = () => ({ type: 'view' as const });
 
+// Host refs resolve to a stub, as a native view would, so the ref commands have a target.
 async function mount(element: Parameters<typeof create>[0]): Promise<ReactTestRenderer> {
   let tree: ReactTestRenderer | undefined;
   await act(async () => {
-    tree = create(element);
+    tree = create(element, { createNodeMock: () => ({}) });
   });
   return tree as ReactTestRenderer;
 }
@@ -207,5 +212,25 @@ describe('Flume edges', () => {
     const native = tree.root.find((node) => String(node.type) === 'FlumeView');
     native.props.onEndReached({ nativeEvent: { distanceFromEnd: 12 } });
     expect(onEndReached).toHaveBeenCalledWith({ distanceFromEnd: 12 });
+  });
+});
+
+describe('Flume ref', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('sends the commands with FlatList defaults', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const ref = createRef<FlumeRef>();
+    await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    ref.current?.scrollToIndex({ index: 0 });
+    ref.current?.scrollToOffset({ offset: 20, animated: false });
+    ref.current?.scrollToEnd();
+    expect(Commands.scrollToIndex).toHaveBeenCalledWith(expect.anything(), 0, true, 0, 0);
+    expect(Commands.scrollToOffset).toHaveBeenCalledWith(expect.anything(), 20, false);
+    expect(Commands.scrollToEnd).toHaveBeenCalledWith(expect.anything(), true);
   });
 });
