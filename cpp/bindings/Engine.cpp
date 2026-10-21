@@ -180,7 +180,11 @@ void Engine::releaseHolder(int storeId, int holderId) {
 
 void Engine::invalidateMeasures(int storeId) {
   auto store = find(storeId);
-  if (store != nullptr && store->layout != nullptr) store->layout->cache().clear();
+  if (store == nullptr || store->layout == nullptr) return;
+  store->layout->cache().clear();
+  for (auto& entry : store->holders) {
+    if (entry.second != nullptr && entry.second->root != nullptr) store->layout->invalidateText(*entry.second->root);
+  }
 }
 
 bool Engine::bind(int storeId, int holderId, int index, float widthDp, float heightDp, OpBatch& out) {

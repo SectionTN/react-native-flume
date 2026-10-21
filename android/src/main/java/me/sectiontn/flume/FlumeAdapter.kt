@@ -29,8 +29,10 @@ class FlumeAdapter(
   private var nextCellId = 1
 
   // A new size or font scale drops every measured text and rebinds the visible rows at the new size.
-  fun onViewportChanged(widthPx: Int, heightPx: Int, fontScale: Float) {
-    if (geometry.update(widthPx, heightPx, fontScale)) rebindAll()
+  fun onViewportChanged(widthPx: Int, heightPx: Int, fontScale: Float): Boolean {
+    val changed = geometry.update(widthPx, heightPx, fontScale)
+    if (changed) rebindAll()
+    return changed
   }
 
   // Orientation, columns and padding come from the host; a change of the cell size rebinds every row.

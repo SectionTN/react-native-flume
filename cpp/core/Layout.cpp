@@ -90,7 +90,24 @@ void Layout::applyStyle(YGNodeRef node, const Style& s) {
   }
 }
 
+// Yoga serves a constraint it has measured before from its own cache, so stale text is marked dirty by hand.
+void Layout::invalidateText(Mounted& node) {
+  if (node.type == NodeType::Text && node.yoga != nullptr) {
+    YGNodeMarkDirty(node.yoga);
+    node.textDirty = true;
+  }
+  for (auto& child : node.children) invalidateText(*child);
+}
+
+
+static bool sameConstraint(float a, float b) { return (std::isnan(a) && std::isnan(b)) || a == b; }
+
+// A root laid out at another size re-measures every text first, or Yoga reuses a width it measured before.
 void Layout::layout(Mounted& root, float width, float height) {
+  if (!sameConstraint(root.lastLayoutSize[0], width) || !sameConstraint(root.lastLayoutSize[1], height)) {
+    invalidateText(root);
+    root.lastLayoutSize = {width, height};
+  }
   YGNodeCalculateLayout(root.yoga, width, height, YGDirectionLTR);
 }
 

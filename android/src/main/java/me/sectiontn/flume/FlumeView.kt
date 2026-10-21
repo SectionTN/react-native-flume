@@ -433,12 +433,12 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
     super.onSizeChanged(w, h, oldw, oldh)
-    adapter.onViewportChanged(w, h, resources.configuration.fontScale)
+    if (adapter.onViewportChanged(w, h, resources.configuration.fontScale)) sticky.refresh(force = true)
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
-    adapter.onViewportChanged(width, height, newConfig.fontScale)
+    if (adapter.onViewportChanged(width, height, newConfig.fontScale)) sticky.refresh(force = true)
   }
 
   override fun onDetachedFromWindow() {

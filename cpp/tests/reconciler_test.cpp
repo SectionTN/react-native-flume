@@ -171,6 +171,27 @@ TEST_CASE("a narrower width re-emits the text op with the new max width") {
   CHECK(textMaxWidth(rig.batch, 4) == 224.0f);
 }
 
+TEST_CASE("invalidated text is measured and sent again at the same width") {
+  Rig rig;
+  rig.bind(chatCell());
+  rig.layout.cache().clear();
+  rig.layout.invalidateText(*rig.holder.root);
+  int calls = rig.layout.measureCalls;
+  rig.bind(chatCell());
+  CHECK(rig.layout.measureCalls > calls);
+  CHECK(textMaxWidth(rig.batch, 3) == 284.0f);
+}
+
+TEST_CASE("a width laid out before still re-measures and re-sends the text") {
+  Rig rig;
+  rig.bind(chatCell());
+  rig.bind(chatCell(), 300);
+  int calls = rig.layout.measureCalls;
+  rig.bind(chatCell());
+  CHECK(rig.layout.measureCalls > calls);
+  CHECK(textMaxWidth(rig.batch, 3) == 284.0f);
+}
+
 TEST_CASE("a pressable mounts with its id and pressed opacity") {
   Rig rig;
   rig.bind(rowCell(obj({{"type", V("pressable")}, {"id", V("like")}, {"children", arr({textNode("Like", 14, "#0066ff")})}}), {}));
