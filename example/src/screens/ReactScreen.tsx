@@ -89,6 +89,7 @@ export default function ReactScreen() {
   const all = useMemo(() => makeItems(), []);
   const [rows, setRows] = useState(all);
   const [pad, setPad] = useState(16);
+  const [animated, setAnimated] = useState(false);
   const sticky = useMemo(
     () => rows.flatMap((item, index) => (isSection(item) ? [index] : [])),
     [rows],
@@ -112,7 +113,14 @@ export default function ReactScreen() {
         <Button title="Block JS 3 s" onPress={() => blockJs(3000)} />
         <Button title="Clear" onPress={() => setRows([])} />
         <Button title="Refill" onPress={() => setRows(all)} />
-        <Button title="To 300" onPress={() => list.current?.scrollToIndex({ index: 300 })} />
+        <Button
+          title="To 300"
+          onPress={() => list.current?.scrollToIndex({ index: 300, viewPosition: 1, animated })}
+        />
+        <Button
+          title={`Animated ${animated ? 'on' : 'off'}`}
+          onPress={() => setAnimated((on) => !on)}
+        />
         <Button title="Prepend" onPress={prepend} />
         <Button title="Replace all" onPress={() => setRows(renew)} />
         <Button

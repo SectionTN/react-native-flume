@@ -2,6 +2,7 @@ package me.sectiontn.flume
 
 import android.content.Context
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewConfiguration
 import android.content.res.Configuration
 import android.os.SystemClock
@@ -19,6 +20,8 @@ import kotlin.math.roundToInt
 class FlumeView(context: Context) : FrameLayout(context) {
   private companion object {
     const val SMOOTH_SCROLL_BUDGET_MS = 400
+    // Rows measuring in later frames can push the target again; past this many corrections it stays where it is.
+    const val MAX_REALIGNS = 6
   }
 
   private val measurer = FlumeTextMeasurer(context)
@@ -43,6 +46,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private val measureHolderId = adapter.allocateHolderId()
   private var throttle = ScrollThrottle(16)
   private var scrollState = RecyclerView.SCROLL_STATE_IDLE
+  private var pendingAlign: PendingAlign? = null
   var emitScrollEvents = false
   private val viewability = ViewabilityTracker(ViewabilityConfig())
   var emitViewabilityEvents = false
@@ -170,7 +174,10 @@ class FlumeView(context: Context) : FrameLayout(context) {
     addView(sticky.reactPinned, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     adapter.onDataChanged = { reset ->
       viewability.invalidate()
-      if (reset) recycler.stopScroll()
+      if (reset) {
+        recycler.stopScroll()
+        pendingAlign = null
+      }
       applySpans()
     }
     recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -186,11 +193,13 @@ class FlumeView(context: Context) : FrameLayout(context) {
         for (kind in ScrollStateMachine.transition(scrollState, newState)) emitScroll(kind)
         scrollState = newState
         if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+          pendingAlign = null
           viewability.interacted = true
           evaluateViewability()
           if (keyboardDismissOnDrag) recycler.dismissKeyboard()
         }
         if (newState == RecyclerView.SCROLL_STATE_IDLE && throttle.flush() && emitScrollEvents) emitScroll(ScrollKind.SCROLL)
+        if (newState == RecyclerView.SCROLL_STATE_IDLE) realign()
         onScrollState?.invoke(newState)
       }
     })
@@ -249,6 +258,10 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   private fun onLaidOut() {
+    if (pendingAlign != null) {
+      removeCallbacks(realignAfterLayout)
+      post(realignAfterLayout)
+    }
     sticky.refresh()
     updateEmptyLength()
     evaluateViewability()
@@ -303,6 +316,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
     viewability.interacted = true
     recycler.stopScroll()
     val viewOffsetPx = (viewOffsetDp * density).roundToInt()
+    val realigns = isReactRow(target) && ScrollTargets.needsLength(viewPosition)
+    pendingAlign = null
     if (animated) {
       val frames = childFrames()
       val first = layoutManager.findFirstVisibleItemPosition()
@@ -313,12 +328,54 @@ class FlumeView(context: Context) : FrameLayout(context) {
       val speed = ScrollTargets.speedMsPerPx(25f / resources.displayMetrics.densityDpi, distancePx, SMOOTH_SCROLL_BUDGET_MS)
       val scroller = FlumeSmoothScroller(context, viewPosition, viewOffsetPx, inverted, speed)
       scroller.targetPosition = target
+      if (realigns) {
+        scroller.onTarget = { view ->
+          pendingAlign = PendingAlign(target, viewPosition, viewOffsetPx, if (geometry.horizontal) view.width else view.height)
+        }
+      }
       layoutManager.startSmoothScroll(scroller)
       return
     }
     val viewportPx = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
     val itemPx = if (ScrollTargets.needsLength(viewPosition)) rowLengthPx(target) else 0
+    if (realigns) pendingAlign = PendingAlign(target, viewPosition, viewOffsetPx, itemPx)
     layoutManager.scrollToPositionWithOffset(target, ScrollTargets.offsetPx(viewPosition, viewOffsetPx, viewportPx, itemPx))
+  }
+
+  // RecyclerView drops a layout request made inside its own layout pass, so a correction found there waits for the pass to end.
+  private val realignAfterLayout = Runnable { realign() }
+
+  // While the list rests, a React target is put back where its alignment says until it and the rows in view have measured.
+  private fun realign() {
+    val pending = pendingAlign ?: return
+    if (scrollState != RecyclerView.SCROLL_STATE_IDLE) return
+    val item = recycler.findViewHolderForAdapterPosition(pending.position) as? FlumeAdapter.Holder
+    val target = item?.slot?.let { slot -> slot.view?.takeIf { slot.ready } }
+    val horizontal = geometry.horizontal
+    val viewportPx = if (horizontal) geometry.innerWidthPx else geometry.innerHeightPx
+    val startPx = item?.let { alignedStartPx(it.itemView) }
+    val offset = AlignCorrection.offsetPx(pending, target != null, target?.lengthPx(horizontal) ?: 0, startPx, viewportPx)
+    if (offset != null && pending.corrections < MAX_REALIGNS) {
+      pendingAlign = pending.copy(corrections = pending.corrections + 1)
+      layoutManager.scrollToPositionWithOffset(pending.position, offset)
+    } else if (offset != null || (target != null && reactRowsReady())) {
+      pendingAlign = null
+    }
+  }
+
+  // The start as scrollToPositionWithOffset counts it: from the padded start edge, or from the end under a reversed layout.
+  private fun alignedStartPx(child: View): Int {
+    val lm = layoutManager
+    return if (geometry.horizontal) {
+      if (lm.reverseLayout) recycler.width - recycler.paddingRight - lm.getDecoratedRight(child) else lm.getDecoratedLeft(child) - recycler.paddingLeft
+    } else {
+      if (lm.reverseLayout) recycler.height - recycler.paddingBottom - lm.getDecoratedBottom(child) else lm.getDecoratedTop(child) - recycler.paddingTop
+    }
+  }
+
+  private fun reactRowsReady(): Boolean = (0 until recycler.childCount).all { i ->
+    val child = recycler.getChildAt(i) ?: return@all true
+    (recycler.getChildViewHolder(child) as? FlumeAdapter.Holder)?.slot?.ready != false
   }
 
   // A worklet row binds into a scratch holder so it lands exactly; a React row has its measured length, else the estimate.

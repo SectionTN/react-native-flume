@@ -61,4 +61,25 @@ class ScrollTargetsTest {
     assertFalse(ScrollTargets.needsLength(0f))
     assertTrue(ScrollTargets.needsLength(0.5f))
   }
+
+  @Test
+  fun aTargetThatMeasuresLongerRealigns() {
+    val pending = PendingAlign(position = 12, viewPosition = 1f, viewOffsetPx = 0, assumedLengthPx = 150)
+    assertEquals(760, AlignCorrection.offsetPx(pending, targetReady = true, targetLengthPx = 240, targetStartPx = 850, viewportPx = 1000))
+  }
+
+  @Test
+  fun aTargetPushedByRowsAboveItRealigns() {
+    val pending = PendingAlign(12, 1f, 0, 150)
+    assertEquals(850, AlignCorrection.offsetPx(pending, targetReady = false, targetLengthPx = 0, targetStartPx = 922, viewportPx = 1000))
+    assertEquals(850, AlignCorrection.offsetPx(pending, targetReady = false, targetLengthPx = 0, targetStartPx = null, viewportPx = 1000))
+  }
+
+  @Test
+  fun nothingMovesWhileTheTargetWaitsMatchesOrAlignsAtTheStart() {
+    val pending = PendingAlign(12, 1f, 0, 150)
+    assertNull(AlignCorrection.offsetPx(pending, targetReady = false, targetLengthPx = 0, targetStartPx = 850, viewportPx = 1000))
+    assertNull(AlignCorrection.offsetPx(pending, targetReady = true, targetLengthPx = 150, targetStartPx = 850, viewportPx = 1000))
+    assertNull(AlignCorrection.offsetPx(pending.copy(viewPosition = 0f), targetReady = true, targetLengthPx = 240, targetStartPx = 0, viewportPx = 1000))
+  }
 }
