@@ -1,30 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
 import { Button, Pressable, StyleSheet, Text, TextInput, ToastAndroid, View } from 'react-native';
-import { type CellInfo, Flume, type FlumeRef } from 'react-native-flume';
-
-type Row = { id: string; n: number; v: number };
-type Section = { id: string; section: number };
-type Item = Row | Section;
-
-const isSection = (item: Item): item is Section => 'section' in item;
-
-// A sticky section header before every 25 rows.
-function makeItems(count = 500): Item[] {
-  const items: Item[] = [];
-  for (let n = 0; n < count; n++) {
-    if (n % 25 === 0) items.push({ id: `s${n / 25}`, section: n / 25 });
-    items.push({ id: `r${n}`, n, v: 0 });
-  }
-  return items;
-}
+import { type CellInfo, type CellNode, cell, Flume, type FlumeRef } from 'react-native-flume';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { CHIPS, type Chip, makeReactRows, type ReactRow, sectionIndices } from '../reactData';
 
 const TAPS = ['never', 'handled', 'always'] as const;
+type Taps = (typeof TAPS)[number];
 
-// Same rows under new keys, so every visible cell is a new React cell.
-const renew = (items: Item[]) =>
-  items.map((item) =>
-    isSection(item) ? item : { ...item, id: `r${item.n}v${item.v + 1}`, v: item.v + 1 },
-  );
+const nextTaps = (taps: Taps) => TAPS[(TAPS.indexOf(taps) + 1) % TAPS.length] ?? 'never';
 
 function blockJs(ms: number) {
   const end = Date.now() + ms;
@@ -35,115 +18,178 @@ function blockJs(ms: number) {
 
 const toast = (message: string) => ToastAndroid.show(message, ToastAndroid.SHORT);
 
-function RowCell({ item }: { item: Row }) {
+function RowCell({ row, tinted }: { row: ReactRow; tinted: boolean }) {
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, tinted && styles.tinted]}>
       <View style={styles.main}>
-        <Text style={styles.title}>
-          Row {item.n}
-          {item.v > 0 ? ` v${item.v}` : null}
-        </Text>
-        <Pressable style={styles.button} onPress={() => toast(`row ${item.n}`)}>
+        <Text style={styles.title}>{row.title}</Text>
+        <Pressable style={styles.button} onPress={() => toast(row.title)}>
           <Text style={styles.buttonText}>Toast</Text>
         </Pressable>
       </View>
-      {item.n % 3 === 0 ? (
-        <Text style={styles.detail}>Every third row has a second line</Text>
+      {row.n % 3 === 0 ? (
+        <Text numberOfLines={1} style={styles.detail}>
+          Every third row has a second line
+        </Text>
       ) : null}
     </View>
   );
 }
 
-function SectionCell({ item }: { item: Section }) {
+// The count lives in the cell, so it shows whether the cell's slot survived scrolling away.
+function CardCell({ row, tinted }: { row: ReactRow; tinted: boolean }) {
+  const [count, setCount] = useState(0);
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Section {item.section}</Text>
-      <Pressable style={styles.button} onPress={() => toast(`section ${item.section}`)}>
+    <View style={[styles.card, tinted && styles.tinted]}>
+      <Text style={styles.title}>{row.title}</Text>
+      <Text numberOfLines={1} style={styles.detail}>
+        A card keeps its state while it is away
+      </Text>
+      <Pressable style={styles.button} onPress={() => setCount((value) => value + 1)}>
+        <Text style={styles.buttonText}>Count {count}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function SwipeCell({ row, onDelete }: { row: ReactRow; onDelete: (id: string) => void }) {
+  return (
+    <ReanimatedSwipeable
+      renderRightActions={() => (
+        <Pressable style={styles.delete} onPress={() => onDelete(row.id)}>
+          <Text style={styles.buttonText}>Delete</Text>
+        </Pressable>
+      )}
+    >
+      <View style={[styles.main, styles.swipe]}>
+        <Text style={styles.title}>{row.title}</Text>
+        <Text style={styles.hint}>Swipe left</Text>
+      </View>
+    </ReanimatedSwipeable>
+  );
+}
+
+function SectionCell({ row }: { row: ReactRow }) {
+  return (
+    <View style={[styles.main, styles.section]}>
+      <Text style={styles.sectionTitle}>{row.title}</Text>
+      <Pressable style={styles.button} onPress={() => toast(row.title)}>
         <Text style={styles.buttonText}>Toast</Text>
       </Pressable>
     </View>
   );
 }
 
-const renderItem = ({ item }: CellInfo<Item>) =>
-  isSection(item) ? <SectionCell item={item} /> : <RowCell item={item} />;
-
-const itemType = (item: Item) => (isSection(item) ? 'section' : 'row');
-
-function Header() {
-  return (
-    <View style={styles.header}>
-      <Text style={styles.headerTitle}>React cells</Text>
-      <TextInput placeholder="Search" style={styles.input} />
-    </View>
+// Mixed mode draws plain rows natively, between the React cards, swipeable rows and sections.
+const renderPlain = (row: ReactRow): CellNode => {
+  'worklet';
+  return cell.view(
+    { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
+    [
+      cell.text(row.title, { flex: 1, fontSize: 16, color: '#111111' }),
+      cell.text('worklet', { fontSize: 12, color: '#777777' }),
+    ],
   );
-}
+};
 
-function Empty() {
-  return (
-    <View style={styles.empty}>
-      <Text style={styles.emptyText}>Nothing here</Text>
-    </View>
-  );
-}
+const kindOf = (row: ReactRow) => row.kind;
+
+const renderChip = ({ item }: CellInfo<Chip>) => (
+  <View style={styles.chip}>
+    <Text style={styles.chipText}>{item.label}</Text>
+  </View>
+);
+
+const Header = () => (
+  <View style={styles.header}>
+    <Text style={styles.headerTitle}>React cells</Text>
+    <TextInput placeholder="Search" style={styles.input} />
+  </View>
+);
+
+const Empty = () => (
+  <View style={styles.empty}>
+    <Text style={styles.emptyText}>Nothing here</Text>
+  </View>
+);
 
 export default function ReactScreen() {
-  const all = useMemo(() => makeItems(), []);
+  const all = useMemo(() => makeReactRows(), []);
   const [rows, setRows] = useState(all);
+  const [mode, setMode] = useState<'react' | 'mixed'>('react');
   const [pad, setPad] = useState(16);
+  const [columns, setColumns] = useState(1);
+  const [inverted, setInverted] = useState(false);
   const [animated, setAnimated] = useState(false);
-  const [taps, setTaps] = useState<(typeof TAPS)[number]>('never');
-  const sticky = useMemo(
-    () => rows.flatMap((item, index) => (isSection(item) ? [index] : [])),
-    [rows],
-  );
+  const [highlight, setHighlight] = useState(false);
+  const [taps, setTaps] = useState<Taps>('never');
   const [refreshing, setRefreshing] = useState(false);
+  const sticky = useMemo(() => sectionIndices(rows), [rows]);
   const list = useRef<FlumeRef>(null);
   const prepended = useRef(0);
-  const prepend = () => {
-    prepended.current += 1;
-    const n = -prepended.current;
-    setRows((current) => [{ id: `p${-n}`, n, v: 0 }, ...current]);
-  };
+  const version = useRef(0);
   const footer = useMemo(() => <Text style={styles.footer}>End of list</Text>, []);
+  const remove = (id: string) => setRows((current) => current.filter((row) => row.id !== id));
+  const prepend = () => {
+    const n = -++prepended.current;
+    setRows((current) => [{ id: `p${n}`, kind: 'row', title: `Row ${n}`, n }, ...current]);
+  };
   const refresh = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
   };
+  const renderRow = ({ item, extraData }: CellInfo<ReactRow>) => {
+    const tinted = extraData === true && item.n % 2 === 0;
+    if (item.kind === 'section') return <SectionCell row={item} />;
+    if (item.kind === 'card') return <CardCell row={item} tinted={tinted} />;
+    if (item.kind === 'swipe') return <SwipeCell row={item} onDelete={remove} />;
+    return <RowCell row={item} tinted={tinted} />;
+  };
+  const mixed = { card: renderRow, swipe: renderRow, section: renderRow };
+  const controls: [string, () => void][] = [
+    [`Mode ${mode}`, () => setMode((value) => (value === 'react' ? 'mixed' : 'react'))],
+    ['Block JS 3 s', () => blockJs(3000)],
+    ['Prepend', prepend],
+    ['Replace all', () => setRows(makeReactRows(500, `v${++version.current}`))],
+    ['Clear', () => setRows([])],
+    ['Refill', () => setRows(all)],
+    ['To 300', () => list.current?.scrollToIndex({ index: 300, viewPosition: 1, animated })],
+    ['To end', () => list.current?.scrollToEnd({ animated })],
+    [`Animated ${animated ? 'on' : 'off'}`, () => setAnimated((on) => !on)],
+    [`Columns ${columns === 1 ? 2 : 1}`, () => setColumns((value) => (value === 1 ? 2 : 1))],
+    [inverted ? 'Upright' : 'Inverted', () => setInverted((on) => !on)],
+    [`Taps ${taps}`, () => setTaps(nextTaps)],
+    [`Padding ${pad === 16 ? 32 : 16}`, () => setPad((value) => (value === 16 ? 32 : 16))],
+    [`Highlight ${highlight ? 'on' : 'off'}`, () => setHighlight((on) => !on)],
+  ];
   return (
     <View style={styles.screen}>
       <View style={styles.controls}>
-        <Button title="Block JS 3 s" onPress={() => blockJs(3000)} />
-        <Button title="Clear" onPress={() => setRows([])} />
-        <Button title="Refill" onPress={() => setRows(all)} />
-        <Button
-          title="To 300"
-          onPress={() => list.current?.scrollToIndex({ index: 300, viewPosition: 1, animated })}
-        />
-        <Button
-          title={`Animated ${animated ? 'on' : 'off'}`}
-          onPress={() => setAnimated((on) => !on)}
-        />
-        <Button
-          title={`Taps ${taps}`}
-          onPress={() => setTaps((mode) => TAPS[(TAPS.indexOf(mode) + 1) % TAPS.length] ?? 'never')}
-        />
-        <Button title="Prepend" onPress={prepend} />
-        <Button title="Replace all" onPress={() => setRows(renew)} />
-        <Button
-          title={`Padding ${pad === 16 ? 32 : 16}`}
-          onPress={() => setPad((value) => (value === 16 ? 32 : 16))}
-        />
+        {controls.map(([title, onPress]) => (
+          <Button key={title} title={title} onPress={onPress} />
+        ))}
       </View>
+      <Flume
+        data={CHIPS}
+        renderItem={renderChip}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chips}
+      />
       <Flume
         ref={list}
         data={rows}
-        renderItem={renderItem}
-        getItemType={itemType}
+        renderItem={mode === 'react' ? renderRow : undefined}
+        renderCell={mode === 'mixed' ? renderPlain : undefined}
+        reactCells={mode === 'mixed' ? mixed : undefined}
+        getItemType={kindOf}
+        extraData={highlight}
         stickyHeaderIndices={sticky}
-        contentContainerStyle={{ paddingHorizontal: pad, paddingBottom: 16 }}
+        contentContainerStyle={{ padding: pad }}
         keyboardShouldPersistTaps={taps}
         estimatedItemSize={56}
+        numColumns={columns}
+        inverted={inverted}
         ListHeaderComponent={Header}
         ListFooterComponent={footer}
         ListEmptyComponent={Empty}
@@ -165,14 +211,8 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   row: { backgroundColor: '#ffffff' },
-  main: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#dddddd',
-  },
+  tinted: { backgroundColor: '#fff4d6' },
+  main: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
   title: { flex: 1, fontSize: 16, color: '#111111' },
   detail: { height: 24, paddingHorizontal: 16, fontSize: 13, color: '#555555' },
   button: {
@@ -182,23 +222,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#0066ff',
   },
   buttonText: { color: '#ffffff', fontWeight: '600' },
-  section: {
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: '#dde6fb',
-  },
+  card: { margin: 8, padding: 16, gap: 8, borderRadius: 12, backgroundColor: '#eef3ff' },
+  swipe: { backgroundColor: '#f1fbf3' },
+  hint: { fontSize: 12, color: '#3a7d4a' },
+  delete: { width: 96, alignItems: 'center', justifyContent: 'center', backgroundColor: '#d93025' },
+  section: { height: 48, backgroundColor: '#dde6fb' },
   sectionTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: '#1b2a4a' },
+  chips: { height: 64 },
+  chip: {
+    marginVertical: 12,
+    marginHorizontal: 4,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    borderRadius: 20,
+    backgroundColor: '#e8eaf0',
+  },
+  chipText: { fontSize: 14, color: '#1b2a4a' },
   header: { padding: 16, gap: 8, backgroundColor: '#f4f6fb' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#111111' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#cccccc',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    height: 40,
-  },
+  input: { height: 40, paddingHorizontal: 12, borderWidth: 1, borderColor: '#cccccc' },
   footer: { padding: 24, textAlign: 'center', color: '#777777' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 18, color: '#555555' },
