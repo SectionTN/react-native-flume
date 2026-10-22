@@ -12,7 +12,7 @@ class FlumePackage : BaseReactPackage() {
     if (name == NativeFlumeSpec.NAME) NativeFlumeModule(reactContext) else null
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
-    listOf(FlumeViewManager())
+    listOf(FlumeViewManager(), FlumeSlotViewManager())
 
   override fun getReactModuleInfoProvider() = ReactModuleInfoProvider {
     mapOf(

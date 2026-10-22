@@ -1,17 +1,18 @@
 package me.sectiontn.flume
 
+import android.view.View
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.module.annotations.ReactModule
-import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
+import com.facebook.react.uimanager.ViewGroupManager
 import com.facebook.react.uimanager.ViewManagerDelegate
 import com.facebook.react.uimanager.annotations.ReactProp
 import com.facebook.react.viewmanagers.FlumeViewManagerDelegate
 import com.facebook.react.viewmanagers.FlumeViewManagerInterface
 
 @ReactModule(name = FlumeViewManager.NAME)
-class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterface<FlumeView> {
+class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterface<FlumeView> {
   private val delegate = FlumeViewManagerDelegate(this)
 
   override fun getDelegate(): ViewManagerDelegate<FlumeView> = delegate
@@ -19,6 +20,17 @@ class FlumeViewManager : SimpleViewManager<FlumeView>(), FlumeViewManagerInterfa
   override fun getName(): String = NAME
 
   override fun createViewInstance(context: ThemedReactContext): FlumeView = FlumeView(context)
+
+  // Slot views live in holders and the bay; Fabric's child order is mirrored so its removeViewAt finds them.
+  override fun needsCustomLayoutForChildren(): Boolean = true
+
+  override fun addView(parent: FlumeView, child: View, index: Int) = parent.slots.add(child, index)
+
+  override fun getChildCount(parent: FlumeView): Int = parent.slots.count
+
+  override fun getChildAt(parent: FlumeView, index: Int): View? = parent.slots.childAt(index)
+
+  override fun removeViewAt(parent: FlumeView, index: Int) = parent.slots.removeAt(index)
 
   @ReactProp(name = "storeId")
   override fun setStoreId(view: FlumeView, value: Int) {

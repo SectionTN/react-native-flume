@@ -33,6 +33,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private var initialScrollPending = false
   private var separator: SeparatorDecoration? = null
   private val sticky = StickyHeaderHost(this, FlumeCellView(context, measurer), adapter.allocateHolderId())
+  val slots = FlumeSlots(this)
   private var stickySet: Set<Int> = emptySet()
   private val measureHolderId = adapter.allocateHolderId()
   private var throttle = ScrollThrottle(16)
@@ -155,6 +156,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     adapter.onAutoscroll = { index, viewPosition, animated -> scrollToIndex(index, animated, viewPosition, 0.0) }
     refreshLayout.addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     refreshLayout.setOnRefreshListener { dispatch(FlumeRefreshEvent(UIManagerHelper.getSurfaceId(this), id)) }
+    addView(slots.parking, LayoutParams(0, 0))
     addView(refreshLayout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     addView(sticky.pinnedView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     adapter.onDataChanged = { reset ->
