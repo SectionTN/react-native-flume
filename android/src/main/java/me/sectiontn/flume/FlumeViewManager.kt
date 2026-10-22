@@ -89,6 +89,21 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
     view.drawDistanceDp = value
   }
 
+  @ReactProp(name = "listHeader")
+  override fun setListHeader(view: FlumeView, value: Boolean) {
+    view.listHeader = value
+  }
+
+  @ReactProp(name = "listFooter")
+  override fun setListFooter(view: FlumeView, value: Boolean) {
+    view.listFooter = value
+  }
+
+  @ReactProp(name = "listEmpty")
+  override fun setListEmpty(view: FlumeView, value: Boolean) {
+    view.listEmpty = value
+  }
+
   @ReactProp(name = "estimatedItemSize", defaultDouble = -1.0)
   override fun setEstimatedItemSize(view: FlumeView, value: Double) = view.setEstimatedItemSize(value)
 

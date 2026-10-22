@@ -1,6 +1,9 @@
 import {
   type ComponentRef,
+  type ComponentType,
+  createElement,
   forwardRef,
+  isValidElement,
   type ReactElement,
   type Ref,
   useCallback,
@@ -27,6 +30,14 @@ import FlumeViewNativeComponent, {
 import { getHost, isDev } from './store';
 import type { FlumeProps, FlumeRef, PressInfo, ReactCell, ViewToken } from './types';
 
+// FlatList's rule for the list components: an element renders as given, a component through createElement.
+function componentElement(
+  component: ComponentType<object> | ReactElement | null | undefined,
+): ReactElement | null {
+  if (component == null) return null;
+  return isValidElement(component) ? component : createElement(component);
+}
+
 function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const {
     data,
@@ -39,6 +50,9 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     horizontal = false,
     numColumns = 1,
     stickyHeaderIndices,
+    ListHeaderComponent,
+    ListFooterComponent,
+    ListEmptyComponent,
     itemAnimations = true,
     onPress,
     onLongPress,
@@ -170,6 +184,17 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     [horizontal, numColumns, padding.top, padding.left, padding.bottom, padding.right, cellWidth],
   );
   const sticky = useMemo(() => new Set(stickyHeaderIndices), [stickyHeaderIndices]);
+  const header = useMemo(() => componentElement(ListHeaderComponent), [ListHeaderComponent]);
+  const footer = useMemo(() => componentElement(ListFooterComponent), [ListFooterComponent]);
+  const empty = useMemo(() => componentElement(ListEmptyComponent), [ListEmptyComponent]);
+  const elementFor = (kind: number) =>
+    kind === SlotKind.header
+      ? header
+      : kind === SlotKind.footer
+        ? footer
+        : kind === SlotKind.empty
+          ? empty
+          : null;
   const cells = table.slots.map((entry) => {
     const { byKey, types } = commit.diff.next;
     const type = types.get(entry.key);
@@ -186,7 +211,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         layout={layout}
         item={byKey.get(entry.key)}
         render={resolved?.kind === 'react' ? (resolved.render as ReactCell<unknown>) : undefined}
-        element={null}
+        element={elementFor(entry.kind)}
         extraData={extraData}
       />
     );

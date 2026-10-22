@@ -14,4 +14,13 @@ class SeparatorGeometryTest {
   @Test fun aHorizontalListGapsToTheRight() = assertEquals(Edge.RIGHT, SeparatorGeometry.edge(0, 9, horizontal = true, inverted = false))
 
   @Test fun anInvertedHorizontalListGapsToTheLeft() = assertEquals(Edge.LEFT, SeparatorGeometry.edge(0, 9, horizontal = true, inverted = true))
+
+  @Test
+  fun onlyDataRowsCarryAGap() {
+    val rows = ListRows(header = true, dataCount = 3, footer = true)
+    assertEquals(
+      listOf(null, Edge.BOTTOM, Edge.BOTTOM, null, null),
+      (0 until 5).map { SeparatorGeometry.edgeAt(it, rows, { p -> p }, horizontal = false, inverted = false) },
+    )
+  }
 }

@@ -29,7 +29,8 @@ class FlumeAdapter(
   var anchorConfig = AnchorConfig()
   var onAutoscroll: ((index: Int, viewPosition: Float, animated: Boolean) -> Unit)? = null
   private val storeId get() = attached.storeId
-  private var count = 0
+  var rows = ListRows()
+    private set
   private var nextCellId = 1
 
   // A new size or font scale drops every measured text and rebinds the visible rows at the new size.
@@ -63,7 +64,7 @@ class FlumeAdapter(
     if (this.storeId != 0 && this.storeId != storeId) detach()
     val reload = attached.onAttach(storeId)
     val attachedCount = FlumeJni.attach(storeId, this, measurer, density)
-    if (reload || attachedCount != count) {
+    if (reload || attachedCount != rows.dataCount) {
       setCount(attachedCount)
       notifyDataSetChanged()
       onDataChanged?.invoke(true)
@@ -77,19 +78,21 @@ class FlumeAdapter(
   }
 
   override fun onListChanged(reset: Boolean, removed: IntArray, inserted: IntArray, moved: IntArray, changed: IntArray, count: Int) {
-    val before = if (reset) null else anchorState()
+    // The empty row comes and goes with the data, which the store's operations do not know about.
+    val reload = reset || rows.hasEmptyRow != rows.copy(dataCount = count).hasEmptyRow
+    val before = if (reload) null else anchorState()
     setCount(count)
-    ListOpsApplier.apply(reset, removed, inserted, moved, changed, this)
+    ListOpsApplier.apply(reload, removed, inserted, moved, changed, this)
     reindexSlots()
     anchor(before, inserted, count)
-    onDataChanged?.invoke(reset)
+    onDataChanged?.invoke(reload)
   }
 
   // Inserts and removes shift rows without a rebind; a React cell's index follows its holder's new position.
   private fun reindexSlots() {
     for (i in 0 until recycler.childCount) {
       val holder = recycler.getChildViewHolder(recycler.getChildAt(i)) as? Holder ?: continue
-      holder.slot?.let { slots.reindex(it, holder.bindingAdapterPosition) }
+      holder.slot?.let { slots.reindex(it, rows.dataIndex(holder.bindingAdapterPosition)) }
     }
   }
 
@@ -105,7 +108,7 @@ class FlumeAdapter(
     val decision = AnchorPolicy.decide(anchorConfig, before, if (inverted) atEnd else atStart, if (inverted) atStart else atEnd)
     decision.restore?.let { (position, offset) -> (recycler.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, offset) }
     decision.scrollTo?.let { edge ->
-      val (index, viewPosition) = AnchorTargets.indexFor(edge, count, inverted)
+      val (index, viewPosition) = AnchorTargets.indexFor(edge, rows.itemCount, inverted)
       recycler.post { onAutoscroll?.invoke(index, viewPosition, decision.animated) }
     }
   }
@@ -146,33 +149,57 @@ class FlumeAdapter(
   // Sticky rows bind at the full width in a grid, so a change of the set rebinds the rows that switched.
   fun onStickyChanged(previous: Set<Int>, next: Set<Int>) {
     if (geometry.numColumns <= 1) return
-    for (position in (previous - next) + (next - previous)) if (position < count) notifyItemChanged(position)
+    for (position in (previous - next) + (next - previous)) if (position < rows.itemCount) notifyItemChanged(position)
   }
 
   private fun setCount(next: Int) {
-    val first = count == 0 && next > 0
-    count = next
+    val first = rows.dataCount == 0 && next > 0
+    rows = rows.copy(dataCount = next)
     if (first) onFirstData?.invoke()
   }
 
   override fun reset() = notifyDataSetChanged()
 
-  override fun removed(index: Int, count: Int) = notifyItemRangeRemoved(index, count)
+  override fun removed(index: Int, count: Int) = notifyItemRangeRemoved(index + rows.headerCount, count)
 
-  override fun inserted(index: Int, count: Int) = notifyItemRangeInserted(index, count)
+  override fun inserted(index: Int, count: Int) = notifyItemRangeInserted(index + rows.headerCount, count)
 
-  override fun moved(from: Int, to: Int) = notifyItemMoved(from, to)
+  override fun moved(from: Int, to: Int) = notifyItemMoved(from + rows.headerCount, to + rows.headerCount)
 
-  override fun changed(index: Int) = notifyItemChanged(index)
+  override fun changed(index: Int) = notifyItemChanged(index + rows.headerCount)
 
-  override fun getItemCount(): Int = count
+  override fun getItemCount(): Int = rows.itemCount
 
-  override fun getItemViewType(position: Int): Int = FlumeJni.viewType(storeId, position)
+  override fun getItemViewType(position: Int): Int = when (rows.kind(position)) {
+    RowKind.HEADER -> ViewTypes.HEADER
+    RowKind.EMPTY -> ViewTypes.EMPTY
+    RowKind.FOOTER -> ViewTypes.FOOTER
+    RowKind.DATA -> FlumeJni.viewType(storeId, rows.dataIndex(position))
+  }
 
-  override fun getItemId(position: Int): Long = FlumeJni.itemId(storeId, position)
+  // Item ids start at 1, so the list components take ids no item can have.
+  override fun getItemId(position: Int): Long = when (rows.kind(position)) {
+    RowKind.HEADER -> -2L
+    RowKind.EMPTY -> -3L
+    RowKind.FOOTER -> -4L
+    RowKind.DATA -> FlumeJni.itemId(storeId, rows.dataIndex(position))
+  }
+
+  // The list components are adapter rows around the data; the empty row stands in for the data while there is none.
+  fun setListComponents(header: Boolean, footer: Boolean, empty: Boolean) {
+    val before = rows
+    val after = before.copy(header = header, footer = footer, emptyComponent = empty)
+    if (after == before) return
+    rows = after
+    if (before.header != after.header) if (after.header) notifyItemInserted(0) else notifyItemRemoved(0)
+    if (before.hasEmptyRow != after.hasEmptyRow) {
+      if (after.hasEmptyRow) notifyItemInserted(after.headerCount) else notifyItemRemoved(after.headerCount)
+    }
+    if (before.footer != after.footer) if (after.footer) notifyItemInserted(after.itemCount - 1) else notifyItemRemoved(after.itemCount)
+  }
 
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-    if (viewType % 2 != 0) {
+    if (ViewTypes.isReact(viewType)) {
       val slot = FlumeSlotHolder(context, slots.parking)
       slot.owner = nextCellId++
       orient(slot)
@@ -206,14 +233,21 @@ class FlumeAdapter(
     if (!geometry.ready) return
     holder.slot?.let { slot ->
       if (slot.horizontal != geometry.horizontal) orient(slot)
-      slots.bind(slot, SlotGroup(holder.itemViewType), SlotKinds.ROW, FlumeJni.keyAt(storeId, position), position)
+      val group = SlotGroup(holder.itemViewType)
+      when (rows.kind(position)) {
+        RowKind.HEADER -> slots.bind(slot, group, SlotKinds.HEADER, "header", -1)
+        RowKind.EMPTY -> slots.bind(slot, group, SlotKinds.EMPTY, "empty", -1)
+        RowKind.FOOTER -> slots.bind(slot, group, SlotKinds.FOOTER, "footer", -1)
+        RowKind.DATA -> rows.dataIndex(position).let { slots.bind(slot, group, SlotKinds.ROW, FlumeJni.keyAt(storeId, it), it) }
+      }
       return
     }
     val cell = holder.cell ?: return
+    val index = rows.dataIndex(position).takeIf { it >= 0 } ?: return
     if (cell.horizontal != geometry.horizontal) orient(cell)
     cell.rowsPressable = rowsPressable
     val start = SystemClock.elapsedRealtimeNanos()
-    val batch = FlumeJni.bind(storeId, cell.cellId, position, geometry.cellWidthDp(fullSpans.contains(position)), geometry.cellHeightDp()) ?: return
+    val batch = FlumeJni.bind(storeId, cell.cellId, index, geometry.cellWidthDp(fullSpans.contains(position)), geometry.cellHeightDp()) ?: return
     cell.apply(batch)
     SpikeStats.record(SystemClock.elapsedRealtimeNanos() - start, batch.stats)
   }
@@ -224,7 +258,7 @@ class FlumeAdapter(
 
   // A cached holder comes back at a shifted position without a rebind.
   override fun onViewAttachedToWindow(holder: Holder) {
-    holder.slot?.let { slots.reindex(it, holder.bindingAdapterPosition) }
+    holder.slot?.let { slots.reindex(it, rows.dataIndex(holder.bindingAdapterPosition)) }
   }
 
   // A focused input keeps a React holder out of the pool otherwise; its slot stays mounted in the bay.

@@ -7,13 +7,13 @@ import android.content.res.Configuration
 import android.os.SystemClock
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.DefaultItemAnimator
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.Event
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class FlumeView(context: Context) : FrameLayout(context) {
@@ -151,9 +151,12 @@ class FlumeView(context: Context) : FrameLayout(context) {
     recycler.adapter = adapter
     recycler.itemAnimator = animator
     recycler.clipToPadding = false
-    adapter.onPress = { position, pressId, long -> emitPress(position, FlumeJni.keyAt(storeId, position), pressId, long) }
+    adapter.onPress = { position, pressId, long ->
+      val index = rows.dataIndex(position)
+      if (index >= 0) emitPress(index, FlumeJni.keyAt(storeId, index), pressId, long)
+    }
     adapter.onFirstData = { applyInitialScroll() }
-    adapter.onAutoscroll = { index, viewPosition, animated -> scrollToIndex(index, animated, viewPosition, 0.0) }
+    adapter.onAutoscroll = { position, viewPosition, animated -> scrollToPosition(position, animated, viewPosition, 0.0) }
     refreshLayout.addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     refreshLayout.setOnRefreshListener { dispatch(FlumeRefreshEvent(UIManagerHelper.getSurfaceId(this), id)) }
     addView(slots.parking, LayoutParams(0, 0))
@@ -162,7 +165,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     adapter.onDataChanged = { reset ->
       viewability.invalidate()
       if (reset) recycler.stopScroll()
-      sticky.refresh(force = true)
+      applySpans()
     }
     recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
       override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -197,20 +200,51 @@ class FlumeView(context: Context) : FrameLayout(context) {
     applyFullSpan()
   }
 
+  val rows: ListRows get() = adapter.rows
+
+  // Data indices; the pinned copy and the grid work in adapter positions.
   var stickyHeaderIndices = IntArray(0)
     set(value) {
       field = value
-      val previous = stickySet
-      stickySet = value.toHashSet()
-      adapter.fullSpans = FullSpans(value)
-      applyFullSpan()
-      sticky.indices = value
-      adapter.onStickyChanged(previous, stickySet)
-      sticky.refresh(force = true)
+      applySpans()
     }
+
+  var listHeader = false
+    set(value) {
+      field = value
+      applyListComponents()
+    }
+  var listFooter = false
+    set(value) {
+      field = value
+      applyListComponents()
+    }
+  var listEmpty = false
+    set(value) {
+      field = value
+      applyListComponents()
+    }
+
+  private fun applyListComponents() {
+    adapter.setListComponents(listHeader, listFooter, listEmpty)
+    applySpans()
+  }
+
+  // Sticky rows and the list components take the full span; their positions move with the data and the components.
+  private fun applySpans() {
+    val positions = stickyHeaderIndices.filter { it in 0 until rows.dataCount }.map(rows::position).sorted().toIntArray()
+    val previous = stickySet
+    stickySet = positions.toHashSet()
+    adapter.fullSpans = FullSpans(rows.fullSpanPositions(stickyHeaderIndices))
+    applyFullSpan()
+    sticky.indices = positions
+    adapter.onStickyChanged(previous, stickySet)
+    sticky.refresh(force = true)
+  }
 
   private fun onLaidOut() {
     sticky.refresh()
+    updateEmptyLength()
     evaluateViewability()
     evaluateEdges()
   }
@@ -225,7 +259,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private fun evaluateEdges() {
     if (storeId == 0 || !geometry.ready) return
     val visible = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
-    val hits = edges.update(scrollMetrics(), adapter.itemCount, inverted, visible, startReachedThresholdViewports, endReachedThresholdViewports)
+    val hits = edges.update(scrollMetrics(), rows.dataCount, inverted, visible, startReachedThresholdViewports, endReachedThresholdViewports)
     if (hits.end) dispatch(FlumeEdgeEvent(UIManagerHelper.getSurfaceId(this), id, true, hits.distances.fromEndPx / density))
     if (hits.start) dispatch(FlumeEdgeEvent(UIManagerHelper.getSurfaceId(this), id, false, hits.distances.fromStartPx / density))
   }
@@ -248,8 +282,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
     }
   }
 
+  // index counts data items, as FlatList's does; the header and footer are reached by offset and scrollToEnd.
   fun scrollToIndex(index: Int, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
-    val target = ScrollTargets.clampIndex(index, adapter.itemCount) ?: return
+    val target = ScrollTargets.clampIndex(index, rows.dataCount) ?: return
+    scrollToPosition(rows.position(target), animated, viewPosition, viewOffsetDp)
+  }
+
+  private fun scrollToPosition(position: Int, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
+    val target = ScrollTargets.clampIndex(position, rows.itemCount) ?: return
     viewability.interacted = true
     recycler.stopScroll()
     val viewOffsetPx = (viewOffsetDp * density).roundToInt()
@@ -257,7 +297,9 @@ class FlumeView(context: Context) : FrameLayout(context) {
       val frames = childFrames()
       val first = layoutManager.findFirstVisibleItemPosition()
       val rowPx = if (frames.isEmpty()) 0 else frames.sumOf { it.end - it.start } / frames.size
-      val distancePx = if (first == RecyclerView.NO_POSITION) 0 else abs(target - first) * rowPx
+      val spanCount = (layoutManager as? GridLayoutManager)?.spanCount ?: 1
+      val rowsCrossed = ScrollTargets.rowSpan(first, target) { adapter.fullSpans.groupIndex(it, spanCount) }
+      val distancePx = if (first == RecyclerView.NO_POSITION) 0 else rowsCrossed * rowPx
       val speed = ScrollTargets.speedMsPerPx(25f / resources.displayMetrics.densityDpi, distancePx, SMOOTH_SCROLL_BUDGET_MS)
       val scroller = FlumeSmoothScroller(context, viewPosition, viewOffsetPx, inverted, speed)
       scroller.targetPosition = target
@@ -265,14 +307,34 @@ class FlumeView(context: Context) : FrameLayout(context) {
       return
     }
     val viewportPx = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
-    layoutManager.scrollToPositionWithOffset(target, ScrollTargets.offsetPx(viewPosition, viewOffsetPx, viewportPx, measureRowPx(target)))
+    val itemPx = if (ScrollTargets.needsLength(viewPosition)) rowLengthPx(target) else 0
+    layoutManager.scrollToPositionWithOffset(target, ScrollTargets.offsetPx(viewPosition, viewOffsetPx, viewportPx, itemPx))
   }
 
-  // Binds the row into a scratch holder so a worklet row lands exactly; 0 before the engine can bind.
-  private fun measureRowPx(index: Int): Int {
+  // A worklet row binds into a scratch holder so it lands exactly; a React row has its measured length, else the estimate.
+  private fun rowLengthPx(position: Int): Int {
     if (storeId == 0 || !geometry.ready) return 0
-    val batch = FlumeJni.bind(storeId, measureHolderId, index, geometry.cellWidthDp(adapter.fullSpans.contains(index)), geometry.cellHeightDp()) ?: return 0
+    val viewType = adapter.getItemViewType(position)
+    if (ViewTypes.isReact(viewType)) {
+      val holder = (recycler.findViewHolderForAdapterPosition(position) as? FlumeAdapter.Holder)?.slot
+      val view = holder?.view
+      if (holder != null && view != null && holder.ready) return view.lengthPx(geometry.horizontal)
+      return slots.estimator.estimatePx(SlotGroup(viewType))
+    }
+    val index = rows.dataIndex(position).takeIf { it >= 0 } ?: return 0
+    val batch = FlumeJni.bind(storeId, measureHolderId, index, geometry.cellWidthDp(adapter.fullSpans.contains(position)), geometry.cellHeightDp()) ?: return 0
     return ((if (geometry.horizontal) batch.rootWidth else batch.rootHeight) * density).roundToInt()
+  }
+
+  // The empty row fills what the header and footer leave of the viewport, so flex content centers in the visible area.
+  private fun updateEmptyLength() {
+    if (!rows.hasEmptyRow || !geometry.ready) return
+    val holder = (recycler.findViewHolderForAdapterPosition(rows.headerCount) as? FlumeAdapter.Holder)?.slot ?: return
+    val viewport = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
+    var usedPx = 0
+    if (rows.header) usedPx += rowLengthPx(0)
+    if (rows.footer) usedPx += rowLengthPx(rows.itemCount - 1)
+    slots.setMinMain(holder, maxOf(0, viewport - usedPx) / density)
   }
 
   // Offsets count from the content start; the visual delta flips for an inverted list.
@@ -281,7 +343,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     recycler.stopScroll()
     val targetPx = (offsetDp * density).roundToInt()
     ScrollTargets.startRow(targetPx)?.let { row ->
-      scrollToIndex(row, animated, 0f, 0.0)
+      scrollToPosition(row, animated, 0f, 0.0)
       return
     }
     val (offsetPx, rangePx, extentPx) = scrollMetrics()
@@ -292,7 +354,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     if (animated) recycler.smoothScrollBy(dx, dy) else recycler.scrollBy(dx, dy)
   }
 
-  fun scrollToEnd(animated: Boolean) = scrollToIndex(adapter.itemCount - 1, animated, 1f, 0.0)
+  fun scrollToEnd(animated: Boolean) = scrollToPosition(rows.itemCount - 1, animated, 1f, 0.0)
 
   fun setListOverScrollMode(value: String?) {
     recycler.overScrollMode = OverScroll.mode(value)
@@ -332,7 +394,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private fun evaluateViewability() {
     if (!emitViewabilityEvents || storeId == 0) return
     val viewport = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
-    val tokens = viewability.keyed(viewability.compute(viewport, childFrames())) { FlumeJni.keyAt(storeId, it) } ?: return
+    val frames = childFrames().mapNotNull { frame -> rows.dataIndex(frame.position).takeIf { it >= 0 }?.let { frame.copy(position = it) } }
+    val tokens = viewability.keyed(viewability.compute(viewport, frames)) { FlumeJni.keyAt(storeId, it) } ?: return
     val delay = viewability.config.minimumViewTime
     if (delay > 0) postDelayed({ emitViewability(viewability.reportDelayed(tokens)) }, delay) else emitViewability(viewability.report(tokens))
   }
@@ -354,7 +417,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     separator?.let { recycler.removeItemDecoration(it) }
     val sizePx = (separatorSizeDp * density).roundToInt()
     separator = if (sizePx > 0) {
-      SeparatorDecoration(sizePx, separatorColor, (separatorInsetStartDp * density).roundToInt(), (separatorInsetEndDp * density).roundToInt())
+      SeparatorDecoration(sizePx, separatorColor, (separatorInsetStartDp * density).roundToInt(), (separatorInsetEndDp * density).roundToInt()) { rows }
     } else {
       null
     }
@@ -393,11 +456,15 @@ class FlumeView(context: Context) : FrameLayout(context) {
     }
   }
 
-  // Applied once, when the first data lands with enough rows; a later index change starts over.
+  // Applied once, when the first data lands; an index at or past the data scrolls to the end, as FlatList does.
   private fun applyInitialScroll() {
     if (!initialScrollPending) return
     initialScrollPending = false
-    if (initialScrollIndex < adapter.itemCount) layoutManager.scrollToPositionWithOffset(initialScrollIndex, 0)
+    if (initialScrollIndex < rows.dataCount) {
+      layoutManager.scrollToPositionWithOffset(ScrollTargets.initialPosition(initialScrollIndex, rows), 0)
+    } else {
+      scrollToPosition(ScrollTargets.initialPosition(initialScrollIndex, rows), false, 1f, 0.0)
+    }
   }
 
   fun emitPress(index: Int, key: String, pressId: String?, long: Boolean) =

@@ -3,6 +3,7 @@ package me.sectiontn.flume
 import android.content.Context
 import androidx.recyclerview.widget.LinearSmoothScroller
 import android.util.DisplayMetrics
+import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -12,6 +13,16 @@ object ScrollTargets {
   fun startRow(targetPx: Int): Int? = if (targetPx <= 0) 0 else null
 
   fun clampIndex(index: Int, count: Int): Int? = if (count <= 0) null else index.coerceIn(0, count - 1)
+
+  // FlatList scrolls to the end for an initial index at or past the data.
+  fun initialPosition(index: Int, rows: ListRows): Int =
+    if (index < rows.dataCount) rows.position(maxOf(0, index)) else maxOf(0, rows.itemCount - 1)
+
+  // The rows a smooth scroll crosses; in a grid several positions share a row.
+  fun rowSpan(from: Int, to: Int, groupOf: (Int) -> Int): Int = abs(groupOf(to) - groupOf(from))
+
+  // At viewPosition 0 the offset does not depend on the row's length.
+  fun needsLength(viewPosition: Float): Boolean = viewPosition != 0f
 
   // A ScrollView animates any distance in a fixed time; a long jump speeds up so it fits the budget.
   fun speedMsPerPx(defaultMsPerPx: Float, distancePx: Int, budgetMs: Int): Float =

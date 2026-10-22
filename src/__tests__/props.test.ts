@@ -183,3 +183,22 @@ describe('nativeProps estimates', () => {
     expect(nativeProps({ data: [] }, warn).estimatedItemSize).toBe(-1);
   });
 });
+
+describe('nativeProps list components', () => {
+  it('maps the list components to flags', () => {
+    const warn = vi.fn();
+    const Header = () => null;
+    const flags = nativeProps(
+      { data: [], ListHeaderComponent: Header, ListEmptyComponent: Header },
+      warn,
+    );
+    expect(flags).toMatchObject({ listHeader: true, listFooter: false, listEmpty: true });
+    expect(nativeProps({ data: [] }, warn)).toMatchObject({ listHeader: false, listEmpty: false });
+  });
+
+  it('drops negative sticky indices', () => {
+    expect(
+      nativeProps({ data: [], stickyHeaderIndices: [-1, 2, 0] }, vi.fn()).stickyHeaderIndices,
+    ).toEqual([0, 2]);
+  });
+});

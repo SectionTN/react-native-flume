@@ -20,16 +20,21 @@ export type SlotLayout = {
 };
 
 // A slot sits absolute in the host across the padded cross axis, or at the grid cell width native reports;
-// null while that width is unknown. The holder places it along the main axis.
+// null while that width is unknown. The holder places it along the main axis; the empty row gets a minimum length.
 export function slotStyle(
-  _entry: SlotEntry,
+  entry: SlotEntry,
   fullSpan: boolean,
   layout: SlotLayout,
 ): ViewStyle | null {
   const { padding } = layout;
-  if (layout.horizontal) return { position: 'absolute', top: padding.top, bottom: padding.bottom };
+  const min = entry.minMain > 0 ? entry.minMain : undefined;
+  if (layout.horizontal) {
+    const style: ViewStyle = { position: 'absolute', top: padding.top, bottom: padding.bottom };
+    return min === undefined ? style : { ...style, minWidth: min };
+  }
   if (layout.numColumns <= 1 || fullSpan) {
-    return { position: 'absolute', left: padding.left, right: padding.right };
+    const style: ViewStyle = { position: 'absolute', left: padding.left, right: padding.right };
+    return min === undefined ? style : { ...style, minHeight: min };
   }
   if (layout.cellWidth < 0) return null;
   return { position: 'absolute', width: layout.cellWidth };

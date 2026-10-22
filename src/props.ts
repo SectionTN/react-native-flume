@@ -23,6 +23,9 @@ export type FlatProps = Pick<
   | 'contentPaddingBottom'
   | 'contentPaddingRight'
   | 'estimatedItemSize'
+  | 'listHeader'
+  | 'listFooter'
+  | 'listEmpty'
   | 'drawDistance'
   | 'initialScrollIndex'
   | 'separatorSize'
@@ -132,6 +135,12 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     warn('numColumns does not support horizontal; using one column');
     numColumns = 1;
   }
+  const initial = props.initialScrollIndex;
+  if (initial !== undefined && props.data.length > 0 && initial >= props.data.length) {
+    warn(
+      `initialScrollIndex ${initial} is past the ${props.data.length} items; scrolling to the end`,
+    );
+  }
   const padding = contentPadding(props.contentContainerStyle);
   if (padding.unsupported.length > 0) {
     warn(`contentContainerStyle supports padding only; ignored: ${padding.unsupported.join(', ')}`);
@@ -145,13 +154,18 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     contentPaddingBottom: padding.bottom,
     contentPaddingRight: padding.right,
     estimatedItemSize: props.estimatedItemSize ?? -1,
+    listHeader: props.ListHeaderComponent != null,
+    listFooter: props.ListFooterComponent != null,
+    listEmpty: props.ListEmptyComponent != null,
     drawDistance: props.drawDistance ?? -1,
     initialScrollIndex: props.initialScrollIndex ?? -1,
     separatorSize: props.separator?.size ?? 0,
     separatorColor: props.separator?.color,
     separatorInsetStart: props.separator?.insetStart ?? 0,
     separatorInsetEnd: props.separator?.insetEnd ?? 0,
-    stickyHeaderIndices: [...new Set(props.stickyHeaderIndices ?? [])].sort((a, b) => a - b),
+    stickyHeaderIndices: [...new Set(props.stickyHeaderIndices ?? [])]
+      .filter((index) => index >= 0)
+      .sort((a, b) => a - b),
     scrollEventThrottle: props.scrollEventThrottle ?? 16,
     emitScrollEvents:
       props.onScroll !== undefined ||

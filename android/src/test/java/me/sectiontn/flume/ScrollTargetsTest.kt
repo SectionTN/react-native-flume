@@ -1,7 +1,9 @@
 package me.sectiontn.flume
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ScrollTargetsTest {
@@ -39,5 +41,24 @@ class ScrollTargetsTest {
     assertEquals(0, ScrollTargets.startRow(0))
     assertEquals(0, ScrollTargets.startRow(-40))
     assertNull(ScrollTargets.startRow(1))
+  }
+
+  @Test
+  fun theInitialIndexCountsDataAndClampsToTheEnd() {
+    val rows = ListRows(header = true, dataCount = 10, footer = true)
+    assertEquals(4, ScrollTargets.initialPosition(3, rows))
+    assertEquals(11, ScrollTargets.initialPosition(40, rows))
+  }
+
+  @Test
+  fun aGridScrollCountsRows() {
+    val spans = FullSpans(intArrayOf(0))
+    assertEquals(3, ScrollTargets.rowSpan(1, 10) { spans.groupIndex(it, 3) })
+  }
+
+  @Test
+  fun alignmentAtTheStartNeedsNoLength() {
+    assertFalse(ScrollTargets.needsLength(0f))
+    assertTrue(ScrollTargets.needsLength(0.5f))
   }
 }

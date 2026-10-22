@@ -33,3 +33,21 @@ describe('slotStyle', () => {
     expect(slotStyle(row, false, strip)).toEqual({ position: 'absolute', top: 4, bottom: 6 });
   });
 });
+
+describe('slotStyle for the empty row', () => {
+  it('stretches the empty row to the reported length', () => {
+    const empty = { ...row, kind: SlotKind.empty, minMain: 300 };
+    expect(slotStyle(empty, true, layout)).toEqual({
+      position: 'absolute',
+      left: 16,
+      right: 8,
+      minHeight: 300,
+    });
+    const strip = {
+      ...layout,
+      horizontal: true,
+      padding: { top: 0, left: 0, bottom: 0, right: 0 },
+    };
+    expect(slotStyle(empty, true, strip)).toMatchObject({ minWidth: 300 });
+  });
+});

@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
-import { Button, Pressable, StyleSheet, Text, ToastAndroid, View } from 'react-native';
-import { type CellInfo, Flume } from 'react-native-flume';
+import { useMemo, useRef, useState } from 'react';
+import { Button, Pressable, StyleSheet, Text, TextInput, ToastAndroid, View } from 'react-native';
+import { type CellInfo, Flume, type FlumeRef } from 'react-native-flume';
 
 type Row = { id: string; n: number };
 
@@ -35,14 +35,53 @@ function RowCell({ item }: { item: Row }) {
 
 const renderItem = ({ item }: CellInfo<Row>) => <RowCell item={item} />;
 
+function Header() {
+  return (
+    <View style={styles.header}>
+      <Text style={styles.headerTitle}>React cells</Text>
+      <TextInput placeholder="Search" style={styles.input} />
+    </View>
+  );
+}
+
+function Empty() {
+  return (
+    <View style={styles.empty}>
+      <Text style={styles.emptyText}>Nothing here</Text>
+    </View>
+  );
+}
+
 export default function ReactScreen() {
-  const rows = useMemo(() => makeRows(), []);
+  const all = useMemo(() => makeRows(), []);
+  const [rows, setRows] = useState(all);
+  const [refreshing, setRefreshing] = useState(false);
+  const list = useRef<FlumeRef>(null);
+  const footer = useMemo(() => <Text style={styles.footer}>End of list</Text>, []);
+  const refresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  };
   return (
     <View style={styles.screen}>
       <View style={styles.controls}>
         <Button title="Block JS 3 s" onPress={() => blockJs(3000)} />
+        <Button title="Clear" onPress={() => setRows([])} />
+        <Button title="Refill" onPress={() => setRows(all)} />
+        <Button title="To 300" onPress={() => list.current?.scrollToIndex({ index: 300 })} />
       </View>
-      <Flume data={rows} renderItem={renderItem} estimatedItemSize={56} style={styles.screen} />
+      <Flume
+        ref={list}
+        data={rows}
+        renderItem={renderItem}
+        estimatedItemSize={56}
+        ListHeaderComponent={Header}
+        ListFooterComponent={footer}
+        ListEmptyComponent={Empty}
+        refreshing={refreshing}
+        onRefresh={refresh}
+        style={styles.screen}
+      />
     </View>
   );
 }
@@ -74,4 +113,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#0066ff',
   },
   buttonText: { color: '#ffffff', fontWeight: '600' },
+  header: { padding: 16, gap: 8, backgroundColor: '#f4f6fb' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#111111' },
+  input: {
+    borderWidth: 1,
+    borderColor: '#cccccc',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    height: 40,
+  },
+  footer: { padding: 24, textAlign: 'center', color: '#777777' },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  emptyText: { fontSize: 18, color: '#555555' },
 });

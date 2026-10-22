@@ -296,6 +296,38 @@ describe('Flume React cells', () => {
     expect(infos.every((info) => info.item !== undefined)).toBe(true);
   });
 
+  it('renders the list components in their slots', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const Header = () => createElement('HeaderNode');
+    const Footer = () => createElement('FooterNode');
+    const tree = await mount(
+      createElement(Flume, {
+        data: [item],
+        renderItem: () => null,
+        ListHeaderComponent: Header,
+        ListFooterComponent: createElement(Footer),
+      }),
+    );
+    const entry = (slot: number, kind: number, key: string): Entry => ({
+      slot,
+      kind,
+      key,
+      index: -1,
+      bound: true,
+      minMain: 0,
+    });
+    await sendSlots(tree, [entry(1, 1, 'header'), entry(2, 2, 'footer')]);
+    const ofKind = (kind: number) =>
+      tree.root.findAll(
+        (node) => String(node.type) === 'FlumeSlotView' && node.props.kind === kind,
+      );
+    expect(ofKind(1).length).toBeGreaterThan(0);
+    expect(ofKind(2).length).toBeGreaterThan(0);
+    for (const view of ofKind(1)) expect(view.findAllByType(Header)).toHaveLength(1);
+    for (const view of ofKind(2)) expect(view.findAllByType(Footer)).toHaveLength(1);
+  });
+
   it('re-renders mounted cells when extraData changes', async () => {
     installHost();
     const { Flume } = await import('../Flume');

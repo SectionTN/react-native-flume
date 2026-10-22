@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import type { ComponentType, ReactElement } from 'react';
 import type {
   LayoutChangeEvent,
   NativeScrollEvent,
@@ -224,7 +224,12 @@ export type FlumeProps<T> = {
   initialScrollIndex?: number;
   // A native line between consecutive rows, inset along the cross axis from the start and end edges.
   separator?: { size: number; color?: string; insetStart?: number; insetEnd?: number };
+  // Data indices, as FlashList counts them; FlatList counts the header too.
   stickyHeaderIndices?: number[];
+  // Rows around the data; the empty one shows instead of the data while it is empty, filling the viewport.
+  ListHeaderComponent?: ComponentType<object> | ReactElement | null;
+  ListFooterComponent?: ComponentType<object> | ReactElement | null;
+  ListEmptyComponent?: ComponentType<object> | ReactElement | null;
   // The ScrollView events with the ScrollView payload; contentOffset counts from the content start.
   onScroll?: ScrollHandler;
   onScrollBeginDrag?: ScrollHandler;

@@ -19,6 +19,12 @@ object SeparatorGeometry {
     if (row >= lastRow) return null
     return if (horizontal) (if (inverted) Edge.LEFT else Edge.RIGHT) else (if (inverted) Edge.TOP else Edge.BOTTOM)
   }
+
+  // Separators run between data rows only; rowOf gives a position's row, its span group in a grid.
+  fun edgeAt(position: Int, rows: ListRows, rowOf: (Int) -> Int, horizontal: Boolean, inverted: Boolean): Edge? {
+    if (rows.kind(position) != RowKind.DATA) return null
+    return edge(rowOf(position), rowOf(rows.position(rows.dataCount - 1)), horizontal, inverted)
+  }
 }
 
 // Reserves the gap through item offsets and paints it, inset along the cross axis from the padded edges.
@@ -27,6 +33,7 @@ class SeparatorDecoration(
   color: Int,
   private val insetStartPx: Int,
   private val insetEndPx: Int,
+  private val rows: () -> ListRows,
 ) : RecyclerView.ItemDecoration() {
   private val paint = Paint().apply { this.color = color }
   private val transparent = Color.alpha(color) == 0
@@ -46,18 +53,9 @@ class SeparatorDecoration(
   private fun edgeFor(view: View, parent: RecyclerView, state: RecyclerView.State): Edge? {
     val lm = parent.layoutManager as? LinearLayoutManager ?: return null
     val position = parent.getChildAdapterPosition(view)
-    val count = state.itemCount
-    if (position == RecyclerView.NO_POSITION || count == 0) return null
-    val row: Int
-    val lastRow: Int
-    if (lm is GridLayoutManager) {
-      row = lm.spanSizeLookup.getSpanGroupIndex(position, lm.spanCount)
-      lastRow = lm.spanSizeLookup.getSpanGroupIndex(count - 1, lm.spanCount)
-    } else {
-      row = position
-      lastRow = count - 1
-    }
-    return SeparatorGeometry.edge(row, lastRow, lm.orientation == RecyclerView.HORIZONTAL, lm.reverseLayout)
+    if (position == RecyclerView.NO_POSITION || state.itemCount == 0) return null
+    val rowOf: (Int) -> Int = if (lm is GridLayoutManager) { p -> lm.spanSizeLookup.getSpanGroupIndex(p, lm.spanCount) } else { p -> p }
+    return SeparatorGeometry.edgeAt(position, rows(), rowOf, lm.orientation == RecyclerView.HORIZONTAL, lm.reverseLayout)
   }
 
   override fun onDraw(canvas: Canvas, parent: RecyclerView, state: RecyclerView.State) {

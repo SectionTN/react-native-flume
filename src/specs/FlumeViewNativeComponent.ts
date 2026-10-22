@@ -53,6 +53,9 @@ export interface NativeProps extends ViewProps {
   contentPaddingBottom?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   contentPaddingRight?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   estimatedItemSize?: CodegenTypes.WithDefault<CodegenTypes.Double, -1>;
+  listHeader?: CodegenTypes.WithDefault<boolean, false>;
+  listFooter?: CodegenTypes.WithDefault<boolean, false>;
+  listEmpty?: CodegenTypes.WithDefault<boolean, false>;
   // In dp; -1 means one viewport.
   drawDistance?: CodegenTypes.WithDefault<CodegenTypes.Double, -1>;
   initialScrollIndex?: CodegenTypes.WithDefault<CodegenTypes.Int32, -1>;

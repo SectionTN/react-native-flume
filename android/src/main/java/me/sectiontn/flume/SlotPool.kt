@@ -25,6 +25,7 @@ class SlotPool(private val maxFree: Int = MAX_FREE) {
   private class Slot(val id: Int, val group: SlotGroup, val kind: Int, val key: String) {
     var index = -1
     var owner = 0
+    var minMainDp = 0f
   }
 
   private val slots = HashMap<Int, Slot>()
@@ -67,6 +68,13 @@ class SlotPool(private val maxFree: Int = MAX_FREE) {
     dirty = true
   }
 
+  fun setMinMain(slot: Int, dp: Float) {
+    val entry = slots[slot] ?: return
+    if (entry.minMainDp == dp) return
+    entry.minMainDp = dp
+    dirty = true
+  }
+
   fun ownerOf(slot: Int): Int? = slots[slot]?.owner?.takeIf { it != 0 }
 
   fun entry(slot: Int): SlotEntry? = slots[slot]?.toEntry()
@@ -79,7 +87,7 @@ class SlotPool(private val maxFree: Int = MAX_FREE) {
   private fun Slot.matches(group: SlotGroup, kind: Int, key: String) =
     this.group == group && this.kind == kind && this.key == key
 
-  private fun Slot.toEntry() = SlotEntry(id, kind, key, index, bound = owner != 0)
+  private fun Slot.toEntry() = SlotEntry(id, kind, key, index, bound = owner != 0, minMainDp = minMainDp)
 
   companion object {
     const val MAX_FREE = 20

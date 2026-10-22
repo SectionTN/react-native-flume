@@ -42,7 +42,8 @@ class StickyHeaderHost(private val view: FlumeView, val pinnedView: FlumeCellVie
   init {
     pinnedView.visibility = View.GONE
     pinnedView.onPress = { id, long ->
-      if (pinnedIndex >= 0) view.emitPress(pinnedIndex, FlumeJni.keyAt(view.storeId, pinnedIndex), id, long)
+      val index = view.rows.dataIndex(pinnedIndex)
+      if (index >= 0) view.emitPress(index, FlumeJni.keyAt(view.storeId, index), id, long)
     }
   }
 
@@ -70,7 +71,7 @@ class StickyHeaderHost(private val view: FlumeView, val pinnedView: FlumeCellVie
       return
     }
     if (force || result.index != pinnedIndex) {
-      bind(result.index, horizontal)
+      if (!bind(result.index, horizontal)) return hide()
       result = StickyResolver.resolve(indices, frames, count, lm.reverseLayout, pinnedLength) ?: return hide()
     }
     place(horizontal)
@@ -78,14 +79,17 @@ class StickyHeaderHost(private val view: FlumeView, val pinnedView: FlumeCellVie
     if (horizontal) pinnedView.translationX = result.translation.toFloat() else pinnedView.translationY = result.translation.toFloat()
   }
 
-  private fun bind(index: Int, horizontal: Boolean) {
+  // index is an adapter position; a React row binds nothing here.
+  private fun bind(index: Int, horizontal: Boolean): Boolean {
     pinnedView.horizontal = horizontal
     val geometry = view.geometry
-    val batch = FlumeJni.bind(view.storeId, holderId, index, geometry.cellWidthDp(fullSpan = true), geometry.cellHeightDp()) ?: return
+    val dataIndex = view.rows.dataIndex(index).takeIf { it >= 0 } ?: return false
+    val batch = FlumeJni.bind(view.storeId, holderId, dataIndex, geometry.cellWidthDp(fullSpan = true), geometry.cellHeightDp()) ?: return false
     pinnedView.apply(batch)
     pinnedIndex = index
     pinnedLength = if (horizontal) pinnedView.rootWidthPx else pinnedView.rootHeightPx
     layoutPinned(horizontal)
+    return true
   }
 
   // A bind often runs inside the host's own layout pass, which drops the layout request it makes, so the copy is measured here.

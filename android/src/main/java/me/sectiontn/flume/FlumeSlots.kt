@@ -91,6 +91,13 @@ class FlumeSlots(private val host: FlumeView) {
     flush()
   }
 
+  // The empty row fills the viewport the header and footer leave; JS gives its slot that minimum length.
+  fun setMinMain(holder: FlumeSlotHolder, dp: Float) {
+    if (holder.slot == 0) return
+    pool.setMinMain(holder.slot, dp)
+    flush()
+  }
+
   fun reindex(holder: FlumeSlotHolder, index: Int) {
     if (holder.slot == 0 || index < 0) return
     pool.setIndex(holder.slot, index)
