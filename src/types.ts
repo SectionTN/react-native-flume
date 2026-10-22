@@ -217,6 +217,8 @@ export type FlumeProps<T> = {
   inverted?: boolean;
   // Padding only, as the spec says; other keys warn in development.
   contentContainerStyle?: StyleProp<ViewStyle>;
+  // React cells only: the length in dp a cell takes until it measures; else the mean of its type, at least 50.
+  estimatedItemSize?: number;
   // How far past the viewport, in dp, cells are bound ahead; the default is one viewport.
   drawDistance?: number;
   initialScrollIndex?: number;

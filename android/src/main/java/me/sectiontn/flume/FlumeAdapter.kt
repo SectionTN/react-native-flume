@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import kotlin.math.roundToInt
 
 class FlumeAdapter(
   private val context: Context,
@@ -17,10 +16,6 @@ class FlumeAdapter(
   class Holder(val view: View) : RecyclerView.ViewHolder(view) {
     val cell: FlumeCellView? get() = view as? FlumeCellView
     val slot: FlumeSlotHolder? get() = view as? FlumeSlotHolder
-  }
-
-  private companion object {
-    const val ESTIMATE_DP = 50f
   }
 
   private val density = context.resources.displayMetrics.density
@@ -211,7 +206,6 @@ class FlumeAdapter(
     if (!geometry.ready) return
     holder.slot?.let { slot ->
       if (slot.horizontal != geometry.horizontal) orient(slot)
-      slot.estimatePx = (ESTIMATE_DP * density).roundToInt()
       slots.bind(slot, SlotGroup(holder.itemViewType), SlotKinds.ROW, FlumeJni.keyAt(storeId, position), position)
       return
     }

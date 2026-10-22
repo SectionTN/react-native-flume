@@ -42,7 +42,7 @@ export default function ReactScreen() {
       <View style={styles.controls}>
         <Button title="Block JS 3 s" onPress={() => blockJs(3000)} />
       </View>
-      <Flume data={rows} renderItem={renderItem} style={styles.screen} />
+      <Flume data={rows} renderItem={renderItem} estimatedItemSize={56} style={styles.screen} />
     </View>
   );
 }

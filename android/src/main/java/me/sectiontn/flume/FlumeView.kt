@@ -469,9 +469,15 @@ class FlumeView(context: Context) : FrameLayout(context) {
     super.onDetachedFromWindow()
   }
 
-  // Fabric never runs a second Android layout pass, so a RecyclerView relayout has to be driven here.
+  // Fabric never runs a second Android layout pass, so a RecyclerView relayout is driven here: one pending pass
+  // however many slots resize in a mount batch. No flag: the super constructor calls this before fields exist.
   override fun requestLayout() {
     super.requestLayout()
+    removeCallbacks(measureAndLayout)
     post(measureAndLayout)
+  }
+
+  fun setEstimatedItemSize(dp: Double) {
+    slots.estimator.estimatedPx = if (dp < 0) -1 else (dp * density).roundToInt()
   }
 }

@@ -175,3 +175,11 @@ describe('nativeProps anchoring', () => {
     ).toEqual({ autoscrollToBottomThreshold: 0.2 });
   });
 });
+
+describe('nativeProps estimates', () => {
+  it('passes estimatedItemSize, -1 when absent', () => {
+    const warn = vi.fn();
+    expect(nativeProps({ data: [], estimatedItemSize: 72 }, warn).estimatedItemSize).toBe(72);
+    expect(nativeProps({ data: [] }, warn).estimatedItemSize).toBe(-1);
+  });
+});

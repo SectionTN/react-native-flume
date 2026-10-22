@@ -9,6 +9,7 @@ import com.facebook.react.uimanager.PointerEvents
 import com.facebook.react.uimanager.ReactPointerEventsView
 import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.Event
+import kotlin.math.roundToInt
 
 // The bay for slot views no holder shows: zero size, invisible and out of touch targeting, so they stay mounted.
 class SlotParking(context: Context) : ViewGroup(context), ReactPointerEventsView {
@@ -26,10 +27,16 @@ class SlotParking(context: Context) : ViewGroup(context), ReactPointerEventsView
 
 // The host's Fabric children and the holders that show them; JS renders the slots the pool lists.
 class FlumeSlots(private val host: FlumeView) {
+  private companion object {
+    const val ESTIMATE_FLOOR_DP = 50f
+  }
+
   val parking = SlotParking(host.context)
   val pool = SlotPool()
+  val estimator = SizeEstimator((ESTIMATE_FLOOR_DP * host.resources.displayMetrics.density).roundToInt())
   private val children = FabricChildren<View> { (it as? FlumeSlotView)?.slot ?: 0 }
   private val holders = HashMap<Int, FlumeSlotHolder>()
+  private val recorded = HashMap<Int, Int>()
   var cellWidthDp = -1f
   private var sentCellWidthDp = Float.NaN
   private var flushPosted = false
@@ -46,7 +53,12 @@ class FlumeSlots(private val host: FlumeView) {
       parking.addView(child)
       return
     }
-    view.onMeasured = { measured -> holderShowing(measured)?.refresh() }
+    view.onMeasured = { measured ->
+      holderShowing(measured)?.let { holder ->
+        recordLength(holder)
+        holder.refresh()
+      }
+    }
     val holder = holders[view.slot]
     if (holder != null) holder.show(view) else parking.addView(view)
   }
@@ -55,6 +67,7 @@ class FlumeSlots(private val host: FlumeView) {
     val child = children.removeAt(index)
     (child as? FlumeSlotView)?.let { view ->
       view.onMeasured = null
+      recorded.remove(view.slot)
       holderShowing(view)?.show(null)
     }
     (child.parent as? ViewGroup)?.removeView(child)
@@ -64,8 +77,11 @@ class FlumeSlots(private val host: FlumeView) {
     if (holder.slot != 0 && pool.entry(holder.slot)?.key != key) release(holder)
     val slot = pool.acquire(holder.owner, group, kind, key, index)
     holder.slot = slot
+    holder.group = group
+    holder.estimatePx = estimator.estimatePx(group)
     holders[slot] = holder
     holder.show(children.bySlot(slot) as? FlumeSlotView)
+    recordLength(holder)
     flush()
   }
 
@@ -102,6 +118,14 @@ class FlumeSlots(private val host: FlumeView) {
   }
 
   private fun holderShowing(view: FlumeSlotView): FlumeSlotHolder? = holders[view.slot]?.takeIf { it.view === view }
+
+  // Each new length of a shown slot feeds its group's estimate once.
+  private fun recordLength(holder: FlumeSlotHolder) {
+    val view = holder.view?.takeIf { it.measured } ?: return
+    val group = holder.group ?: return
+    val length = view.lengthPx(holder.horizontal)
+    if (recorded.put(view.slot, length) != length) estimator.record(group, length)
+  }
 }
 
 class FlumeSlotsEvent(

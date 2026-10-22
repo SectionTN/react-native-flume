@@ -12,6 +12,7 @@ class FlumeSlotHolder(context: Context, private val parking: ViewGroup) : ViewGr
   var estimatePx = 0
   var owner = 0
   var slot = 0
+  var group: SlotGroup? = null
   var view: FlumeSlotView? = null
     private set
   private var touch = PointerEvents.NONE

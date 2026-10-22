@@ -22,6 +22,7 @@ export type FlatProps = Pick<
   | 'contentPaddingLeft'
   | 'contentPaddingBottom'
   | 'contentPaddingRight'
+  | 'estimatedItemSize'
   | 'drawDistance'
   | 'initialScrollIndex'
   | 'separatorSize'
@@ -143,6 +144,7 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     contentPaddingLeft: padding.left,
     contentPaddingBottom: padding.bottom,
     contentPaddingRight: padding.right,
+    estimatedItemSize: props.estimatedItemSize ?? -1,
     drawDistance: props.drawDistance ?? -1,
     initialScrollIndex: props.initialScrollIndex ?? -1,
     separatorSize: props.separator?.size ?? 0,

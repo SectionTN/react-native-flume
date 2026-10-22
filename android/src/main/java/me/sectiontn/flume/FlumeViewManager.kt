@@ -89,6 +89,9 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
     view.drawDistanceDp = value
   }
 
+  @ReactProp(name = "estimatedItemSize", defaultDouble = -1.0)
+  override fun setEstimatedItemSize(view: FlumeView, value: Double) = view.setEstimatedItemSize(value)
+
   @ReactProp(name = "initialScrollIndex", defaultInt = -1)
   override fun setInitialScrollIndex(view: FlumeView, value: Int) {
     view.initialScrollIndex = value
