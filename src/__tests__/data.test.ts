@@ -67,3 +67,28 @@ describe('diffData types and keys', () => {
     expect(d.next.byKey.get('a:3')).toEqual({ id: 'a', n: 8 });
   });
 });
+
+describe('diffData by type', () => {
+  it('sends only the items of types that render natively', () => {
+    const items = [
+      { id: 'a', t: 'w' },
+      { id: 'b', t: 'r' },
+    ];
+    const d = diffData(
+      undefined,
+      items,
+      undefined,
+      (i) => i.t,
+      (t) => t === 'w',
+    );
+    expect(d.changedIndices).toEqual([0]);
+    expect(d.changedItems).toEqual([items[0]]);
+    expect(d.next.types.get('b')).toBe('r');
+  });
+
+  it('counts a type change as a change', () => {
+    const x = { id: 'a', t: 'r' };
+    const first = diffData(undefined, [x], undefined, (i) => i.t);
+    expect(diffData(first.next, [x], undefined, () => 'w').changedIndices).toEqual([0]);
+  });
+});

@@ -2,6 +2,7 @@ export { cell } from './cell';
 export { Flume } from './Flume';
 export type {
   CellImageProps,
+  CellInfo,
   CellNode,
   CellPressableProps,
   CellStyle,
@@ -10,6 +11,7 @@ export type {
   FlumeRef,
   MaintainVisibleContentPosition,
   PressInfo,
+  ReactCell,
   ScrollHandler,
   ViewabilityConfig,
   ViewToken,

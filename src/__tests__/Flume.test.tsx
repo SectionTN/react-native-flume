@@ -18,14 +18,23 @@ vi.mock('../specs/FlumeViewNativeComponent', () => ({
   Commands: { scrollToIndex: vi.fn(), scrollToOffset: vi.fn(), scrollToEnd: vi.fn() },
 }));
 
-type DataCall = { storeId: number; keys: string[]; changedIndices: number[]; alive: boolean };
+type DataCall = {
+  storeId: number;
+  keys: string[];
+  changedIndices: number[];
+  changedItems: unknown[];
+  alive: boolean;
+};
 type CellCall = { storeId: number; alive: boolean };
+type KindsCall = { storeId: number; reactByDefault: boolean; reactTypes: string[] };
 
-// Records what reaches the native host and whether the store was still alive when it did.
+// Records what reaches the native host, in order, and whether the store was still alive when it did.
 function installHost() {
   const alive = new Set<number>();
   const data: DataCall[] = [];
   const cells: CellCall[] = [];
+  const kinds: KindsCall[] = [];
+  const log: string[] = [];
   let reporter: ((level: number, message: string) => void) | undefined;
   let next = 1;
   const host: FlumeHost = {
@@ -39,13 +48,17 @@ function installHost() {
     releaseStore: (storeId) => {
       alive.delete(storeId);
     },
-    setData: (storeId, keys, _types, changedIndices) => {
-      data.push({ storeId, keys, changedIndices, alive: alive.has(storeId) });
+    setData: (storeId, keys, _types, changedIndices, changedItems) => {
+      data.push({ storeId, keys, changedIndices, changedItems, alive: alive.has(storeId) });
+      log.push(`data [${changedIndices.join(',')}]`);
     },
     setCell: (storeId) => {
       cells.push({ storeId, alive: alive.has(storeId) });
     },
-    setCellKinds: () => {},
+    setCellKinds: (storeId, reactByDefault, reactTypes) => {
+      kinds.push({ storeId, reactByDefault, reactTypes });
+      log.push(`kinds ${reactByDefault} [${reactTypes.join(',')}]`);
+    },
     setReporter: (fn) => {
       reporter = fn;
     },
@@ -55,6 +68,8 @@ function installHost() {
     alive,
     data,
     cells,
+    kinds,
+    log,
     report: (level: number, message: string) => reporter?.(level, message),
     hasReporter: () => reporter !== undefined,
   };
@@ -90,7 +105,13 @@ describe('Flume store lifecycle', () => {
     const storeId = renderedStoreId(tree);
     expect(host.alive.has(storeId)).toBe(true);
     expect(host.cells.at(-1)).toEqual({ storeId, alive: true });
-    expect(host.data.at(-1)).toEqual({ storeId, keys: ['a'], changedIndices: [0], alive: true });
+    expect(host.data.at(-1)).toEqual({
+      storeId,
+      keys: ['a'],
+      changedIndices: [0],
+      changedItems: [item],
+      alive: true,
+    });
   });
 
   it('releases the rendered store on unmount', async () => {
@@ -142,6 +163,51 @@ describe('Flume props', () => {
     expect(host.hasReporter()).toBe(true);
     host.report(2, 'boom');
     expect(error).toHaveBeenCalledWith('react-native-flume: boom');
+  });
+});
+
+describe('Flume cell kinds', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+  });
+
+  it('a React list sends keys and types without items', async () => {
+    const host = installHost();
+    const { Flume } = await import('../Flume');
+    const tree = await mount(createElement(Flume, { data: [item], renderItem: () => null }));
+    const storeId = renderedStoreId(tree);
+    expect(host.kinds.at(-1)).toEqual({ storeId, reactByDefault: true, reactTypes: [] });
+    expect(host.data.at(-1)).toMatchObject({ storeId, keys: ['a'], changedIndices: [] });
+  });
+
+  it('a kinds change sends the worklet items again', async () => {
+    const host = installHost();
+    const { Flume } = await import('../Flume');
+    const data = [item];
+    const reactCells = { default: () => null };
+    const tree = await mount(createElement(Flume, { data, renderCell, reactCells }));
+    expect(host.data.at(-1)?.changedIndices).toEqual([]);
+    const mark = host.log.length;
+    await act(async () => {
+      tree.update(createElement(Flume, { data, renderCell }));
+    });
+    expect(host.log.slice(mark)).toEqual(['kinds false []', 'data [0]']);
+  });
+
+  it('reports a type without a renderer once', async () => {
+    installHost();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { Flume } = await import('../Flume');
+    const props = { data: [item], getItemType: () => 'x', reactCells: { voice: () => null } };
+    const tree = await mount(createElement(Flume, props));
+    await act(async () => {
+      tree.update(createElement(Flume, { ...props, data: [{ ...item }] }));
+    });
+    const calls = error.mock.calls.filter((call) =>
+      String(call[0]).includes('no renderer for type "x"'),
+    );
+    expect(calls).toHaveLength(1);
   });
 });
 

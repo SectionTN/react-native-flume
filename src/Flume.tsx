@@ -7,10 +7,12 @@ import {
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { createSerializable } from 'react-native-worklets';
+import { cellKinds, type ResolvedCell, resolveCell } from './cells';
 import { type DataState, diffData } from './data';
 import { nativeProps } from './props';
 import FlumeViewNativeComponent, {
@@ -27,6 +29,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     data,
     renderCell,
     renderItem,
+    reactCells,
     keyExtractor,
     getItemType,
     itemAnimations = true,
@@ -49,19 +52,20 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const host = getHost();
   const [storeId, setStoreId] = useState(() => host.createStore());
   const released = useRef(false);
-  const prev = useRef<{ storeId: number; state?: DataState<T> }>({ storeId });
+  const prev = useRef<{ storeId: number; signature?: string; state?: DataState<T> }>({ storeId });
   const warned = useRef({ duplicates: false, messages: new Set<string>() });
   const nativeRef = useRef<ComponentRef<typeof FlumeViewNativeComponent>>(null);
   const lastViewable = useRef(new Map<string, T>());
   const count = useRef(data.length);
   count.current = data.length;
 
-  // Each distinct message warns once per mount, in development only.
-  const warn = useCallback((message: string) => {
+  // Each distinct message reports once per mount, in development only.
+  const report = useCallback((level: 'warn' | 'error', message: string) => {
     if (!isDev || warned.current.messages.has(message)) return;
     warned.current.messages.add(message);
-    console.warn(`react-native-flume: ${message}`);
+    console[level](`react-native-flume: ${message}`);
   }, []);
+  const warn = useCallback((message: string) => report('warn', message), [report]);
 
   if (renderCell !== undefined && renderItem !== undefined) {
     warn('renderItem is ignored when renderCell is given; use reactCells to mix the two');
@@ -86,10 +90,38 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     if (renderCell !== undefined) host.setCell(storeId, createSerializable(renderCell));
   }, [host, storeId, renderCell]);
 
+  const kinds = cellKinds({ renderCell, reactCells });
+  const latest = useRef({ renderCell, renderItem, reactCells, kinds });
+  latest.current = { renderCell, renderItem, reactCells, kinds };
+  const { signature } = kinds;
+
+  // The diff runs during render so a React cell sees its new item in the commit that changes the data;
+  // it starts over for a new store or new cell kinds, since native then needs every worklet item again.
+  const commit = useMemo(() => {
+    const last = prev.current;
+    const base = last.storeId === storeId && last.signature === signature ? last.state : undefined;
+    const kindOf = new Map<string, ResolvedCell<T>['kind']>();
+    const missing: string[] = [];
+    const sendsItem = (type: string) => {
+      let kind = kindOf.get(type);
+      if (kind === undefined) {
+        kind = resolveCell(type, latest.current).kind;
+        kindOf.set(type, kind);
+        if (kind === 'none') missing.push(type);
+      }
+      return kind === 'worklet';
+    };
+    const diff = diffData(base, data, keyExtractor, getItemType, sendsItem);
+    return { kinds: latest.current.kinds, diff, missing };
+  }, [storeId, signature, data, keyExtractor, getItemType]);
+
   useLayoutEffect(() => {
-    if (prev.current.storeId !== storeId) prev.current = { storeId };
-    const diff = diffData(prev.current.state, data, keyExtractor, getItemType);
-    prev.current.state = diff.next;
+    const { kinds, diff, missing } = commit;
+    if (prev.current.storeId !== storeId || prev.current.signature !== kinds.signature) {
+      host.setCellKinds(storeId, kinds.reactByDefault, kinds.reactTypes);
+    }
+    prev.current = { storeId, signature: kinds.signature, state: diff.next };
+    for (const type of missing) report('error', `no renderer for type "${type}"`);
     if (isDev && diff.duplicates.length > 0 && !warned.current.duplicates) {
       warned.current.duplicates = true;
       console.warn(
@@ -104,7 +136,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       diff.changedItems,
       diff.stableKeys,
     );
-  }, [host, storeId, data, keyExtractor, getItemType]);
+  }, [host, storeId, commit, report]);
 
   // FlatList's defaults: animated, the item at the start edge; native clamps the index.
   useImperativeHandle(

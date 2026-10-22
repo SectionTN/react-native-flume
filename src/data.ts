@@ -4,6 +4,7 @@ export type TypeExtractor<T> = (item: T, index: number) => string;
 export type DataState<T> = {
   keys: string[];
   byKey: Map<string, T>;
+  types: Map<string, string>;
 };
 
 export type DataDiff<T> = {
@@ -29,7 +30,7 @@ export function defaultKey(item: unknown, index: number): string {
   return ownKey(item) ?? String(index);
 }
 
-// An item is changed when its key is new or its reference differs from the previous item of that key.
+// Changed means a new key, a new reference or a new type; only items sendsItem accepts are sent.
 // Keys are stable (so moves can animate) with a user extractor or when every item carries an id or key.
 // A repeated key gets a numeric suffix so the native diff stays consistent; the wrapper warns in development.
 export function diffData<T>(
@@ -37,6 +38,7 @@ export function diffData<T>(
   data: readonly T[],
   keyExtractor: KeyExtractor<T> | undefined,
   getItemType?: TypeExtractor<T>,
+  sendsItem?: (type: string) => boolean,
 ): DataDiff<T> {
   const extract = keyExtractor ?? defaultKey;
   const userKeys = keyExtractor !== undefined && keyExtractor !== defaultKey;
@@ -45,6 +47,7 @@ export function diffData<T>(
   const changedIndices: number[] = [];
   const changedItems: T[] = [];
   const byKey = new Map<string, T>();
+  const typeByKey = new Map<string, string>();
   const seen = new Map<string, number>();
   const duplicates: string[] = [];
   let stableKeys = true;
@@ -60,9 +63,13 @@ export function diffData<T>(
       key = `${base}:${repeats + 1}`;
     }
     keys[i] = key;
-    types[i] = getItemType?.(item, i) ?? 'default';
+    const type = getItemType?.(item, i) ?? 'default';
+    types[i] = type;
     byKey.set(key, item);
-    if (prev === undefined || prev.byKey.get(key) !== item) {
+    typeByKey.set(key, type);
+    const changed =
+      prev === undefined || prev.byKey.get(key) !== item || prev.types.get(key) !== type;
+    if (changed && (sendsItem === undefined || sendsItem(type))) {
       changedIndices.push(i);
       changedItems.push(item);
     }
@@ -72,7 +79,7 @@ export function diffData<T>(
     types,
     changedIndices,
     changedItems,
-    next: { keys, byKey },
+    next: { keys, byKey, types: typeByKey },
     stableKeys,
     duplicates,
   };

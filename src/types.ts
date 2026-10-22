@@ -188,11 +188,23 @@ export type MaintainVisibleContentPosition = {
 
 export type ScrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 
+// FlashList's render info; a pinned copy of a sticky row renders with the StickyHeader target.
+export type CellInfo<T> = {
+  item: T;
+  index: number;
+  target: 'Cell' | 'StickyHeader';
+  extraData?: unknown;
+};
+
+export type ReactCell<T> = (info: CellInfo<T>) => ReactElement | null;
+
 export type FlumeProps<T> = {
   data: readonly T[];
   renderCell?: (item: T, index: number) => CellNode;
-  // Accepted for migration; React cells render in a later version.
-  renderItem?: (info: { item: T; index: number }) => ReactElement | null;
+  // The React renderer for every type without a worklet cell or a reactCells entry.
+  renderItem?: ReactCell<T>;
+  // React renderers by item type; they take precedence over renderCell.
+  reactCells?: Record<string, ReactCell<T>>;
   keyExtractor?: (item: T, index: number) => string;
   getItemType?: (item: T, index: number) => string;
   extraData?: unknown;
