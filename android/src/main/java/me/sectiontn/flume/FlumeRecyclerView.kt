@@ -1,8 +1,10 @@
 package me.sectiontn.flume
 
 import android.content.Context
+import android.os.Build
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import androidx.recyclerview.widget.RecyclerView
@@ -35,6 +37,11 @@ object KeyboardTapPolicy {
   }
 }
 
+// ScrollView's rule: a focused input with the keyboard shown; before API 30 the IME's visibility is unknown and counts as shown.
+object KeyboardState {
+  fun dismissible(hasFocusedInput: Boolean, imeVisible: Boolean?): Boolean = hasFocusedInput && imeVisible != false
+}
+
 object OverScroll {
   fun mode(value: String?): Int = when (value) {
     "always" -> View.OVER_SCROLL_ALWAYS
@@ -53,7 +60,8 @@ class FlumeRecyclerView(context: Context) : RecyclerView(context) {
   override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
     if (e.actionMasked == MotionEvent.ACTION_DOWN) {
       swallowing = false
-      val decision = KeyboardTapPolicy.decide(keyboardShouldPersistTaps, focusedInput() != null, pressableHitAt(e.x, e.y))
+      val keyboardUp = KeyboardState.dismissible(focusedInput() != null, imeVisible())
+      val decision = KeyboardTapPolicy.decide(keyboardShouldPersistTaps, keyboardUp, pressableHitAt(e.x, e.y))
       if (decision.dismiss) dismissKeyboard()
       if (decision.swallow) {
         swallowing = true
@@ -83,6 +91,9 @@ class FlumeRecyclerView(context: Context) : RecyclerView(context) {
   }
 
   private fun focusedInput(): View? = (context as? ReactContext)?.currentActivity?.currentFocus as? EditText
+
+  private fun imeVisible(): Boolean? =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) rootWindowInsets?.isVisible(WindowInsets.Type.ime()) else null
 
   private fun pressableHitAt(x: Float, y: Float): Boolean {
     val cell = findChildViewUnder(x, y) as? FlumeCellView ?: return false
