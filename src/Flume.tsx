@@ -19,7 +19,14 @@ import { cellKinds, type ResolvedCell, resolveCell } from './cells';
 import { type DataState, diffData } from './data';
 import { FlumeSlot } from './FlumeSlot';
 import { contentPadding, nativeProps } from './props';
-import { type SlotEntry, SlotKind, type SlotLayout } from './slots';
+import {
+  applySnapshot,
+  prerender,
+  type SlotEntry,
+  SlotKind,
+  type SlotLayout,
+  type SlotTable,
+} from './slots';
 import FlumeViewNativeComponent, {
   Commands,
   type NativeProps,
@@ -50,6 +57,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     horizontal = false,
     numColumns = 1,
     stickyHeaderIndices,
+    initialScrollIndex,
     ListHeaderComponent,
     ListFooterComponent,
     ListEmptyComponent,
@@ -112,6 +120,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   }, [host, storeId, renderCell]);
 
   const kinds = cellKinds({ renderCell, reactCells });
+  const prerendering = useRef(false);
   const latest = useRef({ renderCell, renderItem, reactCells, kinds });
   latest.current = { renderCell, renderItem, reactCells, kinds };
   const { signature } = kinds;
@@ -133,7 +142,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       return kind === 'worklet';
     };
     const diff = diffData(base, data, keyExtractor, getItemType, sendsItem);
-    return { kinds: latest.current.kinds, diff, missing };
+    return { kinds: latest.current.kinds, diff, missing, first: base === undefined };
   }, [storeId, signature, data, keyExtractor, getItemType]);
 
   useLayoutEffect(() => {
@@ -156,16 +165,23 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       diff.changedIndices,
       diff.changedItems,
       diff.stableKeys,
+      !commit.first && prerendering.current,
     );
   }, [host, storeId, commit, report]);
 
-  // Native's slot table: every slot it holds or keeps for scroll-back, each rendered as one React cell.
-  const [table, setTable] = useState<{ slots: readonly SlotEntry[]; cellWidth: number }>({
-    slots: [],
+  // Every slot native holds or keeps for scroll-back, plus the pre-rendered ones it has not registered yet;
+  // each renders as one React cell.
+  const [table, setTable] = useState<SlotTable>({
+    native: [],
+    pending: [],
+    jsSeen: 0,
     cellWidth: -1,
   });
+  const nextSlot = useRef(-1);
+  // React Native pools the event and nulls nativeEvent once this returns, before the updater runs.
   const onSlotsChanged = useCallback((event: { nativeEvent: SlotsEvent }) => {
-    setTable({ slots: event.nativeEvent.slots, cellWidth: event.nativeEvent.cellWidth });
+    const snapshot = event.nativeEvent;
+    setTable((current) => applySnapshot(current, snapshot));
   }, []);
   const padding = contentPadding(props.contentContainerStyle);
   const { cellWidth } = table;
@@ -195,7 +211,48 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         : kind === SlotKind.empty
           ? empty
           : null;
-  const cells = table.slots.map((entry) => {
+  // The cells native is about to show, rendered before it asks so their first frame has content; a grid cell
+  // waits for its width.
+  const gridWaiting = !horizontal && numColumns > 1 && cellWidth < 0;
+  const fresh = useMemo(() => {
+    const { keys, types } = commit.diff.next;
+    return prerender({
+      table,
+      keys,
+      header: header !== null,
+      footer: footer !== null,
+      start: initialScrollIndex ?? 0,
+      nextId: nextSlot.current,
+      react: (key) => {
+        const type = types.get(key);
+        return (
+          !gridWaiting && type !== undefined && resolveCell(type, latest.current).kind === 'react'
+        );
+      },
+    });
+  }, [table, commit, header, footer, initialScrollIndex, gridWaiting]);
+  // React Native schedules the mount after the layout effects, so a data change that brings pre-rendered cells
+  // waits in the store until native has registered them (first data waits for nothing: the list mounts with it).
+  prerendering.current = fresh.length > 0;
+  // StrictMode replays this effect, so an entry already pending is not added twice.
+  useLayoutEffect(() => {
+    const last = fresh.at(-1);
+    if (last === undefined) return;
+    nextSlot.current = Math.min(nextSlot.current, last.slot - 1);
+    setTable((current) => {
+      const known = new Set(current.pending.map((entry) => entry.slot));
+      const added = fresh.filter((entry) => !known.has(entry.slot));
+      return added.length === 0 ? current : { ...current, pending: [...current.pending, ...added] };
+    });
+  }, [fresh]);
+  // Ordered by slot id, so an entry keeps its place among the host's children from pending to native.
+  const entries = useMemo(() => {
+    const bySlot = new Map<number, SlotEntry>();
+    for (const entry of [...fresh, ...table.pending, ...table.native])
+      bySlot.set(entry.slot, entry);
+    return [...bySlot.values()].sort((a, b) => a.slot - b.slot);
+  }, [fresh, table]);
+  const cells = entries.map((entry) => {
     const { byKey, types } = commit.diff.next;
     const type = types.get(entry.key);
     const resolved = type === undefined ? undefined : resolveCell(type, latest.current);

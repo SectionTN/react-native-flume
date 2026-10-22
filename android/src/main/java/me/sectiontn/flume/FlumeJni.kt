@@ -34,4 +34,7 @@ object FlumeJni {
 
   // Drops the measure cache so the next binds measure at the current width and font scale.
   @JvmStatic external fun invalidateMeasures(storeId: Int)
+
+  // Applies data JS deferred until its pre-rendered cells mounted.
+  @JvmStatic external fun refresh(storeId: Int)
 }

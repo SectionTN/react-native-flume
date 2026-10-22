@@ -61,4 +61,37 @@ class SlotPoolTest {
     pool.setIndex(b, 2)
     assertTrue(pool.dirty)
   }
+
+  @Test
+  fun aBindAdoptsAPreRenderedSlotForItsKey() {
+    val pool = SlotPool()
+    pool.register(-1, SlotKinds.ROW, "a")
+    assertEquals(-1, pool.acquire(1, list, SlotKinds.ROW, "a", 0))
+    assertEquals(-1, pool.jsSeen)
+    assertNotEquals(-1, pool.acquire(2, cards, SlotKinds.ROW, "a", 0))
+  }
+
+  @Test
+  fun aReleaseNeverEvictsAPreRenderedSlot() {
+    val pool = SlotPool(maxFree = 2)
+    pool.register(-1, SlotKinds.ROW, "a")
+    listOf("x", "y", "z").forEachIndexed { i, key -> pool.release(i + 1, pool.acquire(i + 1, list, SlotKinds.ROW, key, i)) }
+    assertEquals(-1, pool.acquire(9, list, SlotKinds.ROW, "a", 0))
+  }
+
+  @Test
+  fun preRenderedSlotsPastTheCapLeaveOldestFirst() {
+    val pool = SlotPool(maxFree = 2)
+    listOf("a", "b", "c").forEachIndexed { i, key -> pool.register(-1 - i, SlotKinds.ROW, key) }
+    assertEquals(listOf(-3, -2), pool.snapshot().map { it.slot })
+  }
+
+  @Test
+  fun aPreRenderedSlotReplacesOneStillWaiting() {
+    val pool = SlotPool()
+    val waiting = pool.acquire(1, list, SlotKinds.ROW, "a", 3)
+    pool.register(-2, SlotKinds.ROW, "a")
+    pool.replace(owner = 1, waiting = waiting, prerendered = -2)
+    assertEquals(listOf(SlotEntry(-2, SlotKinds.ROW, "a", 3, bound = true)), pool.snapshot())
+  }
 }

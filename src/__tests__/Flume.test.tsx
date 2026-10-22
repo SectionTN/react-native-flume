@@ -25,6 +25,7 @@ type DataCall = {
   changedIndices: number[];
   changedItems: unknown[];
   alive: boolean;
+  deferred: boolean;
 };
 type CellCall = { storeId: number; alive: boolean };
 type KindsCall = { storeId: number; reactByDefault: boolean; reactTypes: string[] };
@@ -49,8 +50,15 @@ function installHost() {
     releaseStore: (storeId) => {
       alive.delete(storeId);
     },
-    setData: (storeId, keys, _types, changedIndices, changedItems) => {
-      data.push({ storeId, keys, changedIndices, changedItems, alive: alive.has(storeId) });
+    setData: (storeId, keys, _types, changedIndices, changedItems, _stableKeys, deferred) => {
+      data.push({
+        storeId,
+        keys,
+        changedIndices,
+        changedItems,
+        alive: alive.has(storeId),
+        deferred,
+      });
       log.push(`data [${changedIndices.join(',')}]`);
     },
     setCell: (storeId) => {
@@ -110,11 +118,14 @@ const rowEntry = (slot: number, key: string, index: number): Entry => ({
   minMain: 0,
 });
 
-// Delivers a native slot table the way the host's onSlotsChanged event does.
-async function sendSlots(tree: ReactTestRenderer, slots: Entry[], cellWidth = -1) {
+// Delivers a native slot table the way the host's onSlotsChanged event does; React Native releases the pooled
+// event once the handler returns.
+async function sendSlots(tree: ReactTestRenderer, slots: Entry[], cellWidth = -1, jsSeen = 0) {
   const native = tree.root.find((node) => String(node.type) === 'FlumeView');
   await act(async () => {
-    native.props.onSlotsChanged({ nativeEvent: { slots, jsSeen: 0, cellWidth } });
+    const event: { nativeEvent: unknown } = { nativeEvent: { slots, jsSeen, cellWidth } };
+    native.props.onSlotsChanged(event);
+    event.nativeEvent = null;
   });
 }
 
@@ -154,6 +165,7 @@ describe('Flume store lifecycle', () => {
       changedIndices: [0],
       changedItems: [item],
       alive: true,
+      deferred: false,
     });
   });
 
@@ -339,6 +351,51 @@ describe('Flume React cells', () => {
       tree.update(createElement(Flume, { data, renderItem, extraData: 1 }));
     });
     expect(infos.at(-1)?.extraData).toBe(1);
+  });
+
+  it('pre-renders the first rows in the mount commit', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { infos, renderItem } = recordingCell();
+    const data = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    const tree = await mount(createElement(Flume, { data, renderItem }));
+    const views = tree.root.findAll((node) => String(node.type) === 'FlumeSlotView');
+    expect(views.map((view) => [view.props.slot, view.props.itemKey])).toEqual([
+      [-3, 'c'],
+      [-2, 'b'],
+      [-1, 'a'],
+    ]);
+    expect(infos.map((info) => info.index).sort()).toEqual([0, 1, 2]);
+  });
+
+  it('holds a data change for the mount that carries its pre-rendered cells', async () => {
+    const { data } = installHost();
+    const { Flume } = await import('../Flume');
+    const { renderItem } = recordingCell();
+    const tree = await mount(createElement(Flume, { data: [item], renderItem }));
+    await sendSlots(tree, [rowEntry(-1, 'a', 0)], -1, -1);
+    const added = { id: 'n' };
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [added, item], renderItem }));
+    });
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [added, { ...item }], renderItem }));
+    });
+    expect(data.map((call) => call.deferred)).toEqual([false, true, false]);
+  });
+
+  it('keeps a pre-rendered cell mounted when native registers it', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { infos, renderItem } = recordingCell();
+    const tree = await mount(createElement(Flume, { data: [item], renderItem }));
+    const [before] = slotViews(tree, -1);
+    const rendered = infos.length;
+    await sendSlots(tree, [{ ...rowEntry(-1, 'a', -1), bound: false }], -1, -1);
+    const [after] = slotViews(tree, -1);
+    expect(before).toBeDefined();
+    expect(after).toBe(before);
+    expect(infos.length).toBe(rendered);
   });
 });
 

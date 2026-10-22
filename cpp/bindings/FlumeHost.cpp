@@ -97,7 +97,7 @@ jsi::Value FlumeHost::get(jsi::Runtime& rt, const jsi::PropNameID& nameId) {
                           if (count < 6) throw jsi::JSError(rt, "setData needs six arguments");
                           engine.setData(static_cast<int>(args[0].asNumber()), stringsOf(rt, args[1]),
                                          stringsOf(rt, args[2]), intsOf(rt, args[3]), valuesOf(rt, args[4], engine),
-                                         args[5].getBool());
+                                         args[5].getBool(), count > 6 && args[6].getBool());
                           return jsi::Value::undefined();
                         });
   }

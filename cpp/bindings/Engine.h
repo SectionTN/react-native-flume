@@ -28,8 +28,9 @@ class Engine {
   void setScheduler(std::shared_ptr<worklets::UIScheduler> scheduler);
   int createStore();
   void releaseStore(int storeId);
+  // Deferred data waits for refresh(), which the platform calls once it has the commit's pre-rendered cells.
   void setData(int storeId, std::vector<std::string> keys, std::vector<std::string> types,
-               std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys);
+               std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys, bool deferred);
   void setCell(int storeId, std::shared_ptr<worklets::Serializable> renderCell);
   void setCellKinds(int storeId, bool reactByDefault, std::vector<std::string> reactTypes);
   void setCallInvoker(std::shared_ptr<facebook::react::CallInvoker> invoker);
@@ -50,6 +51,7 @@ class Engine {
   bool bind(int storeId, int holderId, int index, float widthDp, float heightDp, OpBatch& out);
   void releaseHolder(int storeId, int holderId);
   void invalidateMeasures(int storeId);  // clears the text measure cache
+  void refresh(int storeId);             // applies deferred data
 
  private:
   Engine() = default;

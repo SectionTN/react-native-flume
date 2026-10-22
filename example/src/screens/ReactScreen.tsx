@@ -2,11 +2,15 @@ import { useMemo, useRef, useState } from 'react';
 import { Button, Pressable, StyleSheet, Text, TextInput, ToastAndroid, View } from 'react-native';
 import { type CellInfo, Flume, type FlumeRef } from 'react-native-flume';
 
-type Row = { id: string; n: number };
+type Row = { id: string; n: number; v: number };
 
 function makeRows(count = 500): Row[] {
-  return Array.from({ length: count }, (_, n) => ({ id: `r${n}`, n }));
+  return Array.from({ length: count }, (_, n) => ({ id: `r${n}`, n, v: 0 }));
 }
+
+// Same rows under new keys, so every visible cell is a new React cell.
+const renew = (rows: Row[]) =>
+  rows.map((row) => ({ ...row, id: `r${row.n}v${row.v + 1}`, v: row.v + 1 }));
 
 function blockJs(ms: number) {
   const end = Date.now() + ms;
@@ -21,7 +25,10 @@ function RowCell({ item }: { item: Row }) {
   return (
     <View style={styles.row}>
       <View style={styles.main}>
-        <Text style={styles.title}>Row {item.n}</Text>
+        <Text style={styles.title}>
+          Row {item.n}
+          {item.v > 0 ? ` v${item.v}` : null}
+        </Text>
         <Pressable style={styles.button} onPress={() => toast(`row ${item.n}`)}>
           <Text style={styles.buttonText}>Toast</Text>
         </Pressable>
@@ -57,6 +64,12 @@ export default function ReactScreen() {
   const [rows, setRows] = useState(all);
   const [refreshing, setRefreshing] = useState(false);
   const list = useRef<FlumeRef>(null);
+  const prepended = useRef(0);
+  const prepend = () => {
+    prepended.current += 1;
+    const n = -prepended.current;
+    setRows((current) => [{ id: `p${-n}`, n, v: 0 }, ...current]);
+  };
   const footer = useMemo(() => <Text style={styles.footer}>End of list</Text>, []);
   const refresh = () => {
     setRefreshing(true);
@@ -69,6 +82,8 @@ export default function ReactScreen() {
         <Button title="Clear" onPress={() => setRows([])} />
         <Button title="Refill" onPress={() => setRows(all)} />
         <Button title="To 300" onPress={() => list.current?.scrollToIndex({ index: 300 })} />
+        <Button title="Prepend" onPress={prepend} />
+        <Button title="Replace all" onPress={() => setRows(renew)} />
       </View>
       <Flume
         ref={list}

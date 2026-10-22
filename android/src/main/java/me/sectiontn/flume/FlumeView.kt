@@ -544,6 +544,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
     post(measureAndLayout)
   }
 
+  private val dataRefresh = Runnable { if (storeId != 0) FlumeJni.refresh(storeId) }
+
+  // Data JS deferred for its pre-rendered cells applies after the mount batch that registers them, once they measured.
+  fun refreshData() {
+    removeCallbacks(dataRefresh)
+    post(dataRefresh)
+  }
+
   fun setEstimatedItemSize(dp: Double) {
     slots.estimator.estimatedPx = if (dp < 0) -1 else (dp * density).roundToInt()
   }

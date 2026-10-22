@@ -59,6 +59,7 @@ class FlumeSlots(private val host: FlumeView) {
         holder.refresh()
       }
     }
+    if (view.slot < 0) register(view)
     val holder = holders[view.slot]
     if (holder != null) holder.show(view) else parking.addView(view)
   }
@@ -112,7 +113,7 @@ class FlumeSlots(private val host: FlumeView) {
       flushPosted = false
       if (!pool.dirty && cellWidthDp == sentCellWidthDp) return@post
       sentCellWidthDp = cellWidthDp
-      host.dispatch(FlumeSlotsEvent(UIManagerHelper.getSurfaceId(host), host.id, pool.snapshot(), 0, cellWidthDp))
+      host.dispatch(FlumeSlotsEvent(UIManagerHelper.getSurfaceId(host), host.id, pool.snapshot(), pool.jsSeen, cellWidthDp))
     }
   }
 
@@ -122,6 +123,21 @@ class FlumeSlots(private val host: FlumeView) {
     pool.release(holder.owner, slot)
     if (holders[slot] === holder) holders.remove(slot)
     holder.slot = 0
+  }
+
+  // A pre-rendered view takes the place of a slot its key still waits on, so the holder shows it without a blank frame.
+  private fun register(view: FlumeSlotView) {
+    pool.register(view.slot, view.kind, view.itemKey)
+    host.refreshData()
+    flush()
+    val holder = holders.values.firstOrNull { holder ->
+      val waiting = pool.entry(holder.slot)
+      holder.slot > 0 && !holder.ready && waiting != null && waiting.kind == view.kind && waiting.key == view.itemKey
+    } ?: return
+    if (!pool.replace(holder.owner, holder.slot, view.slot)) return
+    holders.remove(holder.slot)
+    holder.slot = view.slot
+    holders[view.slot] = holder
   }
 
   private fun holderShowing(view: FlumeSlotView): FlumeSlotHolder? = holders[view.slot]?.takeIf { it.view === view }

@@ -47,12 +47,18 @@ std::shared_ptr<Store> Engine::find(int storeId) {
 }
 
 void Engine::setData(int storeId, std::vector<std::string> keys, std::vector<std::string> types,
-                     std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys) {
+                     std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys,
+                     bool deferred) {
   auto store = find(storeId);
   if (store == nullptr) return;
   store->list.setPending(std::move(keys), std::move(types), std::move(changedIndices), std::move(changedItems),
                          stableKeys);
-  scheduleRefresh(store, false);
+  if (!deferred) scheduleRefresh(store, false);
+}
+
+void Engine::refresh(int storeId) {
+  auto store = find(storeId);
+  if (store != nullptr) scheduleRefresh(store, false);
 }
 
 void Engine::setCell(int storeId, std::shared_ptr<worklets::Serializable> renderCell) {

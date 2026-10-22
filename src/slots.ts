@@ -39,3 +39,89 @@ export function slotStyle(
   if (layout.cellWidth < 0) return null;
   return { position: 'absolute', width: layout.cellWidth };
 }
+
+export const INITIAL_SLOTS = 10;
+
+// Native's slots plus the pre-rendered ones it has not registered yet; ids below zero come from JS.
+export type SlotTable = {
+  native: readonly SlotEntry[];
+  pending: readonly SlotEntry[];
+  jsSeen: number;
+  cellWidth: number;
+};
+
+export type SlotSnapshot = { slots: readonly SlotEntry[]; jsSeen: number; cellWidth: number };
+
+// A pending slot stays until native has registered it (jsSeen reaches its id); one native has not bound yet keeps
+// the index it was rendered with.
+export function applySnapshot(table: SlotTable, event: SlotSnapshot): SlotTable {
+  const indices = new Map<number, number>();
+  for (const entry of [...table.native, ...table.pending]) indices.set(entry.slot, entry.index);
+  const native = event.slots.map((entry) => {
+    const index = entry.index < 0 ? indices.get(entry.slot) : undefined;
+    return index === undefined || index < 0 ? entry : { ...entry, index };
+  });
+  return {
+    native,
+    pending: table.pending.filter((entry) => entry.slot < event.jsSeen),
+    jsSeen: event.jsSeen,
+    cellWidth: event.cellWidth,
+  };
+}
+
+export type PrerenderArgs = {
+  table: SlotTable;
+  keys: readonly string[];
+  header: boolean;
+  footer: boolean;
+  start: number;
+  nextId: number;
+  // Whether a key renders as a React cell; every key does when absent.
+  react?: (key: string) => boolean;
+};
+
+// The cells native is about to show that have no slot: the keys now at the indices of the rows native binds, else
+// INITIAL_SLOTS rows from start; the header and footer once those rows reach them. Never the empty row.
+export function prerender(args: PrerenderArgs): SlotEntry[] {
+  const { table, keys, header, footer, start, nextId, react } = args;
+  const rows = new Set<string>();
+  let hasHeader = false;
+  let hasFooter = false;
+  for (const entry of [...table.native, ...table.pending]) {
+    if (entry.kind === SlotKind.row) rows.add(entry.key);
+    else if (entry.kind === SlotKind.header) hasHeader = true;
+    else if (entry.kind === SlotKind.footer) hasFooter = true;
+  }
+  const shown = new Set<number>();
+  for (const entry of table.native) {
+    if (
+      entry.kind === SlotKind.row &&
+      entry.bound &&
+      entry.index >= 0 &&
+      entry.index < keys.length
+    ) {
+      shown.add(entry.index);
+    }
+  }
+  if (shown.size === 0) {
+    const from = Math.max(0, Math.min(start, keys.length - INITIAL_SLOTS));
+    for (let index = from; index < Math.min(keys.length, from + INITIAL_SLOTS); index++)
+      shown.add(index);
+  }
+  const window = [...shown].sort((a, b) => a - b);
+  const out: SlotEntry[] = [];
+  const add = (kind: number, key: string, index: number) =>
+    out.push({ slot: nextId - out.length, kind, key, index, bound: true, minMain: 0 });
+  if (header && !hasHeader && (keys.length === 0 || window[0] === 0))
+    add(SlotKind.header, 'header', -1);
+  for (const index of window) {
+    const key = keys[index];
+    if (key === undefined || rows.has(key) || react?.(key) === false) continue;
+    rows.add(key);
+    add(SlotKind.row, key, index);
+  }
+  if (footer && !hasFooter && (keys.length === 0 || window.at(-1) === keys.length - 1)) {
+    add(SlotKind.footer, 'footer', -1);
+  }
+  return out;
+}

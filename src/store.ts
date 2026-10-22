@@ -20,6 +20,8 @@ export type FlumeHost = {
     changedIndices: number[],
     changedItems: unknown[],
     stableKeys: boolean,
+    // Native applies the change once it has registered the pre-rendered cells of the same commit.
+    deferred: boolean,
   ): void;
   setCell(
     storeId: number,
