@@ -67,6 +67,14 @@ class StickyHeaderHost(
   // Whether a touch in the host's coordinates lands on a pinned copy where it is drawn.
   fun contains(x: Float, y: Float): Boolean = drawnAt(pinnedView, x, y) || drawnAt(reactPinned, x, y)
 
+  // A React copy handles its own taps; a worklet copy does where it is pressable.
+  fun pressableAt(x: Float, y: Float): Boolean {
+    if (drawnAt(reactPinned, x, y)) return true
+    val left = x - pinnedView.left - pinnedView.translationX
+    val top = y - pinnedView.top - pinnedView.translationY
+    return pinnedView.isClickable || pinnedView.hasPressableAt(left.toInt(), top.toInt())
+  }
+
   // The React copy reports ready while this pins it, so a nested call is dropped.
   fun refresh(force: Boolean = false) {
     if (refreshing) return

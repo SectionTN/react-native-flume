@@ -18,6 +18,7 @@ vi.mock('../specs/FlumeViewNativeComponent', () => ({
   Commands: { scrollToIndex: vi.fn(), scrollToOffset: vi.fn(), scrollToEnd: vi.fn() },
 }));
 vi.mock('../specs/FlumeSlotViewNativeComponent', () => ({ default: 'FlumeSlotView' }));
+vi.mock('react-native', () => ({ Keyboard: { isVisible: vi.fn(() => true), dismiss: vi.fn() } }));
 
 type DataCall = {
   storeId: number;
@@ -377,6 +378,28 @@ describe('Flume React cells', () => {
     const [view] = slotViews(tree, 7);
     expect(view?.props.style).toEqual({ position: 'absolute', left: 0, right: 0 });
     expect(infos).toContainEqual({ item, index: 0, target: 'StickyHeader', extraData: undefined });
+  });
+
+  it('a cell under handled closes the keyboard when no child takes the tap', async () => {
+    installHost();
+    const { Keyboard } = await import('react-native');
+    const { Flume } = await import('../Flume');
+    const { renderItem } = recordingCell();
+    const props = { data: [item], renderItem };
+    const tree = await mount(
+      createElement(Flume, { ...props, keyboardShouldPersistTaps: 'handled' }),
+    );
+    await sendSlots(tree, [rowEntry(1, 'a', 0)]);
+    const [view] = slotViews(tree, 1);
+    expect(view?.props.onStartShouldSetResponder()).toBe(true);
+    view?.props.onResponderRelease();
+    expect(Keyboard.dismiss).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      tree.update(createElement(Flume, { ...props, keyboardShouldPersistTaps: 'never' }));
+    });
+    const [after] = slotViews(tree, 1);
+    expect(after?.props.onStartShouldSetResponder).toBeUndefined();
+    expect(after?.props.onResponderRelease).toBeUndefined();
   });
 
   it('holds a data change for the mount that carries its pre-rendered cells', async () => {

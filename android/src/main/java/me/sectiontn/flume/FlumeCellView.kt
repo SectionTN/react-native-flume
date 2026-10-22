@@ -34,6 +34,9 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
       onPress?.invoke(null, true)
       true
     }
+    // Setting the listeners made the cell clickable; rowsPressable decides that.
+    isClickable = false
+    isLongClickable = false
   }
 
   override val root: View

@@ -77,6 +77,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     onEndReached,
     onStartReached,
     onRefresh,
+    keyboardShouldPersistTaps,
   } = props;
   const host = getHost();
   const [storeId, setStoreId] = useState(() => host.createStore());
@@ -270,6 +271,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         render={resolved?.kind === 'react' ? (resolved.render as ReactCell<unknown>) : undefined}
         element={elementFor(entry.kind)}
         extraData={extraData}
+        keyboardTaps={keyboardShouldPersistTaps ?? 'never'}
       />
     );
   });

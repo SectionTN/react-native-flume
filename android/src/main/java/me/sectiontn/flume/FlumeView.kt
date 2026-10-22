@@ -15,6 +15,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.Event
+import com.facebook.react.uimanager.events.NativeGestureUtil
 import kotlin.math.roundToInt
 
 class FlumeView(context: Context) : FrameLayout(context) {
@@ -563,31 +564,60 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private var downX = 0f
   private var downY = 0f
   private var forwarding = false
+  private val pinnedTap = KeyboardGesture()
+  private var swallowingPinned = false
 
-  // A drag that starts on the pinned header scrolls the list, as it does on a ScrollView's sticky header; a tap stays with the header.
+  // A drag that starts on the pinned header scrolls the list, as it does on a ScrollView's sticky header; a tap stays with the
+  // header, through the list's keyboard policy: under never it only closes the keyboard, and React hears it was taken.
   override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
     when (e.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
         downOnPinned = sticky.contains(e.x, e.y)
         downX = e.x
         downY = e.y
+        pinnedTap.down(if (downOnPinned) recycler.keyboardDecision(sticky.pressableAt(e.x, e.y)) else TapDecision(dismiss = false, swallow = false))
+        if (pinnedTap.swallowing) {
+          swallowingPinned = true
+          NativeGestureUtil.notifyNativeGestureStarted(this, e)
+          return true
+        }
       }
       MotionEvent.ACTION_MOVE -> if (PinnedDrag.takesOver(downOnPinned, e.x - downX, e.y - downY, touchSlop)) {
-        downOnPinned = false
-        forwarding = true
-        val down = MotionEvent.obtain(e.downTime, e.eventTime, MotionEvent.ACTION_DOWN, downX, downY, e.metaState)
-        refreshLayout.dispatchTouchEvent(down)
-        down.recycle()
+        forwardToList(e)
         return true
       }
+      MotionEvent.ACTION_UP -> if (downOnPinned && pinnedTap.release()) recycler.dismissKeyboard()
+      MotionEvent.ACTION_CANCEL -> pinnedTap.release()
     }
     return false
   }
 
   override fun onTouchEvent(e: MotionEvent): Boolean {
+    if (swallowingPinned) {
+      when (e.actionMasked) {
+        MotionEvent.ACTION_MOVE -> if (PinnedDrag.takesOver(true, e.x - downX, e.y - downY, touchSlop)) forwardToList(e)
+        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+          swallowingPinned = false
+          NativeGestureUtil.notifyNativeGestureEnded(this, e)
+          if (pinnedTap.release() && e.actionMasked == MotionEvent.ACTION_UP) recycler.dismissKeyboard()
+        }
+      }
+      return true
+    }
     if (!forwarding) return super.onTouchEvent(e)
     if (e.actionMasked == MotionEvent.ACTION_UP || e.actionMasked == MotionEvent.ACTION_CANCEL) forwarding = false
     return refreshLayout.dispatchTouchEvent(e)
+  }
+
+  // The list gets the gesture from its start; it reports the drag to React itself, and a drag closes nothing.
+  private fun forwardToList(e: MotionEvent) {
+    downOnPinned = false
+    swallowingPinned = false
+    pinnedTap.scrolled()
+    forwarding = true
+    val down = MotionEvent.obtain(e.downTime, e.eventTime, MotionEvent.ACTION_DOWN, downX, downY, e.metaState)
+    refreshLayout.dispatchTouchEvent(down)
+    down.recycle()
   }
 
   override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {

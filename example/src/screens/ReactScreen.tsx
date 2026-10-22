@@ -18,6 +18,8 @@ function makeItems(count = 500): Item[] {
   return items;
 }
 
+const TAPS = ['never', 'handled', 'always'] as const;
+
 // Same rows under new keys, so every visible cell is a new React cell.
 const renew = (items: Item[]) =>
   items.map((item) =>
@@ -90,6 +92,7 @@ export default function ReactScreen() {
   const [rows, setRows] = useState(all);
   const [pad, setPad] = useState(16);
   const [animated, setAnimated] = useState(false);
+  const [taps, setTaps] = useState<(typeof TAPS)[number]>('never');
   const sticky = useMemo(
     () => rows.flatMap((item, index) => (isSection(item) ? [index] : [])),
     [rows],
@@ -121,6 +124,10 @@ export default function ReactScreen() {
           title={`Animated ${animated ? 'on' : 'off'}`}
           onPress={() => setAnimated((on) => !on)}
         />
+        <Button
+          title={`Taps ${taps}`}
+          onPress={() => setTaps((mode) => TAPS[(TAPS.indexOf(mode) + 1) % TAPS.length] ?? 'never')}
+        />
         <Button title="Prepend" onPress={prepend} />
         <Button title="Replace all" onPress={() => setRows(renew)} />
         <Button
@@ -134,7 +141,8 @@ export default function ReactScreen() {
         renderItem={renderItem}
         getItemType={itemType}
         stickyHeaderIndices={sticky}
-        contentContainerStyle={{ paddingHorizontal: pad }}
+        contentContainerStyle={{ paddingHorizontal: pad, paddingBottom: 16 }}
+        keyboardShouldPersistTaps={taps}
         estimatedItemSize={56}
         ListHeaderComponent={Header}
         ListFooterComponent={footer}

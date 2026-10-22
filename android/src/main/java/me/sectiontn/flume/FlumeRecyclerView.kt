@@ -9,6 +9,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import androidx.recyclerview.widget.RecyclerView
 import com.facebook.react.bridge.ReactContext
+import com.facebook.react.uimanager.events.NativeGestureUtil
 
 // decelerationRate scales the fling velocity: RecyclerView exposes no friction, so fast halves it.
 object FlingFactor {
@@ -61,6 +62,26 @@ class KeyboardGesture {
   }
 }
 
+enum class GestureSignal { NONE, STARTED, ENDED }
+
+// React Native hears of a gesture the list takes (a drag, or a tap the keyboard policy swallows) once, and of its end,
+// so a Pressable in a React cell cancels instead of firing, as in ReactScrollView.
+class NativeGestureTracker {
+  private var started = false
+
+  fun onEvent(actionMasked: Int, dragging: Boolean, swallowing: Boolean): GestureSignal {
+    if (actionMasked == MotionEvent.ACTION_UP || actionMasked == MotionEvent.ACTION_CANCEL) {
+      val ended = started
+      started = false
+      return if (ended) GestureSignal.ENDED else GestureSignal.NONE
+    }
+    if (actionMasked == MotionEvent.ACTION_DOWN) started = false
+    if (started || !(dragging || swallowing)) return GestureSignal.NONE
+    started = true
+    return GestureSignal.STARTED
+  }
+}
+
 // ScrollView's rule: a focused input with the keyboard shown; before API 30 the IME's visibility is unknown and counts as shown.
 object KeyboardState {
   fun dismissible(hasFocusedInput: Boolean, imeVisible: Boolean?): Boolean = hasFocusedInput && imeVisible != false
@@ -79,14 +100,19 @@ class FlumeRecyclerView(context: Context) : RecyclerView(context) {
   var flingFactor = 1f
   var keyboardShouldPersistTaps = KeyboardTaps.NEVER
   private val keyboardGesture = KeyboardGesture()
+  private val nativeGesture = NativeGestureTracker()
 
   // The keyboard policy sees every gesture here, including the ones a row consumes.
   override fun dispatchTouchEvent(e: MotionEvent): Boolean {
     if (e.actionMasked == MotionEvent.ACTION_DOWN) {
-      val keyboardUp = KeyboardState.dismissible(focusedInput() != null, imeVisible())
-      keyboardGesture.down(KeyboardTapPolicy.decide(keyboardShouldPersistTaps, keyboardUp, pressableHitAt(e.x, e.y)))
+      keyboardGesture.down(keyboardDecision(pressableHitAt(e.x, e.y)))
     }
     val handled = super.dispatchTouchEvent(e)
+    when (nativeGesture.onEvent(e.actionMasked, scrollState == SCROLL_STATE_DRAGGING, keyboardGesture.swallowing)) {
+      GestureSignal.STARTED -> NativeGestureUtil.notifyNativeGestureStarted(this, e)
+      GestureSignal.ENDED -> NativeGestureUtil.notifyNativeGestureEnded(this, e)
+      GestureSignal.NONE -> Unit
+    }
     if (e.actionMasked == MotionEvent.ACTION_UP && keyboardGesture.release()) dismissKeyboard()
     return handled
   }
@@ -110,6 +136,9 @@ class FlumeRecyclerView(context: Context) : RecyclerView(context) {
   override fun fling(velocityX: Int, velocityY: Int): Boolean =
     super.fling((velocityX * flingFactor).toInt(), (velocityY * flingFactor).toInt())
 
+  fun keyboardDecision(pressableHit: Boolean): TapDecision =
+    KeyboardTapPolicy.decide(keyboardShouldPersistTaps, KeyboardState.dismissible(focusedInput() != null, imeVisible()), pressableHit)
+
   fun dismissKeyboard() {
     val input = focusedInput() ?: return
     input.clearFocus()
@@ -121,8 +150,11 @@ class FlumeRecyclerView(context: Context) : RecyclerView(context) {
   private fun imeVisible(): Boolean? =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) rootWindowInsets?.isVisible(WindowInsets.Type.ime()) else null
 
+  // A React row decides for itself: its slot view takes a tap no child claims and closes the keyboard (FlumeSlot).
   private fun pressableHitAt(x: Float, y: Float): Boolean {
-    val cell = findChildViewUnder(x, y) as? FlumeCellView ?: return false
+    val child = findChildViewUnder(x, y) ?: return false
+    if (child is FlumeSlotHolder) return true
+    val cell = child as? FlumeCellView ?: return false
     return cell.isClickable || cell.hasPressableAt((x - cell.left - cell.translationX).toInt(), (y - cell.top - cell.translationY).toInt())
   }
 }
