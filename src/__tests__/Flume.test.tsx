@@ -45,6 +45,7 @@ function installHost() {
     setCell: (storeId) => {
       cells.push({ storeId, alive: alive.has(storeId) });
     },
+    setCellKinds: () => {},
     setReporter: (fn) => {
       reporter = fn;
     },

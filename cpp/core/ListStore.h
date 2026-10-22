@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "core/KeyDiff.h"
@@ -19,9 +20,14 @@ class ListStore {
   void setPending(std::vector<std::string> keys, std::vector<std::string> types, std::vector<int> changedIndices,
                   std::vector<Value> changedItems, bool stableKeys);
 
+  // JS thread; the next applyPending applies it, also when no data is pending.
+  void setKinds(bool reactByDefault, std::vector<std::string> reactTypes);
+
   // UI thread; nullopt when nothing was pending.
   std::optional<ListOps> applyPending();
   int count() const { return static_cast<int>(keys_.size()); }
+  bool isReactAt(int index) const { return reactByTypeId_[typeIds_[index]]; }
+  int viewTypeAt(int index) const { return typeIdAt(index) * 2 + (isReactAt(index) ? 1 : 0); }  // odd for React
   const std::string& keyAt(int index) const { return keys_[index]; }
   const Value& itemAt(int index) const { return items_[index]; }
   uint64_t itemVersion(int index) const { return versions_[index]; }
@@ -38,9 +44,18 @@ class ListStore {
     std::vector<Value> changedItems;
     bool stableKeys = true;
   };
+  struct Kinds {
+    bool reactByDefault = false;
+    std::unordered_set<std::string> reactTypes;
+  };
+
+  void resolveKinds();
 
   mutable std::mutex mutex_;
   std::optional<Pending> pending_;
+  std::optional<Kinds> pendingKinds_;
+  Kinds kinds_;
+  std::vector<bool> reactByTypeId_;
 
   std::vector<std::string> keys_;
   std::vector<Value> items_;

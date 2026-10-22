@@ -31,6 +31,7 @@ class Engine {
   void setData(int storeId, std::vector<std::string> keys, std::vector<std::string> types,
                std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys);
   void setCell(int storeId, std::shared_ptr<worklets::Serializable> renderCell);
+  void setCellKinds(int storeId, bool reactByDefault, std::vector<std::string> reactTypes);
   void setCallInvoker(std::shared_ptr<facebook::react::CallInvoker> invoker);
   void setReporter(facebook::jsi::Function reporter);  // a function on the React runtime, development only
   void report(int level, const std::string& message);  // once per message: the reporter when set, else logcat
@@ -43,7 +44,7 @@ class Engine {
   int attach(int storeId, StoreListener* listener, std::unique_ptr<TextMeasurer> measurer, float pointScale);
   void detach(int storeId);
   int count(int storeId);
-  int viewType(int storeId, int position);     // 0 for an unknown position
+  int viewType(int storeId, int position);     // type id * 2, plus 1 for React; 0 for an unknown position
   int64_t itemId(int storeId, int position);   // -1 for an unknown position
   std::string keyAt(int storeId, int position);
   bool bind(int storeId, int holderId, int index, float widthDp, float heightDp, OpBatch& out);

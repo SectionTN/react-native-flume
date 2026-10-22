@@ -62,6 +62,13 @@ void Engine::setCell(int storeId, std::shared_ptr<worklets::Serializable> render
   scheduleRefresh(store, true);
 }
 
+void Engine::setCellKinds(int storeId, bool reactByDefault, std::vector<std::string> reactTypes) {
+  auto store = find(storeId);
+  if (store == nullptr) return;
+  store->list.setKinds(reactByDefault, std::move(reactTypes));
+  scheduleRefresh(store, true);
+}
+
 void Engine::scheduleRefresh(const std::shared_ptr<Store>& store, bool always) {
   std::shared_ptr<worklets::UIScheduler> scheduler;
   {
@@ -190,6 +197,7 @@ void Engine::invalidateMeasures(int storeId) {
 bool Engine::bind(int storeId, int holderId, int index, float widthDp, float heightDp, OpBatch& out) {
   auto store = find(storeId);
   if (store == nullptr || runtime_ == nullptr || !bindFn_ || store->layout == nullptr) return false;
+  if (index >= 0 && index < store->list.count() && store->list.isReactAt(index)) return false;
   auto& slot = store->holders[holderId];
   if (slot == nullptr) {
     slot = std::make_unique<Holder>();
@@ -270,7 +278,7 @@ void Engine::bindOnRuntime(jsi::Runtime& rt, int index) {
 int Engine::viewType(int storeId, int position) {
   auto store = find(storeId);
   if (store == nullptr || position < 0 || position >= store->list.count()) return 0;
-  return store->list.typeIdAt(position);
+  return store->list.viewTypeAt(position);
 }
 
 int64_t Engine::itemId(int storeId, int position) {

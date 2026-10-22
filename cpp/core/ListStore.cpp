@@ -1,5 +1,7 @@
 #include "core/ListStore.h"
 
+#include <algorithm>
+
 namespace flume {
 
 void ListStore::setPending(std::vector<std::string> keys, std::vector<std::string> types,
@@ -28,15 +30,31 @@ void ListStore::setPending(std::vector<std::string> keys, std::vector<std::strin
   pending_ = Pending{std::move(keys), std::move(types), std::move(changedIndices), std::move(changedItems), stableKeys};
 }
 
+void ListStore::setKinds(bool reactByDefault, std::vector<std::string> reactTypes) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  pendingKinds_ = Kinds{reactByDefault, {reactTypes.begin(), reactTypes.end()}};
+}
+
+void ListStore::resolveKinds() {
+  reactByTypeId_.assign(typeRegistry_.size(), false);
+  for (const auto& [name, id] : typeRegistry_) {
+    reactByTypeId_[id] = kinds_.reactByDefault || kinds_.reactTypes.count(name) != 0;
+  }
+}
+
 std::optional<ListOps> ListStore::applyPending() {
   std::optional<Pending> pending;
+  std::optional<Kinds> kinds;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     pending.swap(pending_);
+    kinds.swap(pendingKinds_);
+  }
+  if (kinds) {
+    kinds_ = std::move(*kinds);
+    resolveKinds();
   }
   if (!pending) return std::nullopt;
-
-  ListOps ops = diffKeys(keys_, pending->keys, pending->changedIndices, pending->stableKeys);
 
   std::unordered_map<std::string, size_t> previous;
   previous.reserve(keys_.size());
@@ -47,18 +65,25 @@ std::optional<ListOps> ListStore::applyPending() {
   std::vector<uint64_t> versions(size, 0);
   std::vector<int> typeIds(size);
   std::vector<int64_t> itemIds(size);
+  std::vector<int> changed = pending->changedIndices;
   size_t carried = 0;
   for (size_t i = 0; i < size; i++) {
-    auto it = previous.find(pending->keys[i]);
-    if (it != previous.end()) {
-      items[i] = std::move(items_[it->second]);
-      versions[i] = versions_[it->second];
-      carried++;
-    }
     typeIds[i] = typeRegistry_.try_emplace(pending->types[i], static_cast<int>(typeRegistry_.size())).first->second;
     itemIds[i] =
         idRegistry_.try_emplace(pending->keys[i], static_cast<int64_t>(idRegistry_.size()) + 1).first->second;
+    auto it = previous.find(pending->keys[i]);
+    if (it == previous.end()) continue;
+    items[i] = std::move(items_[it->second]);
+    versions[i] = versions_[it->second];
+    carried++;
+    // A new type can mean a new cell kind, so the platform rebinds the row.
+    if (typeIds_[it->second] != typeIds[i]) changed.push_back(static_cast<int>(i));
   }
+  if (reactByTypeId_.size() != typeRegistry_.size()) resolveKinds();
+  std::sort(changed.begin(), changed.end());
+  changed.erase(std::unique(changed.begin(), changed.end()), changed.end());
+  ListOps ops = diffKeys(keys_, pending->keys, changed, pending->stableKeys);
+
   for (size_t i = 0; i < pending->changedIndices.size(); i++) {
     size_t index = static_cast<size_t>(pending->changedIndices[i]);
     if (index >= size) continue;

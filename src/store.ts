@@ -25,6 +25,7 @@ export type FlumeHost = {
     storeId: number,
     renderCell: SerializableRef<(item: never, index: number) => CellNode>,
   ): void;
+  setCellKinds(storeId: number, reactByDefault: boolean, reactTypes: string[]): void;
   setReporter(reporter: (level: number, message: string) => void): void;
 };
 
