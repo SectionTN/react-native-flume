@@ -158,10 +158,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
     addView(refreshLayout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     addView(sticky.pinnedView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     adapter.onDataChanged = { reset ->
-      if (reset) {
-        viewability.reset()
-        recycler.stopScroll()
-      }
+      viewability.invalidate()
+      if (reset) recycler.stopScroll()
       sticky.refresh(force = true)
     }
     recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -334,21 +332,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
     val viewport = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
     val viewable = viewability.compute(viewport, childFrames())
     if (!viewability.changed(viewable)) return
+    val tokens = viewable.map { ViewToken(it, FlumeJni.keyAt(storeId, it)) }
     val delay = viewability.config.minimumViewTime
-    if (delay > 0) postDelayed({ emitViewability(viewable) }, delay) else emitViewability(viewable)
+    if (delay > 0) postDelayed({ emitViewability(tokens) }, delay) else emitViewability(tokens)
   }
 
-  private fun emitViewability(viewable: IntArray) {
-    val report = viewability.report(viewable) ?: return
-    val keyOf = { index: Int -> FlumeJni.keyAt(storeId, index) }
-    dispatch(
-      FlumeViewabilityEvent(
-        UIManagerHelper.getSurfaceId(this),
-        id,
-        report.viewable.map { it to keyOf(it) },
-        report.changed.map { Triple(it.position, keyOf(it.position), it.isViewable) },
-      ),
-    )
+  private fun emitViewability(tokens: List<ViewToken>) {
+    val report = viewability.report(tokens) ?: return
+    dispatch(FlumeViewabilityEvent(UIManagerHelper.getSurfaceId(this), id, report.viewable, report.changed))
   }
 
   private fun applyFullSpan() {

@@ -52,6 +52,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const prev = useRef<{ storeId: number; state?: DataState<T> }>({ storeId });
   const warned = useRef({ duplicates: false, messages: new Set<string>() });
   const nativeRef = useRef<ComponentRef<typeof FlumeViewNativeComponent>>(null);
+  const lastViewable = useRef(new Map<string, T>());
   const count = useRef(data.length);
   count.current = data.length;
 
@@ -140,20 +141,20 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
           if (item !== undefined) handler({ item, index, id: id === '' ? undefined : id });
         };
 
-  // Native reports keys; an item that already left the data is dropped from the tokens.
+  // Native reports keys; the exit of an item that left the data resolves from the last viewable items.
   const viewability =
     onViewableItemsChanged === undefined
       ? undefined
       : (event: { nativeEvent: ViewabilityEvent }) => {
           const tokens = (entries: ViewabilityEvent['viewable']): ViewToken<T>[] =>
             entries.flatMap(({ index, key, isViewable }) => {
-              const item = prev.current.state?.byKey.get(key);
+              const item = prev.current.state?.byKey.get(key) ?? lastViewable.current.get(key);
               return item === undefined ? [] : [{ item, key, index, isViewable }];
             });
-          onViewableItemsChanged({
-            viewableItems: tokens(event.nativeEvent.viewable),
-            changed: tokens(event.nativeEvent.changed),
-          });
+          const viewableItems = tokens(event.nativeEvent.viewable);
+          const changed = tokens(event.nativeEvent.changed);
+          lastViewable.current = new Map(viewableItems.map((token) => [token.key, token.item]));
+          onViewableItemsChanged({ viewableItems, changed });
         };
 
   return (

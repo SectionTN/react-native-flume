@@ -197,6 +197,42 @@ describe('Flume viewability', () => {
       changed: [{ item, key: 'a', index: 0, isViewable: true }],
     });
   });
+
+  it('reports the exit of a visible item removed from the data', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const onViewableItemsChanged = vi.fn();
+    const removed = { id: 'b' };
+    const tree = await mount(
+      createElement(Flume, { data: [item, removed], renderCell, onViewableItemsChanged }),
+    );
+    const native = () => tree.root.find((node) => String(node.type) === 'FlumeView');
+    native().props.onViewableItemsChanged({
+      nativeEvent: {
+        viewable: [
+          { index: 0, key: 'a', isViewable: true },
+          { index: 1, key: 'b', isViewable: true },
+        ],
+        changed: [
+          { index: 0, key: 'a', isViewable: true },
+          { index: 1, key: 'b', isViewable: true },
+        ],
+      },
+    });
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [item], renderCell, onViewableItemsChanged }));
+    });
+    native().props.onViewableItemsChanged({
+      nativeEvent: {
+        viewable: [{ index: 0, key: 'a', isViewable: true }],
+        changed: [{ index: 1, key: 'b', isViewable: false }],
+      },
+    });
+    expect(onViewableItemsChanged).toHaveBeenLastCalledWith({
+      viewableItems: [{ item, key: 'a', index: 0, isViewable: true }],
+      changed: [{ item: removed, key: 'b', index: 1, isViewable: false }],
+    });
+  });
 });
 
 describe('Flume edges', () => {

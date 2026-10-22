@@ -13,15 +13,18 @@ data class ViewabilityConfig(
   val waitForInteraction: Boolean = false,
 )
 
-data class ViewableChange(val position: Int, val isViewable: Boolean)
+data class ViewToken(val index: Int, val key: String)
 
-class ViewabilityReport(val viewable: IntArray, val changed: List<ViewableChange>)
+data class ViewableChange(val token: ViewToken, val isViewable: Boolean)
+
+class ViewabilityReport(val viewable: List<ViewToken>, val changed: List<ViewableChange>)
 
 // FlatList's rule: an overlapping row counts when it is entirely visible or its visible share reaches the threshold.
 class ViewabilityTracker(var config: ViewabilityConfig) {
   var interacted = false
   private var lastComputed = IntArray(0)
-  private var lastReported = IntArray(0)
+  private var dirty = false
+  private var lastReported = emptyList<ViewToken>()
 
   fun compute(viewportLength: Int, children: List<ChildFrame>): IntArray {
     if (viewportLength <= 0 || (config.waitForInteraction && !interacted)) return IntArray(0)
@@ -44,44 +47,44 @@ class ViewabilityTracker(var config: ViewabilityConfig) {
 
   // Against the last computed set, which this records; the report is delayed by minimumViewTime from here.
   fun changed(viewable: IntArray): Boolean {
-    val changed = !viewable.contentEquals(lastComputed)
+    val changed = dirty || !viewable.contentEquals(lastComputed)
+    dirty = false
     lastComputed = viewable
     return changed
   }
 
-  // Against the last reported set: exits first, then entries; null when nothing moved.
-  fun report(viewable: IntArray): ViewabilityReport? {
-    if (viewable.contentEquals(lastReported)) return null
-    val previous = lastReported.toSet()
-    val next = viewable.toSet()
-    val changed = (previous - next).sorted().map { ViewableChange(it, false) } +
-      (next - previous).sorted().map { ViewableChange(it, true) }
+  // Against the last reported set by key, so rows that only moved report nothing: exits first, then entries.
+  fun report(viewable: List<ViewToken>): ViewabilityReport? {
+    val previous = lastReported.mapTo(HashSet()) { it.key }
+    val next = viewable.mapTo(HashSet()) { it.key }
+    val changed = lastReported.filter { it.key !in next }.map { ViewableChange(it, false) } +
+      viewable.filter { it.key !in previous }.map { ViewableChange(it, true) }
     lastReported = viewable
-    return ViewabilityReport(viewable, changed)
+    return if (changed.isEmpty()) null else ViewabilityReport(viewable, changed)
   }
 
-  fun reset() {
-    lastComputed = IntArray(0)
-    lastReported = IntArray(0)
+  // A data change moves keys between indices, so the next computed set counts as changed, as FlatList resets its cache.
+  fun invalidate() {
+    dirty = true
   }
 }
 
 class FlumeViewabilityEvent(
   surfaceId: Int,
   viewTag: Int,
-  private val viewable: List<Pair<Int, String>>,
-  private val changed: List<Triple<Int, String, Boolean>>,
+  private val viewable: List<ViewToken>,
+  private val changed: List<ViewableChange>,
 ) : Event<FlumeViewabilityEvent>(surfaceId, viewTag) {
   override fun getEventName(): String = NAME
 
   override fun getEventData(): WritableMap = Arguments.createMap().apply {
-    putArray("viewable", Arguments.createArray().apply { for ((index, key) in viewable) pushMap(token(index, key, true)) })
-    putArray("changed", Arguments.createArray().apply { for ((index, key, isViewable) in changed) pushMap(token(index, key, isViewable)) })
+    putArray("viewable", Arguments.createArray().apply { for (token in viewable) pushMap(token(token, true)) })
+    putArray("changed", Arguments.createArray().apply { for (change in changed) pushMap(token(change.token, change.isViewable)) })
   }
 
-  private fun token(index: Int, key: String, isViewable: Boolean): WritableMap = Arguments.createMap().apply {
-    putInt("index", index)
-    putString("key", key)
+  private fun token(token: ViewToken, isViewable: Boolean): WritableMap = Arguments.createMap().apply {
+    putInt("index", token.index)
+    putString("key", token.key)
     putBoolean("isViewable", isViewable)
   }
 
