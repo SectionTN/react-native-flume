@@ -15,7 +15,9 @@ class FlumeSlotHolder(context: Context, private val parking: ViewGroup) : ViewGr
   var group: SlotGroup? = null
   var view: FlumeSlotView? = null
     private set
+  var onReady: (() -> Unit)? = null
   private var touch = PointerEvents.NONE
+  private var shown = false
 
   override val pointerEvents: PointerEvents get() = touch
 
@@ -43,10 +45,12 @@ class FlumeSlotHolder(context: Context, private val parking: ViewGroup) : ViewGr
   }
 
   fun refresh() {
-    val shown = ready
+    val wasShown = shown
+    shown = ready
     visibility = if (shown) VISIBLE else INVISIBLE
     touch = if (shown) PointerEvents.BOX_NONE else PointerEvents.NONE
     requestLayout()
+    if (shown && !wasShown) onReady?.invoke()
   }
 
   // A ReactViewGroup throws on an UNSPECIFIED spec, so the view is measured at its own Fabric size.

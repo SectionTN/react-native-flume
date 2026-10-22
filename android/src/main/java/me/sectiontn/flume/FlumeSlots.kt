@@ -92,6 +92,28 @@ class FlumeSlots(private val host: FlumeView) {
     flush()
   }
 
+  // A slot its owner keeps with no holder bound to it, such as a sticky row's copy waiting to pin.
+  fun retain(owner: Int, group: SlotGroup, kind: Int, key: String, index: Int): Int {
+    val slot = pool.acquire(owner, group, kind, key, index)
+    flush()
+    return slot
+  }
+
+  fun drop(owner: Int, slot: Int) {
+    holders[slot]?.let { show(it, 0) }
+    pool.release(owner, slot)
+    flush()
+  }
+
+  // Points a holder at a slot its owner retained, or at none, without releasing the slot it showed before.
+  fun show(holder: FlumeSlotHolder, slot: Int) {
+    if (holder.slot == slot) return
+    if (holder.slot != 0 && holders[holder.slot] === holder) holders.remove(holder.slot)
+    holder.slot = slot
+    if (slot != 0) holders[slot] = holder
+    holder.show(if (slot == 0) null else children.bySlot(slot) as? FlumeSlotView)
+  }
+
   // The empty row fills the viewport the header and footer leave; JS gives its slot that minimum length.
   fun setMinMain(holder: FlumeSlotHolder, dp: Float) {
     if (holder.slot == 0) return

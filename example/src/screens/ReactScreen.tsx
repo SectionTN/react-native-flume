@@ -3,14 +3,26 @@ import { Button, Pressable, StyleSheet, Text, TextInput, ToastAndroid, View } fr
 import { type CellInfo, Flume, type FlumeRef } from 'react-native-flume';
 
 type Row = { id: string; n: number; v: number };
+type Section = { id: string; section: number };
+type Item = Row | Section;
 
-function makeRows(count = 500): Row[] {
-  return Array.from({ length: count }, (_, n) => ({ id: `r${n}`, n, v: 0 }));
+const isSection = (item: Item): item is Section => 'section' in item;
+
+// A sticky section header before every 25 rows.
+function makeItems(count = 500): Item[] {
+  const items: Item[] = [];
+  for (let n = 0; n < count; n++) {
+    if (n % 25 === 0) items.push({ id: `s${n / 25}`, section: n / 25 });
+    items.push({ id: `r${n}`, n, v: 0 });
+  }
+  return items;
 }
 
 // Same rows under new keys, so every visible cell is a new React cell.
-const renew = (rows: Row[]) =>
-  rows.map((row) => ({ ...row, id: `r${row.n}v${row.v + 1}`, v: row.v + 1 }));
+const renew = (items: Item[]) =>
+  items.map((item) =>
+    isSection(item) ? item : { ...item, id: `r${item.n}v${item.v + 1}`, v: item.v + 1 },
+  );
 
 function blockJs(ms: number) {
   const end = Date.now() + ms;
@@ -40,7 +52,21 @@ function RowCell({ item }: { item: Row }) {
   );
 }
 
-const renderItem = ({ item }: CellInfo<Row>) => <RowCell item={item} />;
+function SectionCell({ item }: { item: Section }) {
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Section {item.section}</Text>
+      <Pressable style={styles.button} onPress={() => toast(`section ${item.section}`)}>
+        <Text style={styles.buttonText}>Toast</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const renderItem = ({ item }: CellInfo<Item>) =>
+  isSection(item) ? <SectionCell item={item} /> : <RowCell item={item} />;
+
+const itemType = (item: Item) => (isSection(item) ? 'section' : 'row');
 
 function Header() {
   return (
@@ -60,8 +86,13 @@ function Empty() {
 }
 
 export default function ReactScreen() {
-  const all = useMemo(() => makeRows(), []);
+  const all = useMemo(() => makeItems(), []);
   const [rows, setRows] = useState(all);
+  const [pad, setPad] = useState(16);
+  const sticky = useMemo(
+    () => rows.flatMap((item, index) => (isSection(item) ? [index] : [])),
+    [rows],
+  );
   const [refreshing, setRefreshing] = useState(false);
   const list = useRef<FlumeRef>(null);
   const prepended = useRef(0);
@@ -84,11 +115,18 @@ export default function ReactScreen() {
         <Button title="To 300" onPress={() => list.current?.scrollToIndex({ index: 300 })} />
         <Button title="Prepend" onPress={prepend} />
         <Button title="Replace all" onPress={() => setRows(renew)} />
+        <Button
+          title={`Padding ${pad === 16 ? 32 : 16}`}
+          onPress={() => setPad((value) => (value === 16 ? 32 : 16))}
+        />
       </View>
       <Flume
         ref={list}
         data={rows}
         renderItem={renderItem}
+        getItemType={itemType}
+        stickyHeaderIndices={sticky}
+        contentContainerStyle={{ paddingHorizontal: pad }}
         estimatedItemSize={56}
         ListHeaderComponent={Header}
         ListFooterComponent={footer}
@@ -128,6 +166,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#0066ff',
   },
   buttonText: { color: '#ffffff', fontWeight: '600' },
+  section: {
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    backgroundColor: '#dde6fb',
+  },
+  sectionTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: '#1b2a4a' },
   header: { padding: 16, gap: 8, backgroundColor: '#f4f6fb' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#111111' },
   input: {

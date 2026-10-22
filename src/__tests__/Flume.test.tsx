@@ -368,6 +368,17 @@ describe('Flume React cells', () => {
     expect(infos.map((info) => info.index).sort()).toEqual([0, 1, 2]);
   });
 
+  it('renders a sticky copy as a sticky header', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { infos, renderItem } = recordingCell();
+    const tree = await mount(createElement(Flume, { data: [item], renderItem, numColumns: 2 }));
+    await sendSlots(tree, [{ ...rowEntry(7, 'a', 0), kind: 4 }], 180);
+    const [view] = slotViews(tree, 7);
+    expect(view?.props.style).toEqual({ position: 'absolute', left: 0, right: 0 });
+    expect(infos).toContainEqual({ item, index: 0, target: 'StickyHeader', extraData: undefined });
+  });
+
   it('holds a data change for the mount that carries its pre-rendered cells', async () => {
     const { data } = installHost();
     const { Flume } = await import('../Flume');

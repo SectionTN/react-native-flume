@@ -33,7 +33,12 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private val paddingPx = IntArray(4)
   private var initialScrollPending = false
   private var separator: SeparatorDecoration? = null
-  private val sticky = StickyHeaderHost(this, FlumeCellView(context, measurer), adapter.allocateHolderId())
+  private val sticky = StickyHeaderHost(
+    this,
+    FlumeCellView(context, measurer),
+    adapter.allocateHolderId(),
+    FlumeSlotHolder(context, slots.parking).apply { owner = adapter.allocateHolderId() },
+  )
   private var stickySet: Set<Int> = emptySet()
   private val measureHolderId = adapter.allocateHolderId()
   private var throttle = ScrollThrottle(16)
@@ -162,6 +167,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     addView(slots.parking, LayoutParams(0, 0))
     addView(refreshLayout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     addView(sticky.pinnedView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+    addView(sticky.reactPinned, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     adapter.onDataChanged = { reset ->
       viewability.invalidate()
       if (reset) recycler.stopScroll()
@@ -263,6 +269,10 @@ class FlumeView(context: Context) : FrameLayout(context) {
     if (hits.end) dispatch(FlumeEdgeEvent(UIManagerHelper.getSurfaceId(this), id, true, hits.distances.fromEndPx / density))
     if (hits.start) dispatch(FlumeEdgeEvent(UIManagerHelper.getSurfaceId(this), id, false, hits.distances.fromStartPx / density))
   }
+
+  fun viewTypeAt(position: Int): Int = adapter.getItemViewType(position)
+
+  fun isReactRow(position: Int): Boolean = ViewTypes.isReact(viewTypeAt(position))
 
   // The laid-out rows along the scroll axis, in px from the padded leading edge, translation included.
   fun childFrames(): List<ChildFrame> {
@@ -430,6 +440,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     paddingPx[edge] = (dp * density).roundToInt()
     recycler.setPadding(paddingPx[0], paddingPx[1], paddingPx[2], paddingPx[3])
     adapter.configure(horizontal, numColumns, inverted, paddingPx)
+    sticky.refresh(force = true)
   }
 
   // A grid only reverses; stackFromEnd is unsupported there, so an inverted grid with little content starts at the top.
@@ -446,6 +457,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     hookLayoutManager()
     recycler.layoutManager = layoutManager
     adapter.configure(horizontal, numColumns, inverted, paddingPx)
+    sticky.refresh(force = true)
   }
 
   private fun applyDrawDistance() {
