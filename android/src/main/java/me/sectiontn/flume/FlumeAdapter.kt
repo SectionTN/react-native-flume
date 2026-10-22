@@ -6,13 +6,22 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlin.math.roundToInt
 
 class FlumeAdapter(
   private val context: Context,
   private val measurer: FlumeTextMeasurer,
   private val recycler: RecyclerView,
+  private val slots: FlumeSlots,
 ) : RecyclerView.Adapter<FlumeAdapter.Holder>(), FlumeStoreListener, ListNotifier {
-  class Holder(val cell: FlumeCellView) : RecyclerView.ViewHolder(cell)
+  class Holder(val view: View) : RecyclerView.ViewHolder(view) {
+    val cell: FlumeCellView? get() = view as? FlumeCellView
+    val slot: FlumeSlotHolder? get() = view as? FlumeSlotHolder
+  }
+
+  private companion object {
+    const val ESTIMATE_DP = 50f
+  }
 
   private val density = context.resources.displayMetrics.density
   val geometry = ListGeometry(density)
@@ -43,6 +52,10 @@ class FlumeAdapter(
   private fun rebindAll() {
     measurer.invalidate()
     if (storeId != 0) FlumeJni.invalidateMeasures(storeId)
+    // React grid cells take their width from JS, which learns it from the slot snapshot.
+    val grid = geometry.ready && !geometry.horizontal && geometry.numColumns > 1
+    slots.cellWidthDp = if (grid) geometry.cellWidthDp(false) else -1f
+    slots.flush()
     notifyDataSetChanged()
   }
 
@@ -72,8 +85,17 @@ class FlumeAdapter(
     val before = if (reset) null else anchorState()
     setCount(count)
     ListOpsApplier.apply(reset, removed, inserted, moved, changed, this)
+    reindexSlots()
     anchor(before, inserted, count)
     onDataChanged?.invoke(reset)
+  }
+
+  // Inserts and removes shift rows without a rebind; a React cell's index follows its holder's new position.
+  private fun reindexSlots() {
+    for (i in 0 until recycler.childCount) {
+      val holder = recycler.getChildViewHolder(recycler.getChildAt(i)) as? Holder ?: continue
+      holder.slot?.let { slots.reindex(it, holder.bindingAdapterPosition) }
+    }
   }
 
   // Inserts touching the content start or end map to the visual edges through the orientation.
@@ -155,6 +177,12 @@ class FlumeAdapter(
   override fun getItemId(position: Int): Long = FlumeJni.itemId(storeId, position)
 
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+    if (viewType % 2 != 0) {
+      val slot = FlumeSlotHolder(context, slots.parking)
+      slot.owner = nextCellId++
+      orient(slot)
+      return Holder(slot)
+    }
     val cell = FlumeCellView(context, measurer)
     cell.cellId = nextCellId++
     cell.rowsPressable = rowsPressable
@@ -169,9 +197,10 @@ class FlumeAdapter(
   }
 
   // A horizontal cell takes the list height and its own width; a vertical one the column width and its own height.
-  private fun orient(cell: FlumeCellView) {
-    cell.horizontal = geometry.horizontal
-    cell.layoutParams = if (geometry.horizontal) {
+  private fun orient(view: View) {
+    (view as? FlumeCellView)?.horizontal = geometry.horizontal
+    (view as? FlumeSlotHolder)?.horizontal = geometry.horizontal
+    view.layoutParams = if (geometry.horizontal) {
       RecyclerView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT)
     } else {
       RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -180,11 +209,30 @@ class FlumeAdapter(
 
   override fun onBindViewHolder(holder: Holder, position: Int) {
     if (!geometry.ready) return
-    if (holder.cell.horizontal != geometry.horizontal) orient(holder.cell)
-    holder.cell.rowsPressable = rowsPressable
+    holder.slot?.let { slot ->
+      if (slot.horizontal != geometry.horizontal) orient(slot)
+      slot.estimatePx = (ESTIMATE_DP * density).roundToInt()
+      slots.bind(slot, SlotGroup(holder.itemViewType), SlotKinds.ROW, FlumeJni.keyAt(storeId, position), position)
+      return
+    }
+    val cell = holder.cell ?: return
+    if (cell.horizontal != geometry.horizontal) orient(cell)
+    cell.rowsPressable = rowsPressable
     val start = SystemClock.elapsedRealtimeNanos()
-    val batch = FlumeJni.bind(storeId, holder.cell.cellId, position, geometry.cellWidthDp(fullSpans.contains(position)), geometry.cellHeightDp()) ?: return
-    holder.cell.apply(batch)
+    val batch = FlumeJni.bind(storeId, cell.cellId, position, geometry.cellWidthDp(fullSpans.contains(position)), geometry.cellHeightDp()) ?: return
+    cell.apply(batch)
     SpikeStats.record(SystemClock.elapsedRealtimeNanos() - start, batch.stats)
   }
+
+  override fun onViewRecycled(holder: Holder) {
+    holder.slot?.let { slots.recycle(it) }
+  }
+
+  // A cached holder comes back at a shifted position without a rebind.
+  override fun onViewAttachedToWindow(holder: Holder) {
+    holder.slot?.let { slots.reindex(it, holder.bindingAdapterPosition) }
+  }
+
+  // A focused input keeps a React holder out of the pool otherwise; its slot stays mounted in the bay.
+  override fun onFailedToRecycleView(holder: Holder): Boolean = holder.slot != null || super.onFailedToRecycleView(holder)
 }

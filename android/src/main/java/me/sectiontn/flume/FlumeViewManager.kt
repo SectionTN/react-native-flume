@@ -49,6 +49,7 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
     FlumeEdgeEvent.END to mapOf("registrationName" to "onEndReached"),
     FlumeEdgeEvent.START to mapOf("registrationName" to "onStartReached"),
     FlumeRefreshEvent.NAME to mapOf("registrationName" to "onRefresh"),
+    FlumeSlotsEvent.NAME to mapOf("registrationName" to "onSlotsChanged"),
   )
 
   @ReactProp(name = "itemAnimations", defaultBoolean = true)

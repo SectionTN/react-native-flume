@@ -27,13 +27,13 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private val refreshLayout = SwipeRefreshLayout(context).apply { isEnabled = false }
   private var didLayout = false
   private var refreshProgressViewOffsetDp = 0.0
-  private val adapter = FlumeAdapter(context, measurer, recycler)
+  val slots = FlumeSlots(this)
+  private val adapter = FlumeAdapter(context, measurer, recycler, slots)
   private var layoutManager: LinearLayoutManager = FlumeLinearLayoutManager(context, RecyclerView.VERTICAL, false)
   private val paddingPx = IntArray(4)
   private var initialScrollPending = false
   private var separator: SeparatorDecoration? = null
   private val sticky = StickyHeaderHost(this, FlumeCellView(context, measurer), adapter.allocateHolderId())
-  val slots = FlumeSlots(this)
   private var stickySet: Set<Int> = emptySet()
   private val measureHolderId = adapter.allocateHolderId()
   private var throttle = ScrollThrottle(16)

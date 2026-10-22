@@ -14,15 +14,18 @@ import {
 import { createSerializable } from 'react-native-worklets';
 import { cellKinds, type ResolvedCell, resolveCell } from './cells';
 import { type DataState, diffData } from './data';
-import { nativeProps } from './props';
+import { FlumeSlot } from './FlumeSlot';
+import { contentPadding, nativeProps } from './props';
+import { type SlotEntry, SlotKind, type SlotLayout } from './slots';
 import FlumeViewNativeComponent, {
   Commands,
   type NativeProps,
   type PressEvent,
+  type SlotsEvent,
   type ViewabilityEvent,
 } from './specs/FlumeViewNativeComponent';
 import { getHost, isDev } from './store';
-import type { FlumeProps, FlumeRef, PressInfo, ViewToken } from './types';
+import type { FlumeProps, FlumeRef, PressInfo, ReactCell, ViewToken } from './types';
 
 function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const {
@@ -32,6 +35,10 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     reactCells,
     keyExtractor,
     getItemType,
+    extraData,
+    horizontal = false,
+    numColumns = 1,
+    stickyHeaderIndices,
     itemAnimations = true,
     onPress,
     onLongPress,
@@ -138,6 +145,53 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     );
   }, [host, storeId, commit, report]);
 
+  // Native's slot table: every slot it holds or keeps for scroll-back, each rendered as one React cell.
+  const [table, setTable] = useState<{ slots: readonly SlotEntry[]; cellWidth: number }>({
+    slots: [],
+    cellWidth: -1,
+  });
+  const onSlotsChanged = useCallback((event: { nativeEvent: SlotsEvent }) => {
+    setTable({ slots: event.nativeEvent.slots, cellWidth: event.nativeEvent.cellWidth });
+  }, []);
+  const padding = contentPadding(props.contentContainerStyle);
+  const { cellWidth } = table;
+  const layout = useMemo<SlotLayout>(
+    () => ({
+      horizontal,
+      numColumns,
+      padding: {
+        top: padding.top,
+        left: padding.left,
+        bottom: padding.bottom,
+        right: padding.right,
+      },
+      cellWidth,
+    }),
+    [horizontal, numColumns, padding.top, padding.left, padding.bottom, padding.right, cellWidth],
+  );
+  const sticky = useMemo(() => new Set(stickyHeaderIndices), [stickyHeaderIndices]);
+  const cells = table.slots.map((entry) => {
+    const { byKey, types } = commit.diff.next;
+    const type = types.get(entry.key);
+    const resolved = type === undefined ? undefined : resolveCell(type, latest.current);
+    return (
+      <FlumeSlot
+        key={entry.slot}
+        slot={entry.slot}
+        kind={entry.kind}
+        itemKey={entry.key}
+        index={entry.index}
+        minMain={entry.minMain}
+        fullSpan={entry.kind !== SlotKind.row || sticky.has(entry.index)}
+        layout={layout}
+        item={byKey.get(entry.key)}
+        render={resolved?.kind === 'react' ? (resolved.render as ReactCell<unknown>) : undefined}
+        element={null}
+        extraData={extraData}
+      />
+    );
+  });
+
   // FlatList's defaults: animated, the item at the start edge; native clamps the index.
   useImperativeHandle(
     ref,
@@ -218,7 +272,10 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
           : (event) => onStartReached({ distanceFromStart: event.nativeEvent.distanceFromStart })
       }
       onRefresh={onRefresh === undefined ? undefined : () => onRefresh()}
-    />
+      onSlotsChanged={onSlotsChanged}
+    >
+      {cells}
+    </FlumeViewNativeComponent>
   );
 }
 

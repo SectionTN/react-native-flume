@@ -28,6 +28,20 @@ export type ViewabilityEvent = Readonly<{
   changed: { index: CodegenTypes.Int32; key: string; isViewable: boolean }[];
 }>;
 
+// The whole slot table, since Fabric replaces a queued event of the same type; cellWidth is -1 off a grid.
+export type SlotsEvent = Readonly<{
+  slots: {
+    slot: CodegenTypes.Int32;
+    kind: CodegenTypes.Int32;
+    key: string;
+    index: CodegenTypes.Int32;
+    bound: boolean;
+    minMain: CodegenTypes.Double;
+  }[];
+  jsSeen: CodegenTypes.Int32;
+  cellWidth: CodegenTypes.Double;
+}>;
+
 export interface NativeProps extends ViewProps {
   storeId?: CodegenTypes.WithDefault<CodegenTypes.Int32, 0>;
   itemAnimations?: CodegenTypes.WithDefault<boolean, true>;
@@ -96,6 +110,7 @@ export interface NativeProps extends ViewProps {
     Readonly<{ distanceFromStart: CodegenTypes.Double }>
   >;
   onRefresh?: CodegenTypes.DirectEventHandler<null>;
+  onSlotsChanged?: CodegenTypes.DirectEventHandler<SlotsEvent>;
 }
 
 type FlumeViewType = HostComponent<NativeProps>;

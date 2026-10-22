@@ -2,7 +2,7 @@ import { createElement, createRef, StrictMode } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FlumeHost } from '../store';
-import type { FlumeRef } from '../types';
+import type { CellInfo, FlumeRef } from '../types';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -17,6 +17,7 @@ vi.mock('../specs/FlumeViewNativeComponent', () => ({
   default: 'FlumeView',
   Commands: { scrollToIndex: vi.fn(), scrollToOffset: vi.fn(), scrollToEnd: vi.fn() },
 }));
+vi.mock('../specs/FlumeSlotViewNativeComponent', () => ({ default: 'FlumeSlotView' }));
 
 type DataCall = {
   storeId: number;
@@ -89,6 +90,48 @@ async function mount(element: Parameters<typeof create>[0]): Promise<ReactTestRe
 
 function renderedStoreId(tree: ReactTestRenderer): number {
   return tree.root.find((node) => String(node.type) === 'FlumeView').props.storeId as number;
+}
+
+type Entry = {
+  slot: number;
+  kind: number;
+  key: string;
+  index: number;
+  bound: boolean;
+  minMain: number;
+};
+
+const rowEntry = (slot: number, key: string, index: number): Entry => ({
+  slot,
+  kind: 0,
+  key,
+  index,
+  bound: true,
+  minMain: 0,
+});
+
+// Delivers a native slot table the way the host's onSlotsChanged event does.
+async function sendSlots(tree: ReactTestRenderer, slots: Entry[], cellWidth = -1) {
+  const native = tree.root.find((node) => String(node.type) === 'FlumeView');
+  await act(async () => {
+    native.props.onSlotsChanged({ nativeEvent: { slots, jsSeen: 0, cellWidth } });
+  });
+}
+
+function slotViews(tree: ReactTestRenderer, slot: number) {
+  return tree.root.findAll(
+    (node) => String(node.type) === 'FlumeSlotView' && node.props.slot === slot,
+  );
+}
+
+// A renderItem that records every CellInfo it gets.
+function recordingCell() {
+  const infos: CellInfo<unknown>[] = [];
+  const renderItem = (info: CellInfo<unknown>) => {
+    infos.push(info);
+    return createElement('Row', { id: (info.item as { id: string }).id });
+  };
+  return { infos, renderItem };
 }
 
 describe('Flume store lifecycle', () => {
@@ -208,6 +251,62 @@ describe('Flume cell kinds', () => {
       String(call[0]).includes('no renderer for type "x"'),
     );
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe('Flume React cells', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('renders a React cell for every slot native lists', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { infos, renderItem } = recordingCell();
+    const tree = await mount(createElement(Flume, { data: [item], renderItem }));
+    await sendSlots(tree, [rowEntry(1, 'a', 0)]);
+    const [view] = slotViews(tree, 1);
+    expect(view?.props.style).toEqual({ position: 'absolute', left: 0, right: 0 });
+    expect(infos.at(-1)).toEqual({ item, index: 0, target: 'Cell', extraData: undefined });
+  });
+
+  it('renders the new item in the commit that changes the data', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { infos, renderItem } = recordingCell();
+    const tree = await mount(createElement(Flume, { data: [item], renderItem }));
+    await sendSlots(tree, [rowEntry(1, 'a', 0)]);
+    const next = { id: 'a' };
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [next], renderItem }));
+    });
+    expect(infos.at(-1)?.item).toBe(next);
+  });
+
+  it('keeps the last item when its key leaves the data', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { infos, renderItem } = recordingCell();
+    const tree = await mount(createElement(Flume, { data: [item], renderItem }));
+    await sendSlots(tree, [rowEntry(1, 'a', 0)]);
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [], renderItem }));
+    });
+    expect(slotViews(tree, 1)).toHaveLength(1);
+    expect(infos.every((info) => info.item !== undefined)).toBe(true);
+  });
+
+  it('re-renders mounted cells when extraData changes', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { infos, renderItem } = recordingCell();
+    const data = [item];
+    const tree = await mount(createElement(Flume, { data, renderItem }));
+    await sendSlots(tree, [rowEntry(1, 'a', 0)]);
+    await act(async () => {
+      tree.update(createElement(Flume, { data, renderItem, extraData: 1 }));
+    });
+    expect(infos.at(-1)?.extraData).toBe(1);
   });
 });
 

@@ -3,8 +3,12 @@ package me.sectiontn.flume
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.WritableMap
 import com.facebook.react.uimanager.PointerEvents
 import com.facebook.react.uimanager.ReactPointerEventsView
+import com.facebook.react.uimanager.UIManagerHelper
+import com.facebook.react.uimanager.events.Event
 
 // The bay for slot views no holder shows: zero size, invisible and out of touch targeting, so they stay mounted.
 class SlotParking(context: Context) : ViewGroup(context), ReactPointerEventsView {
@@ -20,10 +24,15 @@ class SlotParking(context: Context) : ViewGroup(context), ReactPointerEventsView
   override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) = Unit
 }
 
-// The host's Fabric children: slot views, parked until a holder shows them.
+// The host's Fabric children and the holders that show them; JS renders the slots the pool lists.
 class FlumeSlots(private val host: FlumeView) {
   val parking = SlotParking(host.context)
+  val pool = SlotPool()
   private val children = FabricChildren<View> { (it as? FlumeSlotView)?.slot ?: 0 }
+  private val holders = HashMap<Int, FlumeSlotHolder>()
+  var cellWidthDp = -1f
+  private var sentCellWidthDp = Float.NaN
+  private var flushPosted = false
 
   val count: Int get() = children.count
 
@@ -32,11 +41,101 @@ class FlumeSlots(private val host: FlumeView) {
   fun add(child: View, index: Int) {
     children.add(index, child)
     (child.parent as? ViewGroup)?.removeView(child)
-    parking.addView(child)
+    val view = child as? FlumeSlotView
+    if (view == null) {
+      parking.addView(child)
+      return
+    }
+    view.onMeasured = { measured -> holderShowing(measured)?.refresh() }
+    val holder = holders[view.slot]
+    if (holder != null) holder.show(view) else parking.addView(view)
   }
 
   fun removeAt(index: Int) {
     val child = children.removeAt(index)
+    (child as? FlumeSlotView)?.let { view ->
+      view.onMeasured = null
+      holderShowing(view)?.show(null)
+    }
     (child.parent as? ViewGroup)?.removeView(child)
+  }
+
+  fun bind(holder: FlumeSlotHolder, group: SlotGroup, kind: Int, key: String, index: Int) {
+    if (holder.slot != 0 && pool.entry(holder.slot)?.key != key) release(holder)
+    val slot = pool.acquire(holder.owner, group, kind, key, index)
+    holder.slot = slot
+    holders[slot] = holder
+    holder.show(children.bySlot(slot) as? FlumeSlotView)
+    flush()
+  }
+
+  fun recycle(holder: FlumeSlotHolder) {
+    release(holder)
+    holder.show(null)
+    flush()
+  }
+
+  fun reindex(holder: FlumeSlotHolder, index: Int) {
+    if (holder.slot == 0 || index < 0) return
+    pool.setIndex(holder.slot, index)
+    flush()
+  }
+
+  // One snapshot per main-loop turn; Fabric coalesces queued events per type, so each carries the whole table.
+  fun flush() {
+    if (flushPosted) return
+    flushPosted = true
+    host.post {
+      flushPosted = false
+      if (!pool.dirty && cellWidthDp == sentCellWidthDp) return@post
+      sentCellWidthDp = cellWidthDp
+      host.dispatch(FlumeSlotsEvent(UIManagerHelper.getSurfaceId(host), host.id, pool.snapshot(), 0, cellWidthDp))
+    }
+  }
+
+  private fun release(holder: FlumeSlotHolder) {
+    val slot = holder.slot
+    if (slot == 0) return
+    pool.release(holder.owner, slot)
+    if (holders[slot] === holder) holders.remove(slot)
+    holder.slot = 0
+  }
+
+  private fun holderShowing(view: FlumeSlotView): FlumeSlotHolder? = holders[view.slot]?.takeIf { it.view === view }
+}
+
+class FlumeSlotsEvent(
+  surfaceId: Int,
+  viewTag: Int,
+  private val entries: List<SlotEntry>,
+  private val jsSeen: Int,
+  private val cellWidthDp: Float,
+) : Event<FlumeSlotsEvent>(surfaceId, viewTag) {
+  override fun getEventName(): String = NAME
+
+  override fun getEventData(): WritableMap = Arguments.createMap().apply {
+    putArray(
+      "slots",
+      Arguments.createArray().apply {
+        for (entry in entries) {
+          pushMap(
+            Arguments.createMap().apply {
+              putInt("slot", entry.slot)
+              putInt("kind", entry.kind)
+              putString("key", entry.key)
+              putInt("index", entry.index)
+              putBoolean("bound", entry.bound)
+              putDouble("minMain", entry.minMainDp.toDouble())
+            },
+          )
+        }
+      },
+    )
+    putInt("jsSeen", jsSeen)
+    putDouble("cellWidth", cellWidthDp.toDouble())
+  }
+
+  companion object {
+    const val NAME = "topSlotsChanged"
   }
 }
