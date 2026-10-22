@@ -24,6 +24,7 @@ class ViewabilityTracker(var config: ViewabilityConfig) {
   var interacted = false
   private var lastComputed = IntArray(0)
   private var dirty = false
+  private var current = emptyList<ViewToken>()
   private var lastReported = emptyList<ViewToken>()
 
   fun compute(viewportLength: Int, children: List<ChildFrame>): IntArray {
@@ -66,6 +67,19 @@ class ViewabilityTracker(var config: ViewabilityConfig) {
   // A data change moves keys between indices, so the next computed set counts as changed, as FlatList resets its cache.
   fun invalidate() {
     dirty = true
+  }
+
+  // The computed set with its keys when it changed, null when it did not; keys are read once per change.
+  fun keyed(viewable: IntArray, keyAt: (Int) -> String): List<ViewToken>? {
+    if (!changed(viewable)) return null
+    current = viewable.map { ViewToken(it, keyAt(it)) }
+    return current
+  }
+
+  // After minimumViewTime, only the scheduled rows still in the computed set count, at their indices now, as FlatList filters.
+  fun reportDelayed(scheduled: List<ViewToken>): ViewabilityReport? {
+    val keys = scheduled.mapTo(HashSet()) { it.key }
+    return report(current.filter { it.key in keys })
   }
 }
 

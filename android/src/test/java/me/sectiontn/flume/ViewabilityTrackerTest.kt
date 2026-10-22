@@ -63,6 +63,22 @@ class ViewabilityTrackerTest {
     assertEquals(listOf(ViewableChange(ViewToken(1, "b"), false), ViewableChange(ViewToken(0, "new"), true)), report.changed)
   }
 
+  // A fling carries rows past the viewport in less than minimumViewTime; only rows still in view at the deadline count.
+  @Test fun aDelayedReportKeepsOnlyTheRowsStillInView() {
+    val tracker = ViewabilityTracker(ViewabilityConfig(minimumViewTime = 250))
+    val scheduled = tracker.keyed(intArrayOf(0, 1)) { "k$it" }!!
+    tracker.keyed(intArrayOf(1, 2)) { "k$it" }
+    assertEquals(tokens(1 to "k1"), tracker.reportDelayed(scheduled)!!.viewable)
+  }
+
+  @Test fun aDelayedReportCarriesTheIndicesAfterADataChange() {
+    val tracker = ViewabilityTracker(ViewabilityConfig(minimumViewTime = 250))
+    val scheduled = tracker.keyed(intArrayOf(0, 1)) { listOf("a", "b")[it] }!!
+    tracker.invalidate()
+    tracker.keyed(intArrayOf(0, 1, 2)) { listOf("new", "a", "b")[it] }
+    assertEquals(tokens(1 to "a", 2 to "b"), tracker.reportDelayed(scheduled)!!.viewable)
+  }
+
   @Test fun clearingTheDataReportsTheExits() {
     val tracker = ViewabilityTracker(ViewabilityConfig())
     tracker.changed(intArrayOf(0))

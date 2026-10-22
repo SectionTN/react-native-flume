@@ -326,19 +326,17 @@ class FlumeView(context: Context) : FrameLayout(context) {
     viewability.config = config
   }
 
-  // A changed set is reported after minimumViewTime, as computed at the change, the way FlatList does.
+  // A changed set is reported after minimumViewTime with the rows still in view then, the way FlatList does.
   private fun evaluateViewability() {
     if (!emitViewabilityEvents || storeId == 0) return
     val viewport = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
-    val viewable = viewability.compute(viewport, childFrames())
-    if (!viewability.changed(viewable)) return
-    val tokens = viewable.map { ViewToken(it, FlumeJni.keyAt(storeId, it)) }
+    val tokens = viewability.keyed(viewability.compute(viewport, childFrames())) { FlumeJni.keyAt(storeId, it) } ?: return
     val delay = viewability.config.minimumViewTime
-    if (delay > 0) postDelayed({ emitViewability(tokens) }, delay) else emitViewability(tokens)
+    if (delay > 0) postDelayed({ emitViewability(viewability.reportDelayed(tokens)) }, delay) else emitViewability(viewability.report(tokens))
   }
 
-  private fun emitViewability(tokens: List<ViewToken>) {
-    val report = viewability.report(tokens) ?: return
+  private fun emitViewability(report: ViewabilityReport?) {
+    if (report == null) return
     dispatch(FlumeViewabilityEvent(UIManagerHelper.getSurfaceId(this), id, report.viewable, report.changed))
   }
 
