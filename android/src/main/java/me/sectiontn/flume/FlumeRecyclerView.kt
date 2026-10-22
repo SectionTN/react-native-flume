@@ -136,6 +136,13 @@ class FlumeRecyclerView(context: Context) : RecyclerView(context) {
   override fun fling(velocityX: Int, velocityY: Int): Boolean =
     super.fling((velocityX * flingFactor).toInt(), (velocityY * flingFactor).toInt())
 
+  // Fabric lays out a detached list (an inactive tab on rotation); RecyclerView records those item animations but runs them
+  // only while attached, and the rows it was animating out stay drawn in place, so they end here.
+  override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+    itemAnimator?.endAnimations()
+  }
+
   fun keyboardDecision(pressableHit: Boolean): TapDecision =
     KeyboardTapPolicy.decide(keyboardShouldPersistTaps, KeyboardState.dismissible(focusedInput() != null, imeVisible()), pressableHit)
 
