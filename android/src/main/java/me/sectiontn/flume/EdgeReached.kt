@@ -16,21 +16,25 @@ object ListDistances {
   }
 }
 
-data class EdgeHits(val start: Boolean, val end: Boolean)
+// RecyclerView's offset, range and extent along the scroll axis, estimated from the laid-out rows.
+data class ScrollRange(val offsetPx: Int, val rangePx: Int, val extentPx: Int)
 
-// FlatList's rule: an edge fires once per content length while within its threshold, and re-arms outside it.
+data class EdgeHits(val start: Boolean, val end: Boolean, val distances: EdgeDistances)
+
+// FlatList's rule per item count, since RecyclerView's range moves with the visible rows: once within the threshold, re-armed outside it.
 class EdgeTracker {
-  private var sentStart = -1
-  private var sentEnd = -1
+  private var sentStart = 0
+  private var sentEnd = 0
 
-  fun update(distances: EdgeDistances, visibleLengthPx: Int, contentLengthPx: Int, startThreshold: Double, endThreshold: Double): EdgeHits {
+  fun update(range: ScrollRange, itemCount: Int, inverted: Boolean, visibleLengthPx: Int, startThreshold: Double, endThreshold: Double): EdgeHits {
+    val distances = ListDistances.of(range.offsetPx, range.rangePx, range.extentPx, inverted)
     val withinStart = distances.fromStartPx <= startThreshold * visibleLengthPx
     val withinEnd = distances.fromEndPx <= endThreshold * visibleLengthPx
-    val start = withinStart && contentLengthPx != sentStart
-    val end = withinEnd && contentLengthPx != sentEnd
-    sentStart = if (!withinStart) -1 else if (start) contentLengthPx else sentStart
-    sentEnd = if (!withinEnd) -1 else if (end) contentLengthPx else sentEnd
-    return EdgeHits(start, end)
+    val start = withinStart && itemCount != sentStart
+    val end = withinEnd && itemCount != sentEnd
+    sentStart = if (!withinStart) 0 else if (start) itemCount else sentStart
+    sentEnd = if (!withinEnd) 0 else if (end) itemCount else sentEnd
+    return EdgeHits(start, end, distances)
   }
 }
 

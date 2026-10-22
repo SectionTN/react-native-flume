@@ -216,20 +216,18 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   // Offset, range and extent along the scroll axis, as RecyclerView estimates them from the laid-out rows.
-  private fun scrollMetrics(): Triple<Int, Int, Int> = if (geometry.horizontal) {
-    Triple(recycler.computeHorizontalScrollOffset(), recycler.computeHorizontalScrollRange(), recycler.computeHorizontalScrollExtent())
+  private fun scrollMetrics(): ScrollRange = if (geometry.horizontal) {
+    ScrollRange(recycler.computeHorizontalScrollOffset(), recycler.computeHorizontalScrollRange(), recycler.computeHorizontalScrollExtent())
   } else {
-    Triple(recycler.computeVerticalScrollOffset(), recycler.computeVerticalScrollRange(), recycler.computeVerticalScrollExtent())
+    ScrollRange(recycler.computeVerticalScrollOffset(), recycler.computeVerticalScrollRange(), recycler.computeVerticalScrollExtent())
   }
 
   private fun evaluateEdges() {
     if (storeId == 0 || !geometry.ready) return
-    val (offsetPx, rangePx, extentPx) = scrollMetrics()
-    val distances = ListDistances.of(offsetPx, rangePx, extentPx, inverted)
     val visible = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
-    val hits = edges.update(distances, visible, rangePx, startReachedThresholdViewports, endReachedThresholdViewports)
-    if (hits.end) dispatch(FlumeEdgeEvent(UIManagerHelper.getSurfaceId(this), id, true, distances.fromEndPx / density))
-    if (hits.start) dispatch(FlumeEdgeEvent(UIManagerHelper.getSurfaceId(this), id, false, distances.fromStartPx / density))
+    val hits = edges.update(scrollMetrics(), adapter.itemCount, inverted, visible, startReachedThresholdViewports, endReachedThresholdViewports)
+    if (hits.end) dispatch(FlumeEdgeEvent(UIManagerHelper.getSurfaceId(this), id, true, hits.distances.fromEndPx / density))
+    if (hits.start) dispatch(FlumeEdgeEvent(UIManagerHelper.getSurfaceId(this), id, false, hits.distances.fromStartPx / density))
   }
 
   // The laid-out rows along the scroll axis, in px from the padded leading edge, translation included.
