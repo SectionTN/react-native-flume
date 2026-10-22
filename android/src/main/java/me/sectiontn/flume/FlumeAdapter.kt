@@ -18,7 +18,7 @@ class FlumeAdapter(
   val geometry = ListGeometry(density)
   private val attached = AttachTracker()
   var onPress: ((position: Int, pressId: String?, long: Boolean) -> Unit)? = null
-  var isFullSpan: (Int) -> Boolean = { false }
+  var fullSpans = FullSpans(IntArray(0))
   var onFirstData: (() -> Unit)? = null
   var onDataChanged: ((reset: Boolean) -> Unit)? = null
   var rowsPressable = false
@@ -183,7 +183,7 @@ class FlumeAdapter(
     if (holder.cell.horizontal != geometry.horizontal) orient(holder.cell)
     holder.cell.rowsPressable = rowsPressable
     val start = SystemClock.elapsedRealtimeNanos()
-    val batch = FlumeJni.bind(storeId, holder.cell.cellId, position, geometry.cellWidthDp(isFullSpan(position)), geometry.cellHeightDp()) ?: return
+    val batch = FlumeJni.bind(storeId, holder.cell.cellId, position, geometry.cellWidthDp(fullSpans.contains(position)), geometry.cellHeightDp()) ?: return
     holder.cell.apply(batch)
     SpikeStats.record(SystemClock.elapsedRealtimeNanos() - start, batch.stats)
   }

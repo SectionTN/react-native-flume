@@ -200,7 +200,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
       field = value
       val previous = stickySet
       stickySet = value.toHashSet()
-      adapter.isFullSpan = { stickySet.contains(it) }
+      adapter.fullSpans = FullSpans(value)
       applyFullSpan()
       sticky.indices = value
       adapter.onStickyChanged(previous, stickySet)
@@ -269,7 +269,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   // Binds the row into a scratch holder so a worklet row lands exactly; 0 before the engine can bind.
   private fun measureRowPx(index: Int): Int {
     if (storeId == 0 || !geometry.ready) return 0
-    val batch = FlumeJni.bind(storeId, measureHolderId, index, geometry.cellWidthDp(adapter.isFullSpan(index)), geometry.cellHeightDp()) ?: return 0
+    val batch = FlumeJni.bind(storeId, measureHolderId, index, geometry.cellWidthDp(adapter.fullSpans.contains(index)), geometry.cellHeightDp()) ?: return 0
     return ((if (geometry.horizontal) batch.rootWidth else batch.rootHeight) * density).roundToInt()
   }
 
@@ -341,7 +341,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   private fun applyFullSpan() {
-    (layoutManager as? FlumeGridLayoutManager)?.fullSpanLookup?.isFullSpan = adapter.isFullSpan
+    (layoutManager as? FlumeGridLayoutManager)?.fullSpanLookup?.fullSpans = adapter.fullSpans
   }
 
   fun setSeparator(sizeDp: Double? = null, color: Int? = null, insetStartDp: Double? = null, insetEndDp: Double? = null) {

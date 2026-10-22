@@ -52,11 +52,54 @@ class FlumeGridLayoutManager(context: Context, spanCount: Int, orientation: Int,
   }
 }
 
+// The positions that take every span of a grid row, the sticky headers; rows and columns follow from them in O(log n).
+class FullSpans(positions: IntArray) {
+  private val sorted = positions.filter { it >= 0 }.distinct().sorted().toIntArray()
+  private var rowsSpanCount = 0
+  private var rows = IntArray(0)
+
+  fun contains(position: Int): Boolean = sorted.binarySearch(position) >= 0
+
+  // Columns restart after each full-span row, as GridLayoutManager places them.
+  fun spanIndex(position: Int, spanCount: Int): Int {
+    val found = sorted.binarySearch(position)
+    return if (found >= 0) 0 else (position - runStart(-found - 2)) % spanCount
+  }
+
+  fun groupIndex(position: Int, spanCount: Int): Int {
+    val rows = rowsFor(spanCount)
+    val found = sorted.binarySearch(position)
+    if (found >= 0) return rows[found]
+    val previous = -found - 2
+    return (if (previous >= 0) rows[previous] + 1 else 0) + (position - runStart(previous)) / spanCount
+  }
+
+  private fun runStart(previousFullSpan: Int) = if (previousFullSpan >= 0) sorted[previousFullSpan] + 1 else 0
+
+  // The row of each full-span position: the previous one's row, then the rows its run of single spans fills.
+  private fun rowsFor(spanCount: Int): IntArray {
+    if (spanCount == rowsSpanCount) return rows
+    val next = IntArray(sorted.size)
+    for (i in sorted.indices) {
+      val run = sorted[i] - runStart(i - 1)
+      next[i] = (if (i > 0) next[i - 1] + 1 else 0) + (run + spanCount - 1) / spanCount
+    }
+    rows = next
+    rowsSpanCount = spanCount
+    return next
+  }
+}
+
 // Sticky header rows take every span; everything else takes one.
 class FlumeSpanSizeLookup(private val spanCount: () -> Int) : GridLayoutManager.SpanSizeLookup() {
-  var isFullSpan: (Int) -> Boolean = { false }
+  var fullSpans = FullSpans(IntArray(0))
 
-  override fun getSpanSize(position: Int): Int = if (isFullSpan(position)) spanCount() else 1
+  override fun getSpanSize(position: Int): Int = if (fullSpans.contains(position)) spanCount() else 1
+
+  // RecyclerView's own versions walk every earlier position, uncached by default.
+  override fun getSpanIndex(position: Int, spanCount: Int): Int = fullSpans.spanIndex(position, spanCount)
+
+  override fun getSpanGroupIndex(adapterPosition: Int, spanCount: Int): Int = fullSpans.groupIndex(adapterPosition, spanCount)
 }
 
 // inverted only reverses: stacking from the end on a reversed layout would start the list at its oldest end.
