@@ -37,6 +37,30 @@ object KeyboardTapPolicy {
   }
 }
 
+// ScrollView's responder logic: a gesture the policy dismisses on closes the keyboard at its release, unless it scrolled.
+class KeyboardGesture {
+  var swallowing = false
+    private set
+  private var dismissOnRelease = false
+
+  fun down(decision: TapDecision) {
+    swallowing = decision.swallow
+    dismissOnRelease = decision.dismiss
+  }
+
+  fun scrolled() {
+    dismissOnRelease = false
+  }
+
+  // True when the keyboard closes now.
+  fun release(): Boolean {
+    val dismiss = dismissOnRelease
+    swallowing = false
+    dismissOnRelease = false
+    return dismiss
+  }
+}
+
 // ScrollView's rule: a focused input with the keyboard shown; before API 30 the IME's visibility is unknown and counts as shown.
 object KeyboardState {
   fun dismissible(hasFocusedInput: Boolean, imeVisible: Boolean?): Boolean = hasFocusedInput && imeVisible != false
@@ -54,31 +78,33 @@ class FlumeRecyclerView(context: Context) : RecyclerView(context) {
   var scrollEnabled = true
   var flingFactor = 1f
   var keyboardShouldPersistTaps = KeyboardTaps.NEVER
-  private var swallowing = false
+  private val keyboardGesture = KeyboardGesture()
 
-  // A disabled list leaves taps to its rows and takes no drag; a swallowed tap never reaches a row.
-  override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
+  // The keyboard policy sees every gesture here, including the ones a row consumes.
+  override fun dispatchTouchEvent(e: MotionEvent): Boolean {
     if (e.actionMasked == MotionEvent.ACTION_DOWN) {
-      swallowing = false
       val keyboardUp = KeyboardState.dismissible(focusedInput() != null, imeVisible())
-      val decision = KeyboardTapPolicy.decide(keyboardShouldPersistTaps, keyboardUp, pressableHitAt(e.x, e.y))
-      if (decision.dismiss) dismissKeyboard()
-      if (decision.swallow) {
-        swallowing = true
-        return true
-      }
+      keyboardGesture.down(KeyboardTapPolicy.decide(keyboardShouldPersistTaps, keyboardUp, pressableHitAt(e.x, e.y)))
     }
-    if (!scrollEnabled) return false
-    return super.onInterceptTouchEvent(e)
+    val handled = super.dispatchTouchEvent(e)
+    if (e.actionMasked == MotionEvent.ACTION_UP && keyboardGesture.release()) dismissKeyboard()
+    return handled
+  }
+
+  // A swallowed gesture never reaches a row but still scrolls the list; a disabled list leaves taps to its rows and takes no drag.
+  override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
+    if (!scrollEnabled) return keyboardGesture.swallowing
+    return super.onInterceptTouchEvent(e) || keyboardGesture.swallowing
   }
 
   override fun onTouchEvent(e: MotionEvent): Boolean {
-    if (swallowing) {
-      if (e.actionMasked == MotionEvent.ACTION_UP || e.actionMasked == MotionEvent.ACTION_CANCEL) swallowing = false
-      return true
-    }
-    if (!scrollEnabled) return false
-    return super.onTouchEvent(e)
+    if (!scrollEnabled) return keyboardGesture.swallowing
+    return super.onTouchEvent(e) || keyboardGesture.swallowing
+  }
+
+  override fun onScrollStateChanged(state: Int) {
+    super.onScrollStateChanged(state)
+    if (state == SCROLL_STATE_DRAGGING) keyboardGesture.scrolled()
   }
 
   override fun fling(velocityX: Int, velocityY: Int): Boolean =
