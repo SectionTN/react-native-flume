@@ -80,10 +80,21 @@ class SlotPoolTest {
   }
 
   @Test
-  fun preRenderedSlotsPastTheCapLeaveOldestFirst() {
+  fun aMountBatchOfPreRenderedSlotsPastTheCapWaitsForItsBinds() {
+    val pool = SlotPool(maxFree = 2)
+    val keys = listOf("a", "b", "c", "d", "e")
+    keys.forEachIndexed { i, key -> pool.register(-1 - i, SlotKinds.ROW, key) }
+    keys.forEachIndexed { i, key -> assertEquals(-1 - i, pool.acquire(i + 1, list, SlotKinds.ROW, key, i)) }
+  }
+
+  @Test
+  fun olderPreRenderedSlotsPastTheCapLeaveAsTheNextBatchRegisters() {
     val pool = SlotPool(maxFree = 2)
     listOf("a", "b", "c").forEachIndexed { i, key -> pool.register(-1 - i, SlotKinds.ROW, key) }
-    assertEquals(listOf(-3, -2), pool.snapshot().map { it.slot })
+    assertEquals(listOf(-3, -2, -1), pool.snapshot().map { it.slot })
+    pool.endBatch()
+    pool.register(-4, SlotKinds.ROW, "d")
+    assertEquals(listOf(-4, -3, -2), pool.snapshot().map { it.slot })
   }
 
   @Test

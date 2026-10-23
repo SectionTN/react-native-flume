@@ -33,6 +33,7 @@ class SlotPool(private val maxFree: Int = MAX_FREE) {
   private val free = LinkedHashSet<Int>()
   private val unadopted = LinkedHashSet<Int>()
   private var nextId = 1
+  private var batchOpen = false
 
   var dirty = false
     private set
@@ -41,11 +42,22 @@ class SlotPool(private val maxFree: Int = MAX_FREE) {
   var jsSeen = 0
     private set
 
+  // Every pre-rendered slot of one mount batch waits for the binds its data brings; older ones past the cap leave as the
+  // next batch registers.
   fun register(slot: Int, kind: Int, key: String) {
     if (slots.containsKey(slot)) return
+    if (!batchOpen) {
+      batchOpen = true
+      trim(unadopted)
+    }
     slots[slot] = Slot(slot, null, kind, key)
     jsSeen = minOf(jsSeen, slot)
-    cache(unadopted, slot)
+    unadopted.add(slot)
+    dirty = true
+  }
+
+  fun endBatch() {
+    batchOpen = false
   }
 
   fun acquire(owner: Int, group: SlotGroup, kind: Int, key: String, index: Int): Int {
@@ -112,10 +124,15 @@ class SlotPool(private val maxFree: Int = MAX_FREE) {
   private fun cache(queue: LinkedHashSet<Int>, slot: Int) {
     queue.add(slot)
     dirty = true
+    trim(queue)
+  }
+
+  private fun trim(queue: LinkedHashSet<Int>) {
     while (queue.size > maxFree) {
       val oldest = queue.first()
       queue.remove(oldest)
       slots.remove(oldest)
+      dirty = true
     }
   }
 

@@ -1,6 +1,8 @@
 package me.sectiontn.flume
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import com.facebook.react.bridge.Arguments
@@ -40,6 +42,9 @@ class FlumeSlots(private val host: FlumeView) {
   var cellWidthDp = -1f
   private var sentCellWidthDp = Float.NaN
   private var flushPosted = false
+  // The main looper, not the host's queue: a mount batch ends while the list is detached too.
+  private val mainLoop = Handler(Looper.getMainLooper())
+  private val endBatch = Runnable { pool.endBatch() }
 
   val count: Int get() = children.count
 
@@ -150,6 +155,8 @@ class FlumeSlots(private val host: FlumeView) {
   // A pre-rendered view takes the place of a slot its key still waits on, so the holder shows it without a blank frame.
   private fun register(view: FlumeSlotView) {
     pool.register(view.slot, view.kind, view.itemKey)
+    mainLoop.removeCallbacks(endBatch)
+    mainLoop.post(endBatch)
     host.refreshData()
     flush()
     val holder = holders.values.firstOrNull { holder ->
