@@ -13,17 +13,28 @@ data class ChildFrame(val position: Int, val start: Int, val end: Int)
 data class Pinned(val index: Int, val translation: Int)
 
 // Which sticky row is pinned and how far the next header pushes it; indices at or past the count are ignored.
+// Frames count from the pin line; a header whose row has not reached it shows in place.
 object StickyResolver {
   fun resolve(sticky: IntArray, children: List<ChildFrame>, count: Int, inverted: Boolean, pinnedLength: Int): Pinned? {
     val top = children.filter { it.end > 0 }.minByOrNull { it.start } ?: return null
     val valid = sticky.filter { it < count }
     val index = if (inverted) valid.firstOrNull { it >= top.position } else valid.lastOrNull { it <= top.position }
-    if (index == null) return null
+    if (index == null || children.any { it.position == index && it.start > 0 }) return null
     val pusher = if (inverted) valid.lastOrNull { it < index } else valid.firstOrNull { it > index }
     val frame = pusher?.let { p -> children.firstOrNull { it.position == p } }
     val translation = if (frame != null && frame.start < pinnedLength) frame.start - pinnedLength else 0
     return Pinned(index, translation)
   }
+}
+
+// A copy pins at the viewport's leading edge, as a ScrollView sticky header does, inside the padding across the scroll axis.
+object StickyPlacement {
+  // Left, top, right and bottom.
+  fun margins(horizontal: Boolean, left: Int, top: Int, right: Int, bottom: Int): IntArray =
+    if (horizontal) intArrayOf(0, top, right, bottom) else intArrayOf(left, 0, right, bottom)
+
+  fun fromViewportEdge(frames: List<ChildFrame>, leadingPaddingPx: Int): List<ChildFrame> =
+    frames.map { it.copy(start = it.start + leadingPaddingPx, end = it.end + leadingPaddingPx) }
 }
 
 // The sticky rows that keep a React copy: the pinned one and the laid-out ones, so the next is rendered before it pins.
@@ -96,7 +107,7 @@ class StickyHeaderHost(
       return
     }
     val horizontal = lm.orientation == RecyclerView.HORIZONTAL
-    val frames = view.childFrames()
+    val frames = StickyPlacement.fromViewportEdge(view.childFrames(), if (horizontal) recycler.paddingLeft else recycler.paddingTop)
     var result = StickyResolver.resolve(indices, frames, count, lm.reverseLayout, pinnedLength)
     syncCopies(StickyCopies.wanted(indices, frames, result?.index ?: -1, view::isReactRow), force)
     if (result == null) {
@@ -174,20 +185,24 @@ class StickyHeaderHost(
     val widthSpec = if (horizontal) View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED) else View.MeasureSpec.makeMeasureSpec(geometry.innerWidthPx, View.MeasureSpec.EXACTLY)
     val heightSpec = if (horizontal) View.MeasureSpec.makeMeasureSpec(geometry.innerHeightPx, View.MeasureSpec.EXACTLY) else View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
     pinnedView.measure(widthSpec, heightSpec)
-    val left = recycler.paddingLeft
-    val top = recycler.paddingTop
+    val (left, top) = margins(horizontal)
     pinnedView.layout(left, top, left + pinnedView.measuredWidth, top + pinnedView.measuredHeight)
   }
 
-  // A copy sits at the leading edge inside the content padding, full width or full height.
-  private fun place(copy: View, horizontal: Boolean) {
+  private fun margins(horizontal: Boolean): IntArray {
     val recycler = view.recycler
+    return StickyPlacement.margins(horizontal, recycler.paddingLeft, recycler.paddingTop, recycler.paddingRight, recycler.paddingBottom)
+  }
+
+  // A copy sits at the viewport's leading edge, inside the content padding across the scroll axis, full width or full height.
+  private fun place(copy: View, horizontal: Boolean) {
     val params = FrameLayout.LayoutParams(
       if (horizontal) ViewGroup.LayoutParams.WRAP_CONTENT else ViewGroup.LayoutParams.MATCH_PARENT,
       if (horizontal) ViewGroup.LayoutParams.MATCH_PARENT else ViewGroup.LayoutParams.WRAP_CONTENT,
       Gravity.TOP or Gravity.START,
     )
-    params.setMargins(recycler.paddingLeft, recycler.paddingTop, recycler.paddingRight, recycler.paddingBottom)
+    val (left, top, right, bottom) = margins(horizontal)
+    params.setMargins(left, top, right, bottom)
     val current = copy.layoutParams as? FrameLayout.LayoutParams
     if (current == null || current.width != params.width || current.height != params.height ||
       current.leftMargin != params.leftMargin || current.topMargin != params.topMargin ||

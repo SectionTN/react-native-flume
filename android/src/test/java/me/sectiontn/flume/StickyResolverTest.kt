@@ -37,6 +37,13 @@ class StickyResolverTest {
   }
 
   @Test
+  fun aHeaderBelowThePinLineHasNotPinned() {
+    assertNull(StickyResolver.resolve(intArrayOf(0, 4), rows(Triple(0, 16, 56), Triple(1, 56, 96)), 10, false, 40))
+    assertNull(StickyResolver.resolve(intArrayOf(3, 7), rows(Triple(7, 16, 56), Triple(6, 56, 96)), 10, true, 40))
+    assertEquals(Pinned(0, 0), StickyResolver.resolve(intArrayOf(0, 4), rows(Triple(0, 0, 40), Triple(1, 40, 80)), 10, false, 40))
+  }
+
+  @Test
   fun indicesPastTheCountAreIgnored() {
     assertEquals(Pinned(2, 0), StickyResolver.resolve(intArrayOf(2, 50), rows(Triple(8, 0, 40), Triple(9, 40, 80)), 10, false, 40))
   }
