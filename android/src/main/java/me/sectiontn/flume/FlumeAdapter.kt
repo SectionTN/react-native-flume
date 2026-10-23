@@ -81,12 +81,20 @@ class FlumeAdapter(
     // The empty row comes and goes with the data, which the store's operations do not know about.
     val reload = reset || rows.hasEmptyRow != rows.copy(dataCount = count).hasEmptyRow
     val before = if (reload) null else anchorState()
+    val anchorLost = !reload && AnchorPolicy.losesEveryRow(laidOutDataIndices(), removed)
     setCount(count)
     ListOpsApplier.apply(reload, removed, inserted, moved, changed, this)
     reindexSlots()
-    anchor(before, inserted, count)
+    anchor(before, inserted, count, anchorLost)
     onDataChanged?.invoke(reload)
   }
+
+  // Rows RecyclerView could anchor on, before the operations apply; a row on its way out has no position.
+  private fun laidOutDataIndices(): IntArray = (0 until recycler.childCount)
+    .map { recycler.getChildAdapterPosition(recycler.getChildAt(it)) }
+    .filter { it != RecyclerView.NO_POSITION }
+    .map { rows.dataIndex(it) }
+    .toIntArray()
 
   // Inserts and removes shift rows without a rebind; a React cell's index follows its holder's new position.
   private fun reindexSlots() {
@@ -97,7 +105,7 @@ class FlumeAdapter(
   }
 
   // Inserts touching the content start or end map to the visual edges through the orientation.
-  private fun anchor(before: AnchorState?, inserted: IntArray, count: Int) {
+  private fun anchor(before: AnchorState?, inserted: IntArray, count: Int, anchorLost: Boolean) {
     var atStart = false
     var atEnd = false
     for (i in inserted.indices step 2) {
@@ -105,8 +113,11 @@ class FlumeAdapter(
       if (inserted[i] + inserted[i + 1] == count) atEnd = true
     }
     val inverted = geometry.inverted
-    val decision = AnchorPolicy.decide(anchorConfig, before, if (inverted) atEnd else atStart, if (inverted) atStart else atEnd)
-    decision.restore?.let { (position, offset) -> (recycler.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, offset) }
+    val decision = AnchorPolicy.decide(anchorConfig, before, if (inverted) atEnd else atStart, if (inverted) atStart else atEnd, anchorLost)
+    decision.restore?.let { (position, offset) ->
+      // A shorter list keeps its last row in view; RecyclerView ignores a position past the count.
+      (recycler.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(minOf(position, rows.itemCount - 1), offset)
+    }
     decision.scrollTo?.let { edge ->
       val (index, viewPosition) = AnchorTargets.indexFor(edge, rows.itemCount, inverted)
       recycler.post { onAutoscroll?.invoke(index, viewPosition, decision.animated) }

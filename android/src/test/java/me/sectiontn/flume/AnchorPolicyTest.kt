@@ -22,6 +22,21 @@ class AnchorPolicyTest {
   @Test fun anInsertAtTheTopWithinTheThresholdScrollsThere() =
     assertEquals(AnchorDecision(scrollTo = VisualEdge.TOP, animated = true), AnchorPolicy.decide(AnchorConfig(autoscrollToTopThreshold = 1.0), before, true, false))
 
+  @Test fun aChangeThatRemovesEveryLaidOutRowKeepsThePosition() {
+    assertEquals(AnchorDecision(restore = 3 to -12), AnchorPolicy.decide(AnchorConfig(), before, true, false, anchorLost = true))
+    val bottom = AnchorConfig(autoscrollToBottomThreshold = 0.2)
+    assertEquals(AnchorDecision(scrollTo = VisualEdge.BOTTOM, animated = true), AnchorPolicy.decide(bottom, before, false, true, anchorLost = true))
+  }
+
+  @Test fun theAnchorIsLostOnlyWhenNoLaidOutRowSurvives() {
+    val everything = intArrayOf(0, 500)
+    assertEquals(true, AnchorPolicy.losesEveryRow(intArrayOf(30, 31, 32), everything))
+    assertEquals(false, AnchorPolicy.losesEveryRow(intArrayOf(-1, 0, 1), everything))
+    assertEquals(false, AnchorPolicy.losesEveryRow(intArrayOf(30, 31, 32), intArrayOf(32, 1, 30, 1)))
+    assertEquals(true, AnchorPolicy.losesEveryRow(intArrayOf(30, 31, 32), intArrayOf(32, 1, 30, 2)))
+    assertEquals(false, AnchorPolicy.losesEveryRow(intArrayOf(), everything))
+  }
+
   @Test fun nothingHappensWithoutAState() =
     assertEquals(AnchorDecision(), AnchorPolicy.decide(AnchorConfig(disabled = true), null, true, true))
 
