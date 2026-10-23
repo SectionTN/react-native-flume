@@ -34,6 +34,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
   val slots = FlumeSlots(this)
   private val adapter = FlumeAdapter(context, measurer, recycler, slots)
   private var layoutManager: LinearLayoutManager = FlumeLinearLayoutManager(context, RecyclerView.VERTICAL, false)
+  // Null until the first build replaces the unhooked layout manager above.
+  private var shape: LayoutShape? = null
   private val paddingPx = IntArray(4)
   private var initialScrollPending = false
   private var separator: SeparatorDecoration? = null
@@ -66,8 +68,10 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private var separatorInsetStartDp = 0.0
   private var separatorInsetEndDp = 0.0
 
+  // A re-attach applies pending data without reporting it, so the same id arriving again is ignored.
   var storeId = 0
     set(value) {
+      if (value == field) return
       field = value
       if (isAttachedToWindow && value != 0) adapter.attach(value)
     }
@@ -76,6 +80,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private val animator = DefaultItemAnimator().apply { supportsChangeAnimations = false }
   var itemAnimations = true
     set(value) {
+      if (value == field) return
       field = value
       recycler.itemAnimator = if (value) animator else null
     }
@@ -117,10 +122,9 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   var anchorConfig = AnchorConfig()
     set(value) {
-      val rebuild = value.startRenderingFromBottom != field.startRenderingFromBottom
       field = value
       adapter.anchorConfig = value
-      if (rebuild) rebuildLayoutManager()
+      rebuildLayoutManager()
     }
 
   var decelerationRate = 0.998
@@ -142,8 +146,10 @@ class FlumeView(context: Context) : FrameLayout(context) {
       if (didLayout) refreshLayout.isRefreshing = value
     }
 
+  // The same value arriving again must not re-arm the scroll for the next empty-to-filled change.
   var initialScrollIndex = -1
     set(value) {
+      if (value == field) return
       field = value
       initialScrollPending = value >= 0
     }
@@ -503,13 +509,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   // A grid only reverses; stackFromEnd is unsupported there, so an inverted grid with little content starts at the top.
   private fun rebuildLayoutManager() {
+    val next = LayoutShape.of(horizontal, numColumns, inverted, anchorConfig.startRenderingFromBottom)
+    if (next == shape) return
+    shape = next
     val orientation = if (horizontal) RecyclerView.HORIZONTAL else RecyclerView.VERTICAL
     layoutManager = if (numColumns > 1) {
       FlumeGridLayoutManager(context, numColumns, orientation, inverted)
     } else {
-      FlumeLinearLayoutManager(context, orientation, inverted).apply {
-        stackFromEnd = LayoutFlags.stackFromEnd(inverted, anchorConfig.startRenderingFromBottom)
-      }
+      FlumeLinearLayoutManager(context, orientation, inverted).apply { stackFromEnd = next.stackFromEnd }
     }
     applyDrawDistance()
     hookLayoutManager()

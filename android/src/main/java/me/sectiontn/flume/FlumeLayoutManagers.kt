@@ -106,3 +106,12 @@ class FlumeSpanSizeLookup(private val spanCount: () -> Int) : GridLayoutManager.
 object LayoutFlags {
   fun stackFromEnd(inverted: Boolean, startRenderingFromBottom: Boolean): Boolean = !inverted && startRenderingFromBottom
 }
+
+// What the layout manager is built from. Replacing it drops every row and starts over at the first, and Fabric can deliver
+// a prop again with the value it has, so only a new shape rebuilds it; stackFromEnd applies to a single column.
+data class LayoutShape(val horizontal: Boolean, val numColumns: Int, val inverted: Boolean, val stackFromEnd: Boolean) {
+  companion object {
+    fun of(horizontal: Boolean, numColumns: Int, inverted: Boolean, startRenderingFromBottom: Boolean) =
+      LayoutShape(horizontal, numColumns, inverted, numColumns == 1 && LayoutFlags.stackFromEnd(inverted, startRenderingFromBottom))
+  }
+}
