@@ -9,8 +9,10 @@
     "android:release": "expo run:android --variant release"
   },
   "dependencies": {
+    "@legendapp/list": "3.6.0",
     "@react-navigation/bottom-tabs": "^7.21.0",
     "@react-navigation/native": "^7.5.1",
+    "@shopify/flash-list": "2.3.3",
     "expo": "~57.0.30",
     "react": "19.2.3",
     "react-native": "0.86.3",

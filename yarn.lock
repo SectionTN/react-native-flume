@@ -2321,6 +2321,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@legendapp/list@npm:3.6.0":
+  version: 3.6.0
+  resolution: "@legendapp/list@npm:3.6.0"
+  dependencies:
+    use-sync-external-store: "npm:^1.5.0"
+  peerDependencies:
+    react: "*"
+  peerDependenciesMeta:
+    react-dom:
+      optional: true
+    react-native:
+      optional: true
+  checksum: 10c0/6ac6dba160a08eba13e9096a8dbcf2a749c43f7da2ea67206a9f265e4d870b6000645233623f2f24466e37e146ae5fe729672ae97125e74dee3ebdbe841beb10
+  languageName: node
+  linkType: hard
+
 "@nodelib/fs.scandir@npm:2.1.5":
   version: 2.1.5
   resolution: "@nodelib/fs.scandir@npm:2.1.5"
@@ -2913,6 +2929,17 @@ __metadata:
   version: 1.0.1
   resolution: "@rolldown/pluginutils@npm:1.0.1"
   checksum: 10c0/99d9b06d90196823e4d8c841f258db7a16e5dbba5824a2962b05d907b79f1ba929d56f22dd744fd530936e568c865ee56a719dc31e57e13bc0a8eb4764a8d8dd
+  languageName: node
+  linkType: hard
+
+"@shopify/flash-list@npm:2.3.3":
+  version: 2.3.3
+  resolution: "@shopify/flash-list@npm:2.3.3"
+  peerDependencies:
+    "@babel/runtime": "*"
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/c94af22f8b034d9f24e8ea3628ac20597cdb00f8c250d24a8e7adb86bc2a41cf10234c2fd87315bf7a34211db87d7eba40bddda610847cb6afedd2d6a1a3ffe5
   languageName: node
   linkType: hard
 
@@ -6683,10 +6710,12 @@ __metadata:
   resolution: "react-native-flume-example@workspace:example"
   dependencies:
     "@babel/core": "npm:^7.25.2"
+    "@legendapp/list": "npm:3.6.0"
     "@react-native/babel-preset": "npm:0.86.3"
     "@react-native/metro-config": "npm:0.86.3"
     "@react-navigation/bottom-tabs": "npm:^7.21.0"
     "@react-navigation/native": "npm:^7.5.1"
+    "@shopify/flash-list": "npm:2.3.3"
     babel-preset-expo: "npm:~57.0.15"
     expo: "npm:~57.0.30"
     react: "npm:19.2.3"
