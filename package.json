@@ -33,6 +33,7 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "typecheck": "tsc",
+    "bench": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON example/benchmark/run.mts",
     "test": "vitest run",
     "test:cpp": "scripts/test-cpp.sh",
     "test:android": "cd example/android && ./gradlew :react-native-flume:testReleaseUnitTest --console=plain -q"
