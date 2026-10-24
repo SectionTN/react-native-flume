@@ -304,3 +304,17 @@ TEST_CASE("a text scales with the font by default") {
   rig.bind(obj({{"type", V("text")}, {"text", V("a")}}));
   CHECK(textOp(rig.batch, 0).ints[8] == 1);
 }
+
+TEST_CASE("a text op carries the leading padding and border insets") {
+  Rig rig;
+  flume::Value text = obj({{"type", V("text")},
+                           {"text", V("hello")},
+                           {"style", obj({{"paddingHorizontal", V(12)}, {"paddingTop", V(4)}, {"borderWidth", V(1)}})}});
+  rig.bind(obj({{"type", V("view")}, {"children", flume::Value(flume::Value::Array{text})}}));
+  auto ops = decode(rig.batch);
+  auto op = std::find_if(ops.begin(), ops.end(), [](const DecodedOp& o) { return o.op == 5; });
+  REQUIRE(op != ops.end());
+  CHECK(op->floats[1] == 334.0f);
+  CHECK(op->floats[4] == 13.0f);
+  CHECK(op->floats[5] == 5.0f);
+}

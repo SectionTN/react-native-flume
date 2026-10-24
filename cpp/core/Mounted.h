@@ -37,6 +37,8 @@ struct Mounted {
   Layout* layout = nullptr;
   float measuredMaxWidth = 0;  // the width constraint of the last text measure, for the Text op
   float emittedMaxWidth = -1;  // the width the last Text op carried; a text wrapped at another width is sent again
+  float emittedInsetLeft = 0;  // the padding and border insets the last Text op carried
+  float emittedInsetTop = 0;
   bool textDirty = false;      // set by the reconciler, cleared when the Text op is emitted after layout
   std::array<float, 4> lastFrame{NAN, NAN, NAN, NAN};  // the last Frame op sent; Yoga flags the root every pass
   std::array<float, 2> lastLayoutSize{NAN, NAN};  // the root's last constraints; another size re-measures every text

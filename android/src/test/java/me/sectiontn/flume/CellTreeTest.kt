@@ -9,6 +9,7 @@ import org.junit.Test
 class FakeView(val kind: Int) {
   val children = mutableListOf<FakeView>()
   var text: TextSpec? = null
+  var insetPx: Pair<Float, Float>? = null
 }
 
 class FakeViews : CellViews<FakeView> {
@@ -25,7 +26,10 @@ class FakeViews : CellViews<FakeView> {
   }
   override fun removeAll() { root.children.clear(); removeAllCalls++ }
   override fun viewStyle(view: FakeView, backgroundColor: Int, borderColor: Int, opacity: Float, radiiPx: FloatArray, borderWidthPx: Float, elevationPx: Float) = Unit
-  override fun text(view: FakeView, spec: TextSpec, color: Int) { view.text = spec }
+  override fun text(view: FakeView, spec: TextSpec, color: Int, insetLeftPx: Float, insetTopPx: Float) {
+    view.text = spec
+    view.insetPx = insetLeftPx to insetTopPx
+  }
   override fun image(view: FakeView, spec: ImageSpec) = Unit
   override fun pressable(view: FakeView, id: String, pressedOpacity: Float) = Unit
   override fun accessibility(view: FakeView, label: String?, testId: String?, role: Int, accessible: Int) = Unit
@@ -94,12 +98,18 @@ class CellTreeTextTest {
   @Test
   fun aTextOpCarriesAllowFontScaling() {
     val ints = intArrayOf(1, 1, 1, 0, 0, 5, 1, 0, 0xff000000.toInt(), 400, 0, -1, 0, 0, 0, 0)
-    tree.apply(batch(ints, floatArrayOf(14f, 100f, 0f, 0f), first = true, strings = arrayOf("hello")))
+    tree.apply(batch(ints, floatArrayOf(14f, 100f, 0f, 0f, 0f, 0f), first = true, strings = arrayOf("hello")))
     val spec = views.created[0].text
     assertEquals("hello", spec?.text)
     assertEquals(false, spec?.allowFontScaling)
   }
 
+  @Test
+  fun aTextOpCarriesItsInsetsInPx() {
+    val ints = intArrayOf(1, 1, 1, 0, 0, 5, 1, 0, 0xff000000.toInt(), 400, 0, -1, 0, 0, 0, 1)
+    tree.apply(batch(ints, floatArrayOf(14f, 100f, 0f, 0f, 13f, 5f), first = true, strings = arrayOf("hello")))
+    assertEquals(26f to 10f, views.created[0].insetPx)
+  }
   @Test
   fun theRootFrameSetsBothSizes() {
     tree.apply(batch(intArrayOf(1, 1, 0, 0, 0, 3, 0), floatArrayOf(0f, 0f, 120f, 48f), first = true))

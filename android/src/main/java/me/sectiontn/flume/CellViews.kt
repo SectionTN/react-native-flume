@@ -16,7 +16,7 @@ interface CellViews<V : Any> {
 
   fun viewStyle(view: V, backgroundColor: Int, borderColor: Int, opacity: Float, radiiPx: FloatArray, borderWidthPx: Float, elevationPx: Float)
 
-  fun text(view: V, spec: TextSpec, color: Int)
+  fun text(view: V, spec: TextSpec, color: Int, insetLeftPx: Float, insetTopPx: Float)
 
   fun image(view: V, spec: ImageSpec)
 

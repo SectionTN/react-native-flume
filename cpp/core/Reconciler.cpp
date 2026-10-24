@@ -260,10 +260,15 @@ void Reconciler::emitAfterLayout(Holder& holder, OpBatch& out) {
 void Reconciler::emitTextOf(Mounted& node, OpBatch& out) {
   if (node.type == NodeType::Text) {
     float maxWidth = node.measuredMaxWidth > 0 ? node.measuredMaxWidth : YGNodeLayoutGetWidth(node.yoga);
-    if (node.textDirty || maxWidth != node.emittedMaxWidth) {
-      out.text(node.viewId, node.text, node.style, maxWidth, node.allowFontScaling);
+    float insetLeft = YGNodeLayoutGetPadding(node.yoga, YGEdgeLeft) + YGNodeLayoutGetBorder(node.yoga, YGEdgeLeft);
+    float insetTop = YGNodeLayoutGetPadding(node.yoga, YGEdgeTop) + YGNodeLayoutGetBorder(node.yoga, YGEdgeTop);
+    if (node.textDirty || maxWidth != node.emittedMaxWidth || insetLeft != node.emittedInsetLeft ||
+        insetTop != node.emittedInsetTop) {
+      out.text(node.viewId, node.text, node.style, maxWidth, node.allowFontScaling, insetLeft, insetTop);
       node.textDirty = false;
       node.emittedMaxWidth = maxWidth;
+      node.emittedInsetLeft = insetLeft;
+      node.emittedInsetTop = insetTop;
     }
   }
   for (auto& child : node.children) emitTextOf(*child, out);

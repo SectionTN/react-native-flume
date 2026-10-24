@@ -72,9 +72,9 @@ class CellTree<V : Any>(private val views: CellViews<V>, private val density: Fl
             numberOfLines = ints[i + 5],
             allowFontScaling = ints[i + 10] == 1,
           )
-          target(id)?.let { views.text(it, spec, ints[i + 3]) }
+          target(id)?.let { views.text(it, spec, ints[i + 3], floats[f + 4] * density, floats[f + 5] * density) }
           i += 11
-          f += 4
+          f += 6
         }
         6 -> {
           val headerCount = ints[i + 6]
