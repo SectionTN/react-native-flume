@@ -5,6 +5,7 @@
       "react-native-flume": ["./src/index"]
     },
     "allowUnreachableCode": false,
+    "allowImportingTsExtensions": true,
     "allowUnusedLabels": false,
     "customConditions": ["react-native-flume-source", "react-native-strict-api"],
     "esModuleInterop": true,
