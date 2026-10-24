@@ -3,6 +3,7 @@ import { expect, it } from 'vitest';
 import { readyLine } from '../src/bench/config.ts';
 import {
   foregroundPackage,
+  frameProblem,
   parseBindStats,
   parseGfxinfo,
   parseMeminfo,
@@ -89,4 +90,11 @@ it('reads the stats lines', () => {
     diffMs: 1.1,
     hostMs: 0.21,
   });
+});
+
+it('rejects a run that rendered fewer than ten frames per fling', () => {
+  const frames = parseGfxinfo(fixture('gfxinfo.txt'));
+  expect(frameProblem({ ...frames, totalFrames: 92 }, 24)).toBe('92 frames over 24 flings');
+  expect(frameProblem({ ...frames, totalFrames: null }, 24)).toBe('no frame count over 24 flings');
+  expect(frameProblem({ ...frames, totalFrames: 506 }, 24)).toBeNull();
 });

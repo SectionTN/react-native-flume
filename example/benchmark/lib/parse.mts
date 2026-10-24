@@ -121,3 +121,13 @@ export function parseSetData(line: string): SetDataLine | null {
   if (m === null) return null;
   return { keys: Number(m[1]), items: Number(m[2]), diffMs: Number(m[3]), hostMs: Number(m[4]) };
 }
+
+const MIN_FRAMES_PER_FLING = 10;
+
+// A list that barely drew was covered or stalled; such a run is not a measurement.
+export function frameProblem(frames: FrameStats, flings: number): string | null {
+  if (frames.totalFrames === null) return `no frame count over ${flings} flings`;
+  if (frames.totalFrames < flings * MIN_FRAMES_PER_FLING)
+    return `${frames.totalFrames} frames over ${flings} flings`;
+  return null;
+}

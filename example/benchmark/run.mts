@@ -16,6 +16,7 @@ import { type Adb, connect } from './lib/adb.mts';
 import { type BlankSummary, cropFor, summarizeBlank } from './lib/blank.mts';
 import {
   type BindSummary,
+  frameProblem,
   parseBindStats,
   parseGfxinfo,
   parseMeminfo,
@@ -199,10 +200,16 @@ async function blankPass(
 ): Promise<BlankSummary> {
   const ready = await launch(adb, config);
   await warmUp(adb, ready);
+  adb.gfxinfoReset();
   const recorder = record(adb, out, name, screen);
   await sleep(500);
   await measuredFlings(adb, ready);
   const path = await recorder.stop();
+  const problem = frameProblem(parseGfxinfo(adb.gfxinfo()), FLINGS * 2);
+  if (problem !== null)
+    throw new Error(
+      `${label(config)} recording: ${problem}, the list was covered or the device stalled`,
+    );
   const crop = cropFor(ready.rect, screen, videoSize(path));
   return summarizeBlank(
     await blankFractions(path, crop, SENTINEL_RGB, BLANK_TOLERANCE),
@@ -224,6 +231,9 @@ async function runConfig(
   const temperatureStart = adb.temperature();
   await measuredFlings(adb, ready);
   const frames = parseGfxinfo(adb.gfxinfo());
+  const problem = frameProblem(frames, FLINGS * 2);
+  if (problem !== null)
+    throw new Error(`${label(config)}: ${problem}, the list was covered or the device stalled`);
   const memory = parseMeminfo(adb.meminfo());
   const temperatureEnd = adb.temperature();
   const bind = isFlume(config.impl) ? await readBindStats(adb, config) : null;
