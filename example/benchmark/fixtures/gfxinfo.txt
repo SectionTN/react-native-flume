@@ -1,0 +1,28 @@
+Applications Graphics Acceleration Info:
+Uptime: 2660942 Realtime: 2660942
+
+** Graphics info for pid 10099 [me.sectiontn.flume.example] **
+
+Stats since: 2629000198044ns
+Total frames rendered: 55
+Janky frames: 7 (12.73%)
+Janky frames (legacy): 30 (54.55%)
+50th percentile: 18ms
+90th percentile: 38ms
+95th percentile: 48ms
+99th percentile: 150ms
+Number Missed Vsync: 0
+Number High input latency: 61
+Number Slow UI thread: 4
+Number Slow bitmap uploads: 1
+Number Slow issue draw commands: 7
+Number Frame deadline missed: 7
+Number Frame deadline missed (legacy): 6
+HISTOGRAM: 5ms=0 6ms=0 16ms=20 17ms=18 18ms=5 38ms=4 48ms=3 150ms=1
+50th gpu percentile: 9ms
+90th gpu percentile: 12ms
+95th gpu percentile: 14ms
+99th gpu percentile: 4950ms
+GPU HISTOGRAM: 1ms=0 9ms=21 12ms=19 4950ms=2
+
+Pipeline=Skia (OpenGL)

@@ -1,0 +1,25 @@
+Applications Memory Usage (in Kilobytes):
+Uptime: 2669899 Realtime: 2669899
+
+** MEMINFO in pid 10099 [me.sectiontn.flume.example] **
+                   Pss  Private  Private  SwapPss      Rss     Heap     Heap     Heap
+                 Total    Dirty    Clean    Dirty    Total     Size    Alloc     Free
+                ------   ------   ------   ------   ------   ------   ------   ------
+  Native Heap   379350   379200       16       33   380128   389104   376565     6054
+  Dalvik Heap    13914     9088     4704       19    15328    19553     9777     9776
+      Unknown    43634    43232      400        7    44192
+        TOTAL   539930   466464    36416      221   664752   408657   386342    15830
+ 
+ App Summary
+                       Pss(KB)                        Rss(KB)
+                        ------                         ------
+           Java Heap:    25600                          44832
+         Native Heap:   379200                         380128
+                Code:    32496                         144640
+               Stack:     2624                           2624
+            Graphics:        0                              0
+       Private Other:    50400
+              System:    19738
+             Unknown:                                   59824
+ 
+           TOTAL PSS:   539710            TOTAL RSS:   664752       TOTAL SWAP PSS:      221
