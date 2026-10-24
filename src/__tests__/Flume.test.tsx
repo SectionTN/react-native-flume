@@ -12,7 +12,7 @@ vi.mock('react-native-worklets', () => ({
   getUISchedulerHolder: () => ({}),
   runOnRuntimeSync: (_runtime: unknown, worklet: () => void) => worklet(),
 }));
-vi.mock('../specs/NativeFlume', () => ({ default: {} }));
+vi.mock('../specs/NativeFlume', () => ({ default: { setStats: vi.fn(), logStats: vi.fn() } }));
 vi.mock('../specs/FlumeViewNativeComponent', () => ({
   default: 'FlumeView',
   Commands: { scrollToIndex: vi.fn(), scrollToOffset: vi.fn(), scrollToEnd: vi.fn() },
@@ -557,5 +557,38 @@ describe('Flume ref', () => {
     expect(Commands.scrollToIndex).toHaveBeenCalledWith(expect.anything(), 0, true, 0, 0);
     expect(Commands.scrollToOffset).toHaveBeenCalledWith(expect.anything(), 20, false);
     expect(Commands.scrollToEnd).toHaveBeenCalledWith(expect.anything(), true);
+  });
+});
+
+describe('Flume stats', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+  });
+
+  const items = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+  const statsLines = (log: { mock: { calls: unknown[][] } }) =>
+    log.mock.calls.map((call) => String(call[0])).filter((line) => line.startsWith('FlumeStats'));
+
+  it('logs one setData line while stats are on', async () => {
+    installHost();
+    const { unstable_setFlumeStats } = await import('../stats');
+    const { Flume } = await import('../Flume');
+    unstable_setFlumeStats(true);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await mount(createElement(Flume, { data: items, renderCell }));
+    const lines = statsLines(log);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/^FlumeStats setData keys=3 items=3 diff=\d+\.\d{2} host=\d+\.\d{2}$/);
+  });
+
+  it('logs nothing while stats are off', async () => {
+    installHost();
+    const { unstable_setFlumeStats } = await import('../stats');
+    const { Flume } = await import('../Flume');
+    unstable_setFlumeStats(false);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await mount(createElement(Flume, { data: items, renderCell }));
+    expect(statsLines(log)).toHaveLength(0);
   });
 });

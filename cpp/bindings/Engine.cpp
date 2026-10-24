@@ -215,27 +215,32 @@ bool Engine::bind(int storeId, int holderId, int index, float widthDp, float hei
   store->layout->measureCalls = 0;
   store->layout->measureHits = 0;
 
-  int64_t t0 = nowNs();
+  bool timed = statsEnabled_.load(std::memory_order_relaxed);
+  int64_t t0 = timed ? nowNs() : 0;
   current_ = Current{store, nullptr, ""};
   try {
     worklets::runSyncOnRuntime(runtime_, *bindFn_, jsi::Value(index));
   } catch (const std::exception& e) {
     current_.error = e.what();
   }
-  int64_t t1 = nowNs();
+  int64_t t1 = timed ? nowNs() : 0;
   if (current_.fresh != nullptr) {
     store->reconciler->reconcile(holder, std::move(current_.fresh), out);
   } else {
     report(2, current_.error.empty() ? "renderCell produced nothing" : current_.error);
   }
-  int64_t t2 = nowNs();
+  int64_t t2 = timed ? nowNs() : 0;
   if (holder.root != nullptr) {
     store->layout->layout(*holder.root, widthDp, heightDp);
     store->layout->readFrames(*holder.root, out);
     store->reconciler->emitAfterLayout(holder, out);
   }
-  int64_t t3 = nowNs();
-  out.stats = {t1 - t0, t2 - t1, t3 - t2, store->layout->measureCalls, store->layout->measureHits, first ? 1 : 0};
+  out.first = first;
+  if (timed) {
+    int64_t t3 = nowNs();
+    out.timed = true;
+    out.stats = {t1 - t0, t2 - t1, t3 - t2, store->layout->measureCalls, store->layout->measureHits, first ? 1 : 0};
+  }
   current_ = Current{};
   return true;
 }

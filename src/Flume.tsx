@@ -34,6 +34,7 @@ import FlumeViewNativeComponent, {
   type SlotsEvent,
   type ViewabilityEvent,
 } from './specs/FlumeViewNativeComponent';
+import { logSetData, statsEnabled } from './stats';
 import { getHost, isDev } from './store';
 import type { FlumeProps, FlumeRef, PressInfo, ReactCell, ViewToken } from './types';
 
@@ -142,8 +143,10 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       }
       return kind === 'worklet';
     };
+    const start = statsEnabled() ? performance.now() : 0;
     const diff = diffData(base, data, keyExtractor, getItemType, sendsItem);
-    return { kinds: latest.current.kinds, diff, missing, first: base === undefined };
+    const diffMs = statsEnabled() ? performance.now() - start : 0;
+    return { kinds: latest.current.kinds, diff, missing, first: base === undefined, diffMs };
   }, [storeId, signature, data, keyExtractor, getItemType]);
 
   useLayoutEffect(() => {
@@ -159,6 +162,8 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         `react-native-flume: duplicate keys (${diff.duplicates.join(', ')}); later items got a numeric suffix`,
       );
     }
+    const timed = statsEnabled();
+    const start = timed ? performance.now() : 0;
     host.setData(
       storeId,
       diff.keys,
@@ -168,6 +173,13 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       diff.stableKeys,
       !commit.first && prerendering.current,
     );
+    if (timed)
+      logSetData(
+        diff.keys.length,
+        diff.changedItems.length,
+        commit.diffMs,
+        performance.now() - start,
+      );
   }, [host, storeId, commit, report]);
 
   // Every slot native holds or keeps for scroll-back, plus the pre-rendered ones it has not registered yet;

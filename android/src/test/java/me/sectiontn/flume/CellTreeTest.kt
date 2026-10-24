@@ -32,7 +32,7 @@ class FakeViews : CellViews<FakeView> {
 }
 
 private fun batch(ints: IntArray, floats: FloatArray = FloatArray(0), first: Boolean = false, strings: Array<String> = emptyArray()) =
-  FlumeBatch(ints, floats, strings, 0f, 0f, longArrayOf(0, 0, 0, 0, 0, if (first) 1 else 0))
+  FlumeBatch(ints, floats, strings, 0f, 0f, first, null)
 
 class CellTreeTest {
   private val views = FakeViews()

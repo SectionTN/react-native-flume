@@ -41,6 +41,8 @@ struct OpBatch {
   std::vector<std::string> strings;
   float rootWidth = 0;
   float rootHeight = 0;
+  bool first = false;
+  bool timed = false;  // stats are filled only while the engine's stats are on
   std::array<int64_t, 6> stats{};  // workletNs, reconcileNs, layoutNs, measureCalls, measureHits, first
 
   void create(int id, ViewKind kind, int parentId, int index);

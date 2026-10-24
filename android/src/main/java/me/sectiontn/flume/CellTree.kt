@@ -13,7 +13,7 @@ class CellTree<V : Any>(private val views: CellViews<V>, private val density: Fl
     private set
 
   fun apply(batch: FlumeBatch): Int {
-    if (batch.stats[5] == 1L) reset()
+    if (batch.first) reset()
     val ints = batch.ints
     val floats = batch.floats
     val strings = batch.strings

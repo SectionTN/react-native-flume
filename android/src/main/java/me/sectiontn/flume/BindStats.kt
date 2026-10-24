@@ -4,9 +4,9 @@ import android.util.Log
 import java.util.Locale
 import kotlin.math.ceil
 
-// Spike instrumentation: per-bind stage times over the last 2,000 recycled binds, logged every 200.
-object SpikeStats {
-  private const val TAG = "FlumeSpike"
+// Opt-in per-bind stage times over the last 2,000 recycled binds, logged every 200; UI thread only.
+object BindStats {
+  private const val TAG = "FlumeStats"
   private const val WINDOW = 2000
   private const val LOG_EVERY = 200
 
@@ -46,7 +46,19 @@ object SpikeStats {
   private val first = Ring(WINDOW)
   private var recycled = 0
 
+  var enabled = false
+    private set
+
+  fun setEnabled(enabled: Boolean) {
+    if (enabled) {
+      listOf(total, worklet, reconcile, layout, apply, measureCalls, measureHits, first).forEach { it.clear() }
+      recycled = 0
+    }
+    this.enabled = enabled
+  }
+
   fun record(totalNs: Long, stats: LongArray) {
+    if (!enabled) return
     if (stats[5] == 1L) {
       first.add(totalNs)
       return
@@ -59,7 +71,11 @@ object SpikeStats {
     measureCalls.add(stats[3])
     measureHits.add(stats[4])
     recycled++
-    if (recycled % LOG_EVERY == 0) Log.i(TAG, summary())
+    if (recycled % LOG_EVERY == 0) log()
+  }
+
+  fun log() {
+    Log.i(TAG, summary())
   }
 
   fun summary(): String {
@@ -68,7 +84,7 @@ object SpikeStats {
     val hitPercent = if (calls == 0L) 0 else (measureHits.sum() * 100 / calls).toInt()
     val perBind = if (total.size == 0) 0.0 else calls.toDouble() / total.size
     val sortedFirst = first.sorted()
-    return "FlumeSpike recycled n=${total.size} total p50=${ms(percentile(sortedTotal, 0.5))} " +
+    return "FlumeStats recycled n=${total.size} total p50=${ms(percentile(sortedTotal, 0.5))} " +
       "p95=${ms(percentile(sortedTotal, 0.95))} max=${ms(percentile(sortedTotal, 1.0))}" +
       " | worklet ${pair(worklet)} | reconcile ${pair(reconcile)} | layout ${pair(layout)} | apply ${pair(apply)}" +
       " | measure ${String.format(Locale.US, "%.1f", perBind)}/bind hits $hitPercent%" +
@@ -80,11 +96,6 @@ object SpikeStats {
     if (sorted.isEmpty()) return 0
     val rank = ceil(p * sorted.size).toInt().coerceIn(1, sorted.size)
     return sorted[rank - 1]
-  }
-
-  internal fun reset() {
-    listOf(total, worklet, reconcile, layout, apply, measureCalls, measureHits, first).forEach { it.clear() }
-    recycled = 0
   }
 
   private fun pair(ring: Ring): String {

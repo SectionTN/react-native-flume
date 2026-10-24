@@ -37,4 +37,7 @@ object FlumeJni {
 
   // Applies data JS deferred until its pre-rendered cells mounted.
   @JvmStatic external fun refresh(storeId: Int)
+
+  // Binds read the clock and return stats only while this is on.
+  @JvmStatic external fun setStatsEnabled(enabled: Boolean)
 }

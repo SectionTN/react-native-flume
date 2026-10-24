@@ -257,10 +257,10 @@ class FlumeAdapter(
     val index = rows.dataIndex(position).takeIf { it >= 0 } ?: return
     if (cell.horizontal != geometry.horizontal) orient(cell)
     cell.rowsPressable = rowsPressable
-    val start = SystemClock.elapsedRealtimeNanos()
+    val start = if (BindStats.enabled) SystemClock.elapsedRealtimeNanos() else 0L
     val batch = FlumeJni.bind(storeId, cell.cellId, index, geometry.cellWidthDp(fullSpans.contains(position)), geometry.cellHeightDp()) ?: return
     cell.apply(batch)
-    SpikeStats.record(SystemClock.elapsedRealtimeNanos() - start, batch.stats)
+    batch.stats?.let { BindStats.record(SystemClock.elapsedRealtimeNanos() - start, it) }
   }
 
   override fun onViewRecycled(holder: Holder) {

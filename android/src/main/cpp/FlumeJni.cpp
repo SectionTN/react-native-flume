@@ -26,9 +26,12 @@ struct JFlumeBatch : jni::JavaClass<JFlumeBatch> {
     if (!batch.floats.empty()) floats->setRegion(0, batch.floats.size(), batch.floats.data());
     auto strings = jni::JArrayClass<jni::JString::javaobject>::newArray(batch.strings.size());
     for (size_t i = 0; i < batch.strings.size(); i++) strings->setElement(i, jni::make_jstring(batch.strings[i]).get());
-    auto stats = jni::JArrayLong::newArray(batch.stats.size());
-    stats->setRegion(0, batch.stats.size(), batch.stats.data());
-    return newInstance(ints, floats, strings, batch.rootWidth, batch.rootHeight, stats);
+    jni::local_ref<jni::JArrayLong> stats;
+    if (batch.timed) {
+      stats = jni::JArrayLong::newArray(batch.stats.size());
+      stats->setRegion(0, batch.stats.size(), batch.stats.data());
+    }
+    return newInstance(ints, floats, strings, batch.rootWidth, batch.rootHeight, jboolean(batch.first), stats);
   }
 };
 
@@ -89,6 +92,10 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
 
   static void refresh(jni::alias_ref<jclass>, jint storeId) { flume::Engine::instance().refresh(storeId); }
 
+  static void setStatsEnabled(jni::alias_ref<jclass>, jboolean enabled) {
+    flume::Engine::instance().setStatsEnabled(enabled);
+  }
+
   static std::unordered_map<int, std::unique_ptr<flume::android::AndroidStoreListener>>& listenersByStore() {
     static std::unordered_map<int, std::unique_ptr<flume::android::AndroidStoreListener>> listeners;
     return listeners;
@@ -107,6 +114,7 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
         makeNativeMethod("releaseHolder", JFlumeJni::releaseHolder),
         makeNativeMethod("invalidateMeasures", JFlumeJni::invalidateMeasures),
         makeNativeMethod("refresh", JFlumeJni::refresh),
+        makeNativeMethod("setStatsEnabled", JFlumeJni::setStatsEnabled),
     });
   }
 };

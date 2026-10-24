@@ -75,6 +75,8 @@ void OpBatch::clear() {
   strings.clear();
   rootWidth = 0;
   rootHeight = 0;
+  first = false;
+  timed = false;
   stats.fill(0);
   count_ = 0;
 }

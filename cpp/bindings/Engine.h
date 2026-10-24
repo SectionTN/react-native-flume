@@ -4,6 +4,7 @@
 #include <jsi/jsi.h>
 #include <worklets/Compat/StableApi.h>
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -52,6 +53,7 @@ class Engine {
   void releaseHolder(int storeId, int holderId);
   void invalidateMeasures(int storeId);  // clears the text measure cache
   void refresh(int storeId);             // applies deferred data
+  void setStatsEnabled(bool enabled) { statsEnabled_ = enabled; }  // any thread; binds read the clock only while on
 
  private:
   Engine() = default;
@@ -78,6 +80,7 @@ class Engine {
   std::optional<facebook::jsi::Function> bindFn_;
   std::optional<facebook::jsi::Function> releaseFn_;
   Current current_;
+  std::atomic<bool> statsEnabled_{false};
   OnceSet logged_;
 };
 
