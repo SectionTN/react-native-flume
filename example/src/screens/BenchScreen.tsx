@@ -10,6 +10,7 @@ import {
   unstable_logFlumeStats,
   unstable_setFlumeStats,
 } from 'react-native-flume';
+import { BenchBaselineView } from '../../modules/bench-baseline';
 import { chatCell, feedCell } from '../bench/cells';
 import {
   type BenchAction,
@@ -108,6 +109,7 @@ function BenchList<T extends Item>({
           style={styles.fill}
         />
       );
+    // The plain RecyclerView is chat only and renders in BenchRun.
     case 'native':
       return null;
   }
@@ -168,7 +170,9 @@ function BenchRun({ scenario, impl, load, count, action, nonce }: RunProps) {
 
   return (
     <View ref={box} onLayout={onLayout} style={styles.sentinel}>
-      {scenario === 'chat' ? (
+      {scenario === 'chat' && impl === 'native' ? (
+        <BenchBaselineView rows={data.chats} style={styles.fill} />
+      ) : scenario === 'chat' ? (
         <BenchList
           impl={impl}
           chat
