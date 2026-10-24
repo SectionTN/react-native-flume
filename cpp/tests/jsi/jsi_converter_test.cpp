@@ -34,3 +34,10 @@ TEST_CASE("a cyclic object converts to a finite value") {
   }
   CHECK(depth <= 65);
 }
+
+TEST_CASE("an undefined property stays absent, as JSON leaves it") {
+  HermesRig rig;
+  flume::Value value = flume::toValue(rig.rt(), rig.eval("({ a: 1, photo: undefined })"));
+  CHECK(value.get("photo") == nullptr);
+  CHECK(rig.stringify(flume::toJsi(rig.rt(), value)) == "{\"a\":1}");
+}

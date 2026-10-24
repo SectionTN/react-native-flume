@@ -33,7 +33,10 @@ Value toValueAt(jsi::Runtime& rt, const jsi::Value& value, int depth, bool* trun
   entries.reserve(size);
   for (size_t i = 0; i < size; i++) {
     jsi::String name = names.getValueAtIndex(rt, i).getString(rt);
-    entries.emplace_back(name.utf8(rt), toValueAt(rt, object.getProperty(rt, name), depth + 1, truncated));
+    jsi::Value property = object.getProperty(rt, name);
+    // As in JSON, so `item.x === undefined` holds in the worklet as it does in a React cell.
+    if (property.isUndefined()) continue;
+    entries.emplace_back(name.utf8(rt), toValueAt(rt, property, depth + 1, truncated));
   }
   return Value(std::move(entries));
 }
