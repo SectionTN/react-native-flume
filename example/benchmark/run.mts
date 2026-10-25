@@ -140,9 +140,10 @@ async function readBindStats(adb: Adb, config: Config): Promise<BindSummary | nu
 type Recorder = { stop: () => Promise<string> };
 
 function record(adb: Adb, out: string, name: string, screen: [number, number]): Recorder {
+  const size = (factor: number) =>
+    screen.map((value) => Math.round((value * factor) / 2) * 2).join('x');
   if (adb.emulator) {
     const path = join(out, `${name}.webm`);
-    const even = (value: number) => Math.round((value * 3) / 4 / 2) * 2;
     adb.run([
       'emu',
       'screenrecord',
@@ -152,7 +153,7 @@ function record(adb: Adb, out: string, name: string, screen: [number, number]): 
       '--fps',
       '60',
       '--size',
-      `${even(screen[0])}x${even(screen[1])}`,
+      size(3 / 4),
       path,
     ]);
     return {
@@ -168,19 +169,30 @@ function record(adb: Adb, out: string, name: string, screen: [number, number]): 
     };
   }
   const remote = '/sdcard/flume-bench.mp4';
+  // Half size: at full size and 120 Hz the Redmi's encoder fails and screenrecord exits at once.
   const child = spawn('adb', [
     '-s',
     adb.serial,
     'shell',
     'screenrecord',
+    '--size',
+    size(1 / 2),
     '--bit-rate',
     '20000000',
     remote,
   ]);
-  const exited = new Promise((resolve) => child.on('close', resolve));
+  let running = true;
+  const exited = new Promise((resolve) =>
+    child.on('close', () => {
+      running = false;
+      resolve(undefined);
+    }),
+  );
   return {
     stop: async () => {
-      adb.shell('pkill -INT screenrecord');
+      if (!running) throw new Error('screenrecord exited early; run it by hand with --verbose');
+      // Exact name: a substring match also hits HyperOS's com.miui.screenrecorder.
+      adb.shell('pkill -INT -x screenrecord');
       await exited;
       await sleep(1_000);
       const path = join(out, `${name}.mp4`);
