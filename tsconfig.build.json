@@ -1,4 +1,7 @@
 {
   "extends": "./tsconfig",
+  "compilerOptions": {
+    "types": ["node"]
+  },
   "exclude": ["example", "lib", "build", "vitest.config.ts"]
 }
