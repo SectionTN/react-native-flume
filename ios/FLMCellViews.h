@@ -21,6 +21,8 @@ class FLMCellViews final : public flume::CellViews {
   void accessibility(flume::ViewHandle view, const std::optional<std::string> &label,
                      const std::optional<std::string> &testID, int role, int accessible) override;
 
+  void (^onPress)(NSString *pressId, BOOL longPress) = nil;  // given to every pressable the tree creates
+
  private:
   __weak UIView *root_;
   NSMutableSet<UIView *> *pending_;  // created views not yet in the tree, kept alive until added

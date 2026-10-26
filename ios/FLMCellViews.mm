@@ -3,6 +3,7 @@
 #import "FLMBoxView.h"
 #import "FLMColor.h"
 #import "FLMImageView.h"
+#import "FLMPressableView.h"
 #import "FLMText.h"
 #import "FLMTextView.h"
 
@@ -34,6 +35,12 @@ flume::ViewHandle FLMCellViews::create(flume::ViewKind kind)
     case flume::ViewKind::Image:
       view = [FLMImageView new];
       break;
+    case flume::ViewKind::Pressable: {
+      FLMPressableView *pressable = [FLMPressableView new];
+      pressable.onPress = onPress;
+      view = pressable;
+      break;
+    }
     default:
       view = [FLMBoxView new];
   }
@@ -115,9 +122,26 @@ void FLMCellViews::image(flume::ViewHandle handle, const flume::ImageSpec &image
   }
 }
 
-void FLMCellViews::pressable(flume::ViewHandle, const std::string &, float) {}
-
-void FLMCellViews::accessibility(flume::ViewHandle, const std::optional<std::string> &,
-                                 const std::optional<std::string> &, int, int)
+void FLMCellViews::pressable(flume::ViewHandle handle, const std::string &pressId, float pressedOpacity)
 {
+  UIView *view = FLMUIView(handle);
+  if ([view isKindOfClass:FLMPressableView.class]) {
+    FLMPressableView *pressable = (FLMPressableView *)view;
+    pressable.pressId = @(pressId.c_str());
+    pressable.pressedOpacity = pressedOpacity;
+  }
+}
+
+void FLMCellViews::accessibility(flume::ViewHandle handle, const std::optional<std::string> &label,
+                                 const std::optional<std::string> &testID, int role, int accessible)
+{
+  UIView *view = FLMUIView(handle);
+  view.accessibilityLabel = label ? @(label->c_str()) : nil;
+  view.accessibilityIdentifier = testID ? @(testID->c_str()) : nil;
+  if (role == 1) {
+    view.accessibilityTraits |= UIAccessibilityTraitButton;
+  }
+  if (accessible == 0 || accessible == 1) {
+    view.isAccessibilityElement = accessible == 1;
+  }
 }

@@ -6,6 +6,7 @@
 
 #import "FLMCell.h"
 #import "FLMLayout.h"
+#import "FLMPressableView.h"
 #import "FLMStoreListener.h"
 #import "FLMText.h"
 
@@ -31,7 +32,10 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
 
 }  // namespace
 
-@interface FLMView () <RCTFlumeViewViewProtocol, UICollectionViewDataSource, UICollectionViewDelegate>
+@interface FLMView () <RCTFlumeViewViewProtocol,
+                       UICollectionViewDataSource,
+                       UICollectionViewDelegate,
+                       UIGestureRecognizerDelegate>
 @end
 
 @implementation FLMView {
@@ -47,6 +51,8 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   BOOL _attached;
   BOOL _itemAnimations;
   BOOL _horizontal;
+  BOOL _rowsPressable;
+  UILongPressGestureRecognizer *_rowLongPress;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -75,6 +81,12 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
     _collectionView.alwaysBounceVertical = YES;
     _collectionView.dataSource = self;
     _collectionView.delegate = self;
+    _collectionView.allowsSelection = NO;
+    _rowLongPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(rowLongPressed:)];
+    _rowLongPress.minimumPressDuration = 0.5;
+    _rowLongPress.delegate = self;
+    _rowLongPress.enabled = NO;
+    [_collectionView addGestureRecognizer:_rowLongPress];
     self.contentView = _collectionView;
     _children = [UIView new];
     _children.hidden = YES;
@@ -97,6 +109,9 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
     [self attach];
   }
   _itemAnimations = next.itemAnimations;
+  _rowsPressable = next.rowsPressable;
+  _collectionView.allowsSelection = _rowsPressable;
+  _rowLongPress.enabled = _rowsPressable;
   [super updateProps:props oldProps:oldProps];
 }
 
@@ -217,6 +232,18 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   FLMCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:identifier forIndexPath:indexPath];
   if (cell.holderId == 0) {
     cell.holderId = ++_nextHolderId;
+    // The index is read at press time, so a reused cell reports the row it shows now.
+    __weak FLMView *weakSelf = self;
+    cell.onPress = ^(FLMCell *pressed, NSString *pressId, BOOL longPress) {
+      FLMView *view = weakSelf;
+      if (view == nil) {
+        return;
+      }
+      NSIndexPath *path = [view->_collectionView indexPathForCell:pressed];
+      if (path != nil) {
+        [view emitPress:path.item pressId:pressId longPress:longPress];
+      }
+    };
   }
   // Odd view types are React rows, which get their slots in a later plan.
   if (viewType % 2 == 0) {
@@ -230,6 +257,52 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
     }
   }
   return cell;
+}
+
+#pragma mark - Presses
+
+- (void)emitPress:(NSInteger)index pressId:(NSString *)pressId longPress:(BOOL)longPress
+{
+  auto emitter = std::static_pointer_cast<const FlumeViewEventEmitter>(_eventEmitter);
+  if (emitter == nullptr) {
+    return;
+  }
+  const int row = static_cast<int>(index);
+  std::string key = flume::Engine::instance().keyAt(_storeId, row);
+  std::string id = pressId.length > 0 ? std::string(pressId.UTF8String) : std::string();
+  if (longPress) {
+    emitter->onCellLongPress({row, key, id});
+  } else {
+    emitter->onCellPress({row, key, id});
+  }
+}
+
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
+{
+  [collectionView deselectItemAtIndexPath:indexPath animated:NO];
+  [self emitPress:indexPath.item pressId:@"" longPress:NO];
+}
+
+- (void)rowLongPressed:(UILongPressGestureRecognizer *)recognizer
+{
+  if (recognizer.state != UIGestureRecognizerStateBegan) {
+    return;
+  }
+  NSIndexPath *path = [_collectionView indexPathForItemAtPoint:[recognizer locationInView:_collectionView]];
+  if (path != nil) {
+    [self emitPress:path.item pressId:@"" longPress:YES];
+  }
+}
+
+// A pressable inside the row handles its own long press.
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)recognizer shouldReceiveTouch:(UITouch *)touch
+{
+  for (UIView *view = touch.view; view != nil && view != _collectionView; view = view.superview) {
+    if ([view isKindOfClass:FLMPressableView.class]) {
+      return NO;
+    }
+  }
+  return YES;
 }
 
 #pragma mark - Commands

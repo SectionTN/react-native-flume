@@ -18,6 +18,13 @@
 {
   if (self = [super initWithFrame:frame]) {
     _views = std::make_unique<FLMCellViews>(self.contentView);
+    __weak FLMCell *weakSelf = self;
+    _views->onPress = ^(NSString *pressId, BOOL longPress) {
+      FLMCell *cell = weakSelf;
+      if (cell.onPress != nil) {
+        cell.onPress(cell, pressId, longPress);
+      }
+    };
     _tree = std::make_unique<flume::CellTree>(*_views);
   }
   return self;
