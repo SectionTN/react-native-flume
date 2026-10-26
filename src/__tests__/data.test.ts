@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultKey, diffData } from '../data';
+import { defaultKey, diffData, itemOf, typeOf } from '../data';
 
 const a = { id: 'a', n: 1 };
 const b = { id: 'b', n: 2 };
@@ -44,7 +44,7 @@ describe('diffData', () => {
     const d = diffData(first.next, [], defaultKey);
     expect(d.keys).toEqual([]);
     expect(d.changedIndices).toEqual([]);
-    expect(d.next.byKey.size).toBe(0);
+    expect(d.next.index.size).toBe(0);
   });
 });
 
@@ -64,7 +64,7 @@ describe('diffData types and keys', () => {
     const d = diffData(undefined, [a, { id: 'a', n: 9 }, { id: 'a', n: 8 }], defaultKey);
     expect(d.keys).toEqual(['a', 'a:2', 'a:3']);
     expect(d.duplicates).toEqual(['a']);
-    expect(d.next.byKey.get('a:3')).toEqual({ id: 'a', n: 8 });
+    expect(itemOf(d.next, 'a:3')).toEqual({ id: 'a', n: 8 });
   });
 });
 
@@ -83,12 +83,48 @@ describe('diffData by type', () => {
     );
     expect(d.changedIndices).toEqual([0]);
     expect(d.changedItems).toEqual([items[0]]);
-    expect(d.next.types.get('b')).toBe('r');
+    expect(typeOf(d.next, 'b')).toBe('r');
   });
 
   it('counts a type change as a change', () => {
     const x = { id: 'a', t: 'r' };
     const first = diffData(undefined, [x], undefined, (i) => i.t);
     expect(diffData(first.next, [x], undefined, () => 'w').changedIndices).toEqual([0]);
+  });
+});
+
+describe('diffData state', () => {
+  it('looks up an item and a type by key', () => {
+    const d = diffData(undefined, [a, b], defaultKey, (item) => (item.n > 1 ? 'big' : 'small'));
+    expect(itemOf(d.next, 'b')).toBe(b);
+    expect(typeOf(d.next, 'b')).toBe('big');
+    expect(itemOf(d.next, 'z')).toBeUndefined();
+    expect(typeOf(d.next, 'z')).toBeUndefined();
+    expect(itemOf(undefined, 'a')).toBeUndefined();
+    expect(typeOf(undefined, 'a')).toBeUndefined();
+  });
+
+  it('skips the native call when nothing native changed', () => {
+    const first = diffData(undefined, [a, b], defaultKey);
+    expect(first.sameForNative).toBe(false);
+    expect(diffData(first.next, [a, b], defaultKey).sameForNative).toBe(true);
+    expect(diffData(first.next, [a, { id: 'b', n: 2 }], defaultKey).sameForNative).toBe(false);
+    expect(diffData(first.next, [b, a], defaultKey).sameForNative).toBe(false);
+    expect(
+      diffData(first.next, [a, b], defaultKey, (item) => (item.n > 1 ? 'big' : 'default'))
+        .sameForNative,
+    ).toBe(false);
+  });
+
+  it('never compares items when no type renders natively', () => {
+    const first = diffData(undefined, [a, b], defaultKey, undefined, 'none');
+    expect(first.changedIndices).toEqual([]);
+    const a2 = { id: 'a', n: 5 };
+    const b2 = { id: 'b', n: 6 };
+    const d = diffData(first.next, [a2, b2], defaultKey, undefined, 'none');
+    expect(d.changedIndices).toEqual([]);
+    expect(d.changedItems).toEqual([]);
+    expect(d.sameForNative).toBe(true);
+    expect(itemOf(d.next, 'a')).toBe(a2);
   });
 });

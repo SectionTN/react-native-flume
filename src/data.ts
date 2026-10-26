@@ -1,11 +1,16 @@
 export type KeyExtractor<T> = (item: T, index: number) => string;
 export type TypeExtractor<T> = (item: T, index: number) => string;
 
+// Index-aligned arrays plus one key-to-index map; look up by key through itemOf and typeOf.
 export type DataState<T> = {
-  keys: string[];
-  byKey: Map<string, T>;
-  types: Map<string, string>;
+  keys: readonly string[];
+  types: readonly string[];
+  items: readonly T[];
+  index: ReadonlyMap<string, number>;
 };
+
+// Which types render natively and so send their items: every type when absent, none with 'none'.
+export type NativeItems = 'none' | ((type: string) => boolean);
 
 export type DataDiff<T> = {
   keys: string[];
@@ -15,6 +20,8 @@ export type DataDiff<T> = {
   next: DataState<T>;
   stableKeys: boolean;
   duplicates: string[];
+  // Same keys, types and native items as the previous state, so native needs no call.
+  sameForNative: boolean;
 };
 
 function ownKey(item: unknown): string | undefined {
@@ -30,7 +37,17 @@ export function defaultKey(item: unknown, index: number): string {
   return ownKey(item) ?? String(index);
 }
 
-// Changed means a new key, a new reference or a new type; only items sendsItem accepts are sent.
+export function itemOf<T>(state: DataState<T> | undefined, key: string): T | undefined {
+  const index = state?.index.get(key);
+  return index === undefined ? undefined : state?.items[index];
+}
+
+export function typeOf(state: DataState<unknown> | undefined, key: string): string | undefined {
+  const index = state?.index.get(key);
+  return index === undefined ? undefined : state?.types[index];
+}
+
+// Changed means a new key, a new reference or a new type; only items of native types are compared and sent.
 // Keys are stable (so moves can animate) with a user extractor or when every item carries an id or key.
 // A repeated key gets a numeric suffix so the native diff stays consistent; the wrapper warns in development.
 export function diffData<T>(
@@ -38,38 +55,71 @@ export function diffData<T>(
   data: readonly T[],
   keyExtractor: KeyExtractor<T> | undefined,
   getItemType?: TypeExtractor<T>,
-  sendsItem?: (type: string) => boolean,
+  sendsItem?: NativeItems,
 ): DataDiff<T> {
+  return (
+    scan(prev, data, keyExtractor, getItemType, sendsItem, false) ??
+    (scan(prev, data, keyExtractor, getItemType, sendsItem, true) as DataDiff<T>)
+  );
+}
+
+// Without dedupe a repeated key ends the scan, so unique data pays one map write per item.
+function scan<T>(
+  prev: DataState<T> | undefined,
+  data: readonly T[],
+  keyExtractor: KeyExtractor<T> | undefined,
+  getItemType: TypeExtractor<T> | undefined,
+  sendsItem: NativeItems | undefined,
+  dedupe: boolean,
+): DataDiff<T> | undefined {
   const extract = keyExtractor ?? defaultKey;
   const userKeys = keyExtractor !== undefined && keyExtractor !== defaultKey;
-  const keys = new Array<string>(data.length);
-  const types = new Array<string>(data.length);
+  const count = data.length;
+  const keys = new Array<string>(count);
+  const types = new Array<string>(count);
+  const index = new Map<string, number>();
   const changedIndices: number[] = [];
   const changedItems: T[] = [];
-  const byKey = new Map<string, T>();
-  const typeByKey = new Map<string, string>();
-  const seen = new Map<string, number>();
   const duplicates: string[] = [];
+  const sendsAll = sendsItem === undefined;
+  const sendsNone = sendsItem === 'none';
+  const sendsByType = new Map<string, boolean>();
+  let lastType: string | undefined;
+  let lastSends = false;
   let stableKeys = true;
-  for (let i = 0; i < data.length; i++) {
+  let same = prev !== undefined && prev.keys.length === count;
+  for (let i = 0; i < count; i++) {
     const item = data[i] as T;
-    const base = extract(item, i);
-    if (!userKeys && ownKey(item) === undefined) stableKeys = false;
-    const repeats = seen.get(base) ?? 0;
-    seen.set(base, repeats + 1);
-    let key = base;
-    if (repeats > 0) {
-      if (repeats === 1) duplicates.push(base);
-      key = `${base}:${repeats + 1}`;
+    let key = extract(item, i);
+    if (stableKeys && !userKeys && ownKey(item) === undefined) stableKeys = false;
+    if (dedupe && index.has(key)) {
+      const base = key;
+      let suffix = 2;
+      while (index.has(`${base}:${suffix}`)) suffix++;
+      if (suffix === 2) duplicates.push(base);
+      key = `${base}:${suffix}`;
     }
+    const size = index.size;
+    index.set(key, i);
+    if (index.size === size) return undefined;
     keys[i] = key;
     const type = getItemType?.(item, i) ?? 'default';
     types[i] = type;
-    byKey.set(key, item);
-    typeByKey.set(key, type);
-    const changed =
-      prev === undefined || prev.byKey.get(key) !== item || prev.types.get(key) !== type;
-    if (changed && (sendsItem === undefined || sendsItem(type))) {
+    if (same && (prev?.keys[i] !== key || prev?.types[i] !== type)) same = false;
+    if (sendsNone) continue;
+    if (!sendsAll && type !== lastType) {
+      lastType = type;
+      lastSends = sendsByType.get(type) ?? (sendsItem as (type: string) => boolean)(type);
+      sendsByType.set(type, lastSends);
+    }
+    if (!sendsAll && !lastSends) continue;
+    let changed = true;
+    if (prev !== undefined) {
+      const previous = prev.keys[i] === key ? i : prev.index.get(key);
+      changed =
+        previous === undefined || prev.items[previous] !== item || prev.types[previous] !== type;
+    }
+    if (changed) {
       changedIndices.push(i);
       changedItems.push(item);
     }
@@ -79,8 +129,9 @@ export function diffData<T>(
     types,
     changedIndices,
     changedItems,
-    next: { keys, byKey, types: typeByKey },
+    next: { keys, types, items: data, index },
     stableKeys,
     duplicates,
+    sameForNative: same && changedIndices.length === 0,
   };
 }

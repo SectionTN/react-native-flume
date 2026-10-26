@@ -16,7 +16,7 @@ import {
 } from 'react';
 import { createSerializable } from 'react-native-worklets';
 import { cellKinds, type ResolvedCell, resolveCell } from './cells';
-import { type DataState, diffData } from './data';
+import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './data';
 import { FlumeSlot } from './FlumeSlot';
 import { contentPadding, nativeProps } from './props';
 import {
@@ -144,7 +144,11 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       return kind === 'worklet';
     };
     const start = statsEnabled() ? performance.now() : 0;
-    const diff = diffData(base, data, keyExtractor, getItemType, sendsItem);
+    // With renderItem and no renderCell every type is a React cell, so items are never compared.
+    const current = latest.current;
+    const native: NativeItems =
+      current.renderCell === undefined && current.renderItem !== undefined ? 'none' : sendsItem;
+    const diff = diffData(base, data, keyExtractor, getItemType, native);
     const diffMs = statsEnabled() ? performance.now() - start : 0;
     return { kinds: latest.current.kinds, diff, missing, first: base === undefined, diffMs };
   }, [storeId, signature, data, keyExtractor, getItemType]);
@@ -162,6 +166,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         `react-native-flume: duplicate keys (${diff.duplicates.join(', ')}); later items got a numeric suffix`,
       );
     }
+    if (!commit.first && diff.sameForNative) return;
     const timed = statsEnabled();
     const start = timed ? performance.now() : 0;
     host.setData(
@@ -228,16 +233,16 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   // waits for its width.
   const gridWaiting = !horizontal && numColumns > 1 && cellWidth < 0;
   const fresh = useMemo(() => {
-    const { keys, types } = commit.diff.next;
+    const { next } = commit.diff;
     return prerender({
       table,
-      keys,
+      keys: next.keys,
       header: header !== null,
       footer: footer !== null,
       start: initialScrollIndex ?? 0,
       nextId: nextSlot.current,
       react: (key) => {
-        const type = types.get(key);
+        const type = typeOf(next, key);
         return (
           !gridWaiting && type !== undefined && resolveCell(type, latest.current).kind === 'react'
         );
@@ -265,9 +270,9 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       bySlot.set(entry.slot, entry);
     return [...bySlot.values()].sort((a, b) => a.slot - b.slot);
   }, [fresh, table]);
+  const { next } = commit.diff;
   const cells = entries.map((entry) => {
-    const { byKey, types } = commit.diff.next;
-    const type = types.get(entry.key);
+    const type = typeOf(next, entry.key);
     const resolved = type === undefined ? undefined : resolveCell(type, latest.current);
     return (
       <FlumeSlot
@@ -279,7 +284,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         minMain={entry.minMain}
         fullSpan={entry.kind !== SlotKind.row || sticky.has(entry.index)}
         layout={layout}
-        item={byKey.get(entry.key)}
+        item={itemOf(next, entry.key)}
         render={resolved?.kind === 'react' ? (resolved.render as ReactCell<unknown>) : undefined}
         element={elementFor(entry.kind)}
         extraData={extraData}
@@ -319,7 +324,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       ? undefined
       : (event: { nativeEvent: PressEvent }) => {
           const { index, key, id } = event.nativeEvent;
-          const item = prev.current.state?.byKey.get(key);
+          const item = itemOf(prev.current.state, key);
           if (item !== undefined) handler({ item, index, id: id === '' ? undefined : id });
         };
 
@@ -330,7 +335,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       : (event: { nativeEvent: ViewabilityEvent }) => {
           const tokens = (entries: ViewabilityEvent['viewable']): ViewToken<T>[] =>
             entries.flatMap(({ index, key, isViewable }) => {
-              const item = prev.current.state?.byKey.get(key) ?? lastViewable.current.get(key);
+              const item = itemOf(prev.current.state, key) ?? lastViewable.current.get(key);
               return item === undefined ? [] : [{ item, key, index, isViewable }];
             });
           const viewableItems = tokens(event.nativeEvent.viewable);

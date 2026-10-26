@@ -413,7 +413,7 @@ describe('Flume React cells', () => {
       tree.update(createElement(Flume, { data: [added, item], renderItem }));
     });
     await act(async () => {
-      tree.update(createElement(Flume, { data: [added, { ...item }], renderItem }));
+      tree.update(createElement(Flume, { data: [item], renderItem }));
     });
     expect(data.map((call) => call.deferred)).toEqual([false, true, false]);
   });
@@ -590,5 +590,43 @@ describe('Flume stats', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     await mount(createElement(Flume, { data: items, renderCell }));
     expect(statsLines(log)).toHaveLength(0);
+  });
+});
+
+describe('Flume native calls', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('calls setData once when only the extractor functions change', async () => {
+    const { data } = installHost();
+    const { Flume } = await import('../Flume');
+    const { renderItem } = recordingCell();
+    const list = [item, { id: 'b' }];
+    const props = () => ({
+      data: list,
+      renderItem,
+      keyExtractor: (entry: unknown) => (entry as { id: string }).id,
+      getItemType: () => 'row',
+    });
+    const tree = await mount(createElement(Flume, props()));
+    await act(async () => {
+      tree.update(createElement(Flume, props()));
+    });
+    expect(data).toHaveLength(1);
+  });
+
+  it('skips setData when React items change but keys and types do not', async () => {
+    const { data } = installHost();
+    const { Flume } = await import('../Flume');
+    const { infos, renderItem } = recordingCell();
+    const tree = await mount(createElement(Flume, { data: [item], renderItem }));
+    await sendSlots(tree, [rowEntry(1, 'a', 0)]);
+    const next = { id: 'a' };
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [next], renderItem }));
+    });
+    expect(data).toHaveLength(1);
+    expect(infos.at(-1)?.item).toBe(next);
   });
 });
