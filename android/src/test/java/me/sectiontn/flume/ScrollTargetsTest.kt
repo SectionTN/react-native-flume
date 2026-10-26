@@ -105,4 +105,34 @@ class ScrollTargetsTest {
     assertNull(AlignCorrection.offsetPx(pending, targetReady = true, targetLengthPx = 150, targetStartPx = 850, viewportPx = 1000))
     assertNull(AlignCorrection.offsetPx(pending.copy(viewPosition = 0f), targetReady = true, targetLengthPx = 240, targetStartPx = 0, viewportPx = 1000))
   }
+
+  private val rows100 = { _: Int -> 100 }
+
+  @Test
+  fun anInstantJumpCoversOneScreenAndTheMargins() {
+    assertEquals(48..61, ScrollTargets.jumpWindow(50, 0f, 1000, 100, rows100))
+  }
+
+  @Test
+  fun anEndAlignedJumpCoversTheScreenAboveTheTarget() {
+    assertEquals(39..52, ScrollTargets.jumpWindow(50, 1f, 1000, 100, rows100))
+  }
+
+  @Test
+  fun theWindowStaysInsideTheList() {
+    assertEquals(0, ScrollTargets.jumpWindow(0, 0f, 1000, 100, rows100).first)
+    assertEquals(99, ScrollTargets.jumpWindow(99, 0f, 1000, 100, rows100).last)
+  }
+
+  @Test
+  fun aGridRowsLaterPositionsAddNoLength() {
+    assertEquals(48..71, ScrollTargets.jumpWindow(50, 0f, 1000, 100) { if (it % 2 == 0) 100 else 0 })
+  }
+
+  @Test
+  fun aGlideKeepsTheRowsNearestTheTarget() {
+    assertEquals(464..511, ScrollTargets.glideWindow(0..11, 500..511))
+    assertEquals(500..547, ScrollTargets.glideWindow(600..611, 500..511))
+    assertEquals(0..30, ScrollTargets.glideWindow(0..11, 19..30))
+  }
 }

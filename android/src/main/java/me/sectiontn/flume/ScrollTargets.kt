@@ -33,6 +33,36 @@ object ScrollTargets {
     return near.coerceIn(0, itemCount - 1)
   }
 
+  const val JUMP_MARGIN_ROWS = 2
+  const val MAX_JUMP_ROWS = 48
+  const val JUMP_WAIT_MS = 1000L
+
+  // The positions a jump shows, placed as FlatList places the item; a zero-length position belongs to the row before it.
+  fun jumpWindow(target: Int, viewPosition: Float, viewportPx: Int, itemCount: Int, lengthPx: (Int) -> Int): IntRange {
+    if (itemCount <= 0) return IntRange.EMPTY
+    val at = target.coerceIn(0, itemCount - 1)
+    val before = (viewPosition * (viewportPx - lengthPx(at))).roundToInt().coerceAtLeast(0)
+    var first = at
+    var covered = 0
+    while (first > 0 && covered < before) covered += lengthPx(--first)
+    val after = viewportPx - before - lengthPx(at)
+    var last = at
+    covered = 0
+    while (last < itemCount - 1 && (covered < after || lengthPx(last + 1) == 0)) covered += lengthPx(++last)
+    return (first - JUMP_MARGIN_ROWS).coerceAtLeast(0)..(last + JUMP_MARGIN_ROWS).coerceAtMost(itemCount - 1)
+  }
+
+  // An animated jump shows its landing screen and every row it glides over; past the cap, the rows nearest the target.
+  fun glideWindow(landing: IntRange, target: IntRange): IntRange {
+    val span = minOf(landing.first, target.first)..maxOf(landing.last, target.last)
+    if (span.last - span.first + 1 <= MAX_JUMP_ROWS) return span
+    return if (landing.first < target.first) {
+      (span.last - MAX_JUMP_ROWS + 1)..span.last
+    } else {
+      span.first..(span.first + MAX_JUMP_ROWS - 1)
+    }
+  }
+
   // A list that stacks from the end anchors relayouts on its last row, so even a start-aligned React target drifts.
   fun realigns(reactTarget: Boolean, viewPosition: Float, stacksFromEnd: Boolean): Boolean =
     reactTarget && (needsLength(viewPosition) || stacksFromEnd)
