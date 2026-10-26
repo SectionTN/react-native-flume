@@ -1,11 +1,15 @@
 #import "FLMFlumeModule.h"
 
+#import "FLMImages.h"
+
 #include "bindings/Engine.h"
 #include "bindings/FlumeHost.h"
 
 @implementation FLMFlumeModule
 
 RCT_EXPORT_MODULE(NativeFlume)
+
+@synthesize moduleRegistry = _moduleRegistry;
 
 + (BOOL)requiresMainQueueSetup
 {
@@ -23,6 +27,7 @@ RCT_EXPORT_MODULE(NativeFlume)
 {
   flume::Engine::instance().setCallInvoker(callInvoker);
   flume::FlumeHost::install(runtime);
+  FLMImages.shared.loader = [self.moduleRegistry moduleForName:"ImageLoader"];
 }
 
 - (void)setStats:(BOOL)enabled
