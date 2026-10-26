@@ -159,3 +159,66 @@ TEST_CASE("invalidated lengths keep positions and become unmeasured") {
   CHECK_FALSE(layout.measured(0));
   CHECK(y(layout, 2) == 200);
 }
+
+namespace {
+
+ListLayout inverted(int count, float length) {
+  ListLayoutConfig config;
+  config.inverted = true;
+  return measured(count, length, config);
+}
+
+}  // namespace
+
+TEST_CASE("an inverted list lays item 0 out at the bottom") {
+  ListLayout layout = inverted(20, 100);
+  CHECK(layout.contentLength(1000) == 2000);
+  CHECK(y(layout, 0) == 1900);
+  CHECK(y(layout, 19) == 0);
+}
+
+TEST_CASE("short inverted content sits at the bottom of the viewport") {
+  ListLayout layout = inverted(3, 100);
+  CHECK(layout.contentLength(1000) == 1000);
+  CHECK(y(layout, 0) == 900);
+  CHECK(y(layout, 2) == 700);
+}
+
+TEST_CASE("inverted: a change above the bottom anchor moves it and one below does not") {
+  ListLayout layout = inverted(20, 100);
+  CHECK(layout.setLength(10, 150, 3) == 50);
+  CHECK(layout.setLength(1, 150, 3) == 0);
+}
+
+TEST_CASE("the sticky header at or above the viewport start pins there") {
+  ListLayout layout = measured(10, 100);
+  auto pin = layout.pinned({0, 5}, 250, 1000);
+  REQUIRE(pin.has_value());
+  CHECK(pin->index == 0);
+  CHECK(pin->start == 250);
+}
+
+TEST_CASE("the next sticky header pushes the pinned one out") {
+  ListLayout layout = measured(10, 100);
+  auto pin = layout.pinned({0, 5}, 450, 1000);
+  REQUIRE(pin.has_value());
+  CHECK(pin->index == 0);
+  CHECK(pin->start == 400);
+}
+
+TEST_CASE("no header pins while the first one is below the viewport start") {
+  ListLayout layout = measured(10, 100);
+  CHECK_FALSE(layout.pinned({3}, 100, 1000).has_value());
+}
+
+TEST_CASE("an inverted list pins the first header at or above the top row") {
+  ListLayout layout = inverted(20, 100);
+  auto pin = layout.pinned({4, 9, 14}, 900, 1000);
+  REQUIRE(pin.has_value());
+  CHECK(pin->index == 14);
+  CHECK(pin->start == 900);
+  auto pushed = layout.pinned({4, 9, 14}, 950, 1000);
+  REQUIRE(pushed.has_value());
+  CHECK(pushed->index == 14);
+  CHECK(pushed->start == 900);
+}

@@ -57,7 +57,7 @@ void ListLayout::apply(const ListOps& ops, int count, const TypeOf& typeOf) {
 float ListLayout::setLength(int index, float length, int anchor) {
   if (index < 0 || index >= count()) return 0;
   const bool hasAnchor = anchor >= 0 && anchor < count();
-  const float before = hasAnchor ? rowStart(rowOf_[anchor]) : 0;
+  const float before = hasAnchor ? startOf(rowOf_[anchor], 0) : 0;
   Item& item = items_[index];
   Mean& mean = means_[item.type];
   if (item.measured) {
@@ -69,7 +69,7 @@ float ListLayout::setLength(int index, float length, int anchor) {
   item.length = length;
   item.measured = true;
   updateRow(rowOf_[index]);
-  return hasAnchor ? rowStart(rowOf_[anchor]) - before : 0;
+  return hasAnchor ? startOf(rowOf_[anchor], 0) - before : 0;
 }
 
 void ListLayout::invalidateLengths() {
@@ -86,8 +86,9 @@ float ListLayout::estimate(int type) const {
   return std::max(config_.estimateFloor, static_cast<float>(it->second.sum / it->second.count));
 }
 
-float ListLayout::contentLength(float) const {
-  return config_.paddingStart + rowStart(static_cast<int>(rows_.size())) + config_.paddingEnd;
+float ListLayout::contentLength(float viewportLength) const {
+  const float length = config_.paddingStart + rowStart(static_cast<int>(rows_.size())) + config_.paddingEnd;
+  return config_.inverted ? std::max(viewportLength, length) : length;
 }
 
 float ListLayout::crossLength(int index, float listCrossLength) const {
@@ -95,10 +96,10 @@ float ListLayout::crossLength(int index, float listCrossLength) const {
   return fullSpan(index) ? available : available / config_.lanes;
 }
 
-ItemRect ListLayout::rectOf(int index, float listCrossLength, float) const {
+ItemRect ListLayout::rectOf(int index, float listCrossLength, float viewportLength) const {
   if (index < 0 || index >= count()) return ItemRect{0, 0, 0, 0};
   const int row = rowOf_[index];
-  const float main = config_.paddingStart + rowStart(row);
+  const float main = startOf(row, viewportLength);
   const float cross = crossLength(index, listCrossLength);
   const float crossAt = config_.paddingCrossStart + cross * static_cast<float>(index - rows_[row].first);
   const float length = items_[index].length;
@@ -106,21 +107,42 @@ ItemRect ListLayout::rectOf(int index, float listCrossLength, float) const {
   return ItemRect{crossAt, main, cross, length};
 }
 
-int ListLayout::indexAt(float offset, float) const {
+int ListLayout::indexAt(float offset, float viewportLength) const {
   if (rows_.empty()) return -1;
-  return rows_[rowAt(offset - config_.paddingStart)].first;
+  return rows_[rowAt(offset, viewportLength)].first;
 }
 
-std::vector<int> ListLayout::itemsIn(float start, float end, float) const {
+std::vector<int> ListLayout::itemsIn(float start, float end, float viewportLength) const {
   std::vector<int> out;
   if (rows_.empty()) return out;
-  const float from = start - config_.paddingStart;
-  const float to = end - config_.paddingStart;
-  for (int row = rowAt(from); row < static_cast<int>(rows_.size()) && rowStart(row) < to; row++) {
-    if (rowStart(row) + rows_[row].length <= from) continue;
+  const int a = rowAt(start, viewportLength);
+  const int b = rowAt(end, viewportLength);
+  for (int row = std::min(a, b); row <= std::max(a, b); row++) {
+    const float rowFrom = startOf(row, viewportLength);
+    if (rowFrom >= end || rowFrom + rows_[row].length <= start) continue;
     for (int i = 0; i < rows_[row].count; i++) out.push_back(rows_[row].first + i);
   }
   return out;
+}
+
+std::optional<Pinned> ListLayout::pinned(const std::vector<int>& sticky, float viewportStart,
+                                         float viewportLength) const {
+  const int top = indexAt(viewportStart, viewportLength);
+  if (top < 0) return std::nullopt;
+  std::optional<int> index;
+  std::optional<int> pusher;
+  for (int s : sticky) {
+    if (s < 0 || s >= count()) continue;
+    if (config_.inverted ? s >= top && (!index || s < *index) : s <= top && (!index || s > *index)) index = s;
+  }
+  if (!index || startOf(rowOf_[*index], viewportLength) > viewportStart) return std::nullopt;
+  for (int s : sticky) {
+    if (s < 0 || s >= count()) continue;
+    if (config_.inverted ? s < *index && (!pusher || s > *pusher) : s > *index && (!pusher || s < *pusher)) pusher = s;
+  }
+  float start = viewportStart;
+  if (pusher) start = std::min(start, startOf(rowOf_[*pusher], viewportLength) - items_[*index].length);
+  return Pinned{*index, start};
 }
 
 bool ListLayout::fullSpan(int index) const { return std::binary_search(fullSpan_.begin(), fullSpan_.end(), index); }
@@ -158,11 +180,22 @@ float ListLayout::rowStart(int row) const {
   return starts_[row];
 }
 
-int ListLayout::rowAt(float offset) const {
+float ListLayout::startOf(int row, float viewportLength) const {
+  if (!config_.inverted) return config_.paddingStart + rowStart(row);
+  return contentLength(viewportLength) - config_.paddingEnd - rowStart(row) - rows_[row].length;
+}
+
+int ListLayout::rowAt(float offset, float viewportLength) const {
   const int rows = static_cast<int>(rows_.size());
   rowStart(rows);
-  auto it = std::upper_bound(starts_.begin(), starts_.begin() + rows, offset);
-  return std::max(0, static_cast<int>(it - starts_.begin()) - 1);
+  if (!config_.inverted) {
+    auto it = std::upper_bound(starts_.begin(), starts_.begin() + rows, offset - config_.paddingStart);
+    return std::max(0, static_cast<int>(it - starts_.begin()) - 1);
+  }
+  // Inverted rows run up from the bottom: the row whose end, measured from item 0's bottom, reaches past the offset.
+  const float fromBottom = contentLength(viewportLength) - config_.paddingEnd - offset;
+  auto it = std::lower_bound(starts_.begin() + 1, starts_.begin() + rows + 1, fromBottom);
+  return std::min(rows - 1, static_cast<int>(it - (starts_.begin() + 1)));
 }
 
 }  // namespace flume

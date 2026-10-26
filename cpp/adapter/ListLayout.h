@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -22,6 +23,11 @@ struct ItemRect {
   float x, y, width, height;
 };
 
+struct Pinned {
+  int index;
+  float start;  // along the scroll axis, in content coordinates
+};
+
 // Item positions along the scroll axis from measured lengths and per-type estimates; units are points.
 class ListLayout {
  public:
@@ -40,6 +46,7 @@ class ListLayout {
   ItemRect rectOf(int index, float listCrossLength, float viewportLength) const;
   int indexAt(float offset, float viewportLength) const;
   std::vector<int> itemsIn(float start, float end, float viewportLength) const;
+  std::optional<Pinned> pinned(const std::vector<int>& sticky, float viewportStart, float viewportLength) const;
 
  private:
   struct Item {
@@ -61,8 +68,9 @@ class ListLayout {
   bool fullSpan(int index) const;
   void rebuildRows();
   void updateRow(int row);
-  float rowStart(int row) const;
-  int rowAt(float offset) const;  // offset along the scroll axis inside the padding
+  float rowStart(int row) const;  // from the start of item 0, inside the padding
+  float startOf(int row, float viewportLength) const;  // in content coordinates
+  int rowAt(float offset, float viewportLength) const;  // offset in content coordinates
 
   ListLayoutConfig config_;
   std::vector<int> fullSpan_;
