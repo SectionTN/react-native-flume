@@ -63,6 +63,14 @@ class ScrollTargetsTest {
   }
 
   @Test
+  fun aFarTargetJumpsToOneScreenBeforeItFirst() {
+    assertEquals(507, ScrollTargets.preJump(first = 993, target = 500, perScreen = 7, itemCount = 1000))
+    assertEquals(493, ScrollTargets.preJump(first = 10, target = 500, perScreen = 7, itemCount = 1000))
+    assertNull(ScrollTargets.preJump(first = 512, target = 500, perScreen = 7, itemCount = 1000))
+    assertNull(ScrollTargets.preJump(first = 500, target = 500, perScreen = 0, itemCount = 1000))
+  }
+
+  @Test
   fun aReactTargetRealignsUnlessTheAnchorKeepsIt() {
     assertFalse(ScrollTargets.realigns(reactTarget = true, viewPosition = 0f, stacksFromEnd = false))
     assertTrue(ScrollTargets.realigns(reactTarget = true, viewPosition = 0f, stacksFromEnd = true))

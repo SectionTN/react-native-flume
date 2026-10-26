@@ -328,7 +328,11 @@ class FlumeView(context: Context) : FrameLayout(context) {
     pendingAlign = null
     if (animated) {
       val frames = childFrames()
-      val first = layoutManager.findFirstVisibleItemPosition()
+      val visible = layoutManager.findFirstVisibleItemPosition()
+      val perScreen = if (visible == RecyclerView.NO_POSITION) 0 else layoutManager.findLastVisibleItemPosition() - visible + 1
+      val near = ScrollTargets.preJump(visible, target, perScreen, rows.itemCount)
+      if (near != null) layoutManager.scrollToPositionWithOffset(near, 0)
+      val first = near ?: visible
       val rowPx = if (frames.isEmpty()) 0 else frames.sumOf { it.end - it.start } / frames.size
       val spanCount = (layoutManager as? GridLayoutManager)?.spanCount ?: 1
       val rowsCrossed = ScrollTargets.rowSpan(first, target) { adapter.fullSpans.groupIndex(it, spanCount) }

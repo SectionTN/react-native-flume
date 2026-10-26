@@ -26,6 +26,13 @@ object ScrollTargets {
   // At viewPosition 0 the offset does not depend on the row's length.
   fun needsLength(viewPosition: Float): Boolean = viewPosition != 0f
 
+  // Past two screens a smooth scroll passes over its target between frames, so it starts one screen before it.
+  fun preJump(first: Int, target: Int, perScreen: Int, itemCount: Int): Int? {
+    if (perScreen <= 0 || abs(target - first) <= 2 * perScreen) return null
+    val near = if (target < first) target + perScreen else target - perScreen
+    return near.coerceIn(0, itemCount - 1)
+  }
+
   // A list that stacks from the end anchors relayouts on its last row, so even a start-aligned React target drifts.
   fun realigns(reactTarget: Boolean, viewPosition: Float, stacksFromEnd: Boolean): Boolean =
     reactTarget && (needsLength(viewPosition) || stacksFromEnd)
