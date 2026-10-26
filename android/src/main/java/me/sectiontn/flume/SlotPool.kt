@@ -31,6 +31,7 @@ class SlotPool(private val maxFree: Int = MAX_FREE) {
 
   private val slots = HashMap<Int, Slot>()
   private val free = LinkedHashSet<Int>()
+  private val lent = LinkedHashSet<Int>()
   private val unadopted = LinkedHashSet<Int>()
   private var nextId = 1
   private var batchOpen = false
@@ -63,10 +64,12 @@ class SlotPool(private val maxFree: Int = MAX_FREE) {
   fun acquire(owner: Int, group: SlotGroup, kind: Int, key: String, index: Int): Int {
     val slot = slots.values.firstOrNull { it.owner == owner && it.matches(group, kind, key) }
       ?: free.firstNotNullOfOrNull { id -> slots[id]?.takeIf { it.matches(group, kind, key) } }
+      ?: lent.firstNotNullOfOrNull { id -> slots[id]?.takeIf { it.matches(group, kind, key) } }
       ?: unadopted.firstNotNullOfOrNull { id -> slots[id]?.takeIf { it.matches(null, kind, key) } }
       ?: Slot(nextId++, group, kind, key).also { slots[it.id] = it }
     if (slot.owner != owner) {
       free.remove(slot.id)
+      lent.remove(slot.id)
       unadopted.remove(slot.id)
       slot.group = group
       slot.owner = owner
@@ -96,6 +99,24 @@ class SlotPool(private val maxFree: Int = MAX_FREE) {
     entry.owner = 0
     cache(free, slot)
   }
+
+  // The owner's slots wait, ownerless, for the next binds of their key and group, as a jump's rows rendered ahead do.
+  fun lend(owner: Int) {
+    for (slot in slots.values.filter { it.owner == owner }.sortedBy { it.id }) {
+      slot.owner = 0
+      lent.add(slot.id)
+      dirty = true
+    }
+  }
+
+  // Lent slots no bind took become released slots, so the cap applies to them.
+  fun reclaim() {
+    val waiting = lent.toList()
+    lent.clear()
+    for (slot in waiting) cache(free, slot)
+  }
+
+  fun slotsFor(kind: Int, key: String): List<Int> = slots.values.filter { it.kind == kind && it.key == key }.map { it.id }
 
   fun setIndex(slot: Int, index: Int) {
     val entry = slots[slot] ?: return

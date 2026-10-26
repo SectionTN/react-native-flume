@@ -105,4 +105,45 @@ class SlotPoolTest {
     pool.replace(owner = 1, waiting = waiting, prerendered = -2)
     assertEquals(listOf(SlotEntry(-2, SlotKinds.ROW, "a", 3, bound = true)), pool.snapshot())
   }
+
+  @Test
+  fun aBindAdoptsALentSlotForItsKeyAndGroup() {
+    val pool = SlotPool()
+    val a = pool.acquire(owner = 7, list, SlotKinds.ROW, "a", index = 50)
+    pool.lend(7)
+    assertEquals(a, pool.acquire(owner = 3, list, SlotKinds.ROW, "a", index = 50))
+    assertEquals(3, pool.ownerOf(a))
+  }
+
+  @Test
+  fun aLentSlotNeverGoesToAnotherKeyOrGroup() {
+    val pool = SlotPool()
+    val a = pool.acquire(7, list, SlotKinds.ROW, "a", 50)
+    pool.lend(7)
+    assertNotEquals(a, pool.acquire(3, list, SlotKinds.ROW, "b", 51))
+    assertNotEquals(a, pool.acquire(4, cards, SlotKinds.ROW, "a", 50))
+  }
+
+  @Test
+  fun reclaimCachesTheLentSlotsNoBindTook() {
+    val pool = SlotPool()
+    val lent = (0 until 25).map { pool.acquire(7, list, SlotKinds.ROW, "k$it", it) }
+    pool.lend(7)
+    pool.acquire(3, list, SlotKinds.ROW, "k0", 0)
+    pool.acquire(4, list, SlotKinds.ROW, "k1", 1)
+    pool.reclaim()
+    val snapshot = pool.snapshot()
+    assertEquals(lent.take(2), snapshot.filter { it.bound }.map { it.slot })
+    assertEquals(lent.drop(5), snapshot.filter { !it.bound }.map { it.slot })
+  }
+
+  @Test
+  fun slotsForListsEverySlotOfAKey() {
+    val pool = SlotPool()
+    val owned = pool.acquire(1, list, SlotKinds.ROW, "a", 0)
+    val released = pool.acquire(2, cards, SlotKinds.ROW, "a", 0).also { pool.release(2, it) }
+    pool.register(-1, SlotKinds.ROW, "a")
+    pool.acquire(3, list, SlotKinds.ROW, "b", 1)
+    assertEquals(setOf(owned, released, -1), pool.slotsFor(SlotKinds.ROW, "a").toSet())
+  }
 }
