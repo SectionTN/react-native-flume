@@ -244,14 +244,20 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   }
   _listener = std::make_unique<FLMStoreListener>(self);
   const float scale = self.traitCollection.displayScale > 0 ? self.traitCollection.displayScale : 1;
-  _count = flume::Engine::instance().attach(_storeId, _listener.get(), std::make_unique<FLMTextMeasurer>(), scale);
+  const int count = flume::Engine::instance().attach(_storeId, _listener.get(), std::make_unique<FLMTextMeasurer>(), scale);
   _attached = YES;
   if (_inverted && !_everAttached) {
     _pinToEnd = YES;
     [self setNeedsLayout];
   }
+  // A return to the same rows keeps their lengths, so the offset still shows them; new data starts over.
+  if (_everAttached && count == _count) {
+    [_layout invalidateLengths];
+  } else {
+    [_layout resetWithCount:count typeOf:[self typeOf]];
+  }
   _everAttached = YES;
-  [_layout resetWithCount:_count typeOf:[self typeOf]];
+  _count = count;
   [_collectionView reloadData];
 }
 
