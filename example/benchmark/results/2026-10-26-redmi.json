@@ -1,0 +1,4539 @@
+[
+  {
+    "device": {
+      "serial": "9155bd62",
+      "model": "2510ERA8BG",
+      "android": "16",
+      "size": [1280, 2772],
+      "density": 520,
+      "refreshRate": 120.00001,
+      "battery": 49,
+      "ac": true
+    },
+    "startedAt": "2026-10-25T22:26:53.855Z",
+    "runs": [
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 3982,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 19028,
+          "nativeHeapKb": 32580,
+          "graphicsKb": 61824,
+          "totalPssKb": 170840,
+          "totalRssKb": 299436
+        },
+        "blank": {
+          "frames": 1003,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 207,
+          "p50Ms": 0.79,
+          "p95Ms": 1.39,
+          "maxMs": 9.23,
+          "workletP50": 0.15,
+          "layoutP50": 0.06,
+          "applyP50": 0.46,
+          "measureHitsPercent": 69,
+          "firstP50": 1.48
+        },
+        "temperatureStart": 33.3,
+        "temperatureEnd": 33.7
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 4026,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 19452,
+          "nativeHeapKb": 32596,
+          "graphicsKb": 61796,
+          "totalPssKb": 169895,
+          "totalRssKb": 298016
+        },
+        "blank": {
+          "frames": 1014,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 207,
+          "p50Ms": 0.69,
+          "p95Ms": 1.2,
+          "maxMs": 1.36,
+          "workletP50": 0.13,
+          "layoutP50": 0.05,
+          "applyP50": 0.39,
+          "measureHitsPercent": 69,
+          "firstP50": 1.03
+        },
+        "temperatureStart": 34,
+        "temperatureEnd": 34.1
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 3884,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 14,
+          "p95Ms": 18,
+          "p99Ms": 20,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 18976,
+          "nativeHeapKb": 75328,
+          "graphicsKb": 62120,
+          "totalPssKb": 221662,
+          "totalRssKb": 366048
+        },
+        "blank": {
+          "frames": 1008,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 34.1,
+        "temperatureEnd": 34.6
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 3930,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 11,
+          "p90Ms": 13,
+          "p95Ms": 14,
+          "p99Ms": 19,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 18276,
+          "nativeHeapKb": 64676,
+          "graphicsKb": 62276,
+          "totalPssKb": 216702,
+          "totalRssKb": 335136
+        },
+        "blank": {
+          "frames": 1006,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 34.6,
+        "temperatureEnd": 35
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 4032,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 12,
+          "p95Ms": 13,
+          "p99Ms": 18,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 30348,
+          "nativeHeapKb": 45364,
+          "graphicsKb": 60148,
+          "totalPssKb": 195647,
+          "totalRssKb": 324552
+        },
+        "blank": {
+          "frames": 1020,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 35.3,
+        "temperatureEnd": 35.3
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 4056,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 12,
+          "p95Ms": 13,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 27916,
+          "nativeHeapKb": 45388,
+          "graphicsKb": 60144,
+          "totalPssKb": 192871,
+          "totalRssKb": 321532
+        },
+        "blank": {
+          "frames": 1029,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 35.3,
+        "temperatureEnd": 35.3
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 4070,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 19,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 9584,
+          "nativeHeapKb": 42884,
+          "graphicsKb": 62068,
+          "totalPssKb": 174191,
+          "totalRssKb": 304064
+        },
+        "blank": {
+          "frames": 1030,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 36,
+        "temperatureEnd": 36
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 4082,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 12,
+          "p95Ms": 13,
+          "p99Ms": 13,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 28292,
+          "nativeHeapKb": 46884,
+          "graphicsKb": 62024,
+          "totalPssKb": 196541,
+          "totalRssKb": 324860
+        },
+        "blank": {
+          "frames": 1021,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 36.3,
+        "temperatureEnd": 36.3
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": false,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 4012,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 19472,
+          "nativeHeapKb": 35104,
+          "graphicsKb": 61644,
+          "totalPssKb": 174348,
+          "totalRssKb": 302344
+        },
+        "blank": {
+          "frames": 1015,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 36.6,
+        "temperatureEnd": 36.6
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": true,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 4056,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 19604,
+          "nativeHeapKb": 35608,
+          "graphicsKb": 61632,
+          "totalPssKb": 174635,
+          "totalRssKb": 302752
+        },
+        "blank": {
+          "frames": 1010,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 36.9,
+        "temperatureEnd": 36.9
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 3972,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 11,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 13,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 16604,
+          "nativeHeapKb": 52668,
+          "graphicsKb": 60304,
+          "totalPssKb": 186755,
+          "totalRssKb": 314384
+        },
+        "blank": {
+          "frames": 1002,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 57,
+          "p50Ms": 1.08,
+          "p95Ms": 2.56,
+          "maxMs": 2.88,
+          "workletP50": 0.22,
+          "layoutP50": 0.13,
+          "applyP50": 0.56,
+          "measureHitsPercent": 61,
+          "firstP50": 2.25
+        },
+        "temperatureStart": 37.1,
+        "temperatureEnd": 37.1
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 3990,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 11,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 18744,
+          "nativeHeapKb": 52608,
+          "graphicsKb": 60156,
+          "totalPssKb": 187345,
+          "totalRssKb": 315064
+        },
+        "blank": {
+          "frames": 1008,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 60,
+          "p50Ms": 1.11,
+          "p95Ms": 2.03,
+          "maxMs": 2.12,
+          "workletP50": 0.19,
+          "layoutP50": 0.11,
+          "applyP50": 0.53,
+          "measureHitsPercent": 62,
+          "firstP50": 2.73
+        },
+        "temperatureStart": 37.1,
+        "temperatureEnd": 37.3
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 3950,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 12,
+          "p95Ms": 13,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 23324,
+          "nativeHeapKb": 67000,
+          "graphicsKb": 60892,
+          "totalPssKb": 207883,
+          "totalRssKb": 336012
+        },
+        "blank": {
+          "frames": 1009,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 37.3,
+        "temperatureEnd": 37.6
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 3956,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 11,
+          "p90Ms": 12,
+          "p95Ms": 13,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 22980,
+          "nativeHeapKb": 67716,
+          "graphicsKb": 60864,
+          "totalPssKb": 208273,
+          "totalRssKb": 336376
+        },
+        "blank": {
+          "frames": 1003,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 37.6,
+        "temperatureEnd": 37.8
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 4090,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 19,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 26336,
+          "nativeHeapKb": 59280,
+          "graphicsKb": 60764,
+          "totalPssKb": 203681,
+          "totalRssKb": 331688
+        },
+        "blank": {
+          "frames": 1018,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 38,
+        "temperatureEnd": 38.1
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 4114,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 18,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 23272,
+          "nativeHeapKb": 59580,
+          "graphicsKb": 60872,
+          "totalPssKb": 201272,
+          "totalRssKb": 329004
+        },
+        "blank": {
+          "frames": 1019,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 38.1,
+        "temperatureEnd": 38.1
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 4102,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 12,
+          "p95Ms": 13,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 25300,
+          "nativeHeapKb": 60300,
+          "graphicsKb": 60824,
+          "totalPssKb": 204196,
+          "totalRssKb": 332056
+        },
+        "blank": {
+          "frames": 1021,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 38.3,
+        "temperatureEnd": 38.3
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 4112,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 12,
+          "p95Ms": 13,
+          "p99Ms": 13,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 23688,
+          "nativeHeapKb": 60136,
+          "graphicsKb": 60544,
+          "totalPssKb": 201991,
+          "totalRssKb": 329936
+        },
+        "blank": {
+          "frames": 1021,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 38.5,
+        "temperatureEnd": 38.5
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 3970,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 11,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 18800,
+          "nativeHeapKb": 32520,
+          "graphicsKb": 61788,
+          "totalPssKb": 169311,
+          "totalRssKb": 297372
+        },
+        "blank": {
+          "frames": 1010,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 207,
+          "p50Ms": 0.78,
+          "p95Ms": 1.41,
+          "maxMs": 1.7,
+          "workletP50": 0.15,
+          "layoutP50": 0.06,
+          "applyP50": 0.47,
+          "measureHitsPercent": 69,
+          "firstP50": 1.14
+        },
+        "temperatureStart": 38.6,
+        "temperatureEnd": 38.6
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 4002,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 11,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 18628,
+          "nativeHeapKb": 32548,
+          "graphicsKb": 61812,
+          "totalPssKb": 169554,
+          "totalRssKb": 297580
+        },
+        "blank": {
+          "frames": 1003,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 207,
+          "p50Ms": 0.67,
+          "p95Ms": 1.15,
+          "maxMs": 1.45,
+          "workletP50": 0.13,
+          "layoutP50": 0.05,
+          "applyP50": 0.38,
+          "measureHitsPercent": 69,
+          "firstP50": 1.08
+        },
+        "temperatureStart": 38.7,
+        "temperatureEnd": 38.7
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 3852,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 13,
+          "p95Ms": 15,
+          "p99Ms": 19,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 21076,
+          "nativeHeapKb": 77004,
+          "graphicsKb": 62276,
+          "totalPssKb": 223302,
+          "totalRssKb": 352892
+        },
+        "blank": {
+          "frames": 1004,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 39,
+        "temperatureEnd": 39
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 3958,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 13,
+          "p95Ms": 15,
+          "p99Ms": 20,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 21820,
+          "nativeHeapKb": 73484,
+          "graphicsKb": 62088,
+          "totalPssKb": 219817,
+          "totalRssKb": 349300
+        },
+        "blank": {
+          "frames": 1006,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 39.2,
+        "temperatureEnd": 39.2
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 4056,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 12,
+          "p95Ms": 13,
+          "p99Ms": 13,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 11972,
+          "nativeHeapKb": 41504,
+          "graphicsKb": 60120,
+          "totalPssKb": 173525,
+          "totalRssKb": 302312
+        },
+        "blank": {
+          "frames": 1030,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 39.3,
+        "temperatureEnd": 39.3
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 4084,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 18,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 9736,
+          "nativeHeapKb": 40792,
+          "graphicsKb": 60188,
+          "totalPssKb": 170203,
+          "totalRssKb": 298724
+        },
+        "blank": {
+          "frames": 1023,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 39.3,
+        "temperatureEnd": 39.5
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 4076,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 13,
+          "p95Ms": 13,
+          "p99Ms": 18,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 16880,
+          "nativeHeapKb": 44444,
+          "graphicsKb": 62068,
+          "totalPssKb": 183278,
+          "totalRssKb": 312552
+        },
+        "blank": {
+          "frames": 1022,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 39.7,
+        "temperatureEnd": 39.7
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 4088,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 12,
+          "p90Ms": 18,
+          "p95Ms": 18,
+          "p99Ms": 20,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 10084,
+          "nativeHeapKb": 41636,
+          "graphicsKb": 62068,
+          "totalPssKb": 173030,
+          "totalRssKb": 301436
+        },
+        "blank": {
+          "frames": 968,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 39.7,
+        "temperatureEnd": 39.8
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": false,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 3984,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 10,
+          "p95Ms": 10,
+          "p99Ms": 11,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 24224,
+          "nativeHeapKb": 36256,
+          "graphicsKb": 61760,
+          "totalPssKb": 179039,
+          "totalRssKb": 306632
+        },
+        "blank": {
+          "frames": 1010,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 40,
+        "temperatureEnd": 40
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": true,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 4052,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 10,
+          "p95Ms": 10,
+          "p99Ms": 12,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 26136,
+          "nativeHeapKb": 37648,
+          "graphicsKb": 61840,
+          "totalPssKb": 182433,
+          "totalRssKb": 310904
+        },
+        "blank": {
+          "frames": 1012,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 40.1,
+        "temperatureEnd": 40.1
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 3976,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 8,
+          "p90Ms": 10,
+          "p95Ms": 10,
+          "p99Ms": 11,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 21812,
+          "nativeHeapKb": 53288,
+          "graphicsKb": 60340,
+          "totalPssKb": 190822,
+          "totalRssKb": 318868
+        },
+        "blank": {
+          "frames": 1004,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 60,
+          "p50Ms": 1.19,
+          "p95Ms": 2.44,
+          "maxMs": 3.02,
+          "workletP50": 0.22,
+          "layoutP50": 0.13,
+          "applyP50": 0.62,
+          "measureHitsPercent": 62,
+          "firstP50": 2.71
+        },
+        "temperatureStart": 40.4,
+        "temperatureEnd": 40.4
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 3986,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 10,
+          "p95Ms": 11,
+          "p99Ms": 12,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 17892,
+          "nativeHeapKb": 52648,
+          "graphicsKb": 60288,
+          "totalPssKb": 186211,
+          "totalRssKb": 314364
+        },
+        "blank": {
+          "frames": 1003,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 60,
+          "p50Ms": 1.14,
+          "p95Ms": 2.19,
+          "maxMs": 2.62,
+          "workletP50": 0.19,
+          "layoutP50": 0.11,
+          "applyP50": 0.54,
+          "measureHitsPercent": 62,
+          "firstP50": 2.37
+        },
+        "temperatureStart": 40.6,
+        "temperatureEnd": 40.6
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 3924,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 10,
+          "p95Ms": 12,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 23240,
+          "nativeHeapKb": 67116,
+          "graphicsKb": 60892,
+          "totalPssKb": 208061,
+          "totalRssKb": 336168
+        },
+        "blank": {
+          "frames": 1000,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 41,
+        "temperatureEnd": 41
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 3944,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 10,
+          "p95Ms": 11,
+          "p99Ms": 13,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 23744,
+          "nativeHeapKb": 67760,
+          "graphicsKb": 60884,
+          "totalPssKb": 209373,
+          "totalRssKb": 337528
+        },
+        "blank": {
+          "frames": 1001,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 41,
+        "temperatureEnd": 41
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 4088,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 11,
+          "p95Ms": 14,
+          "p99Ms": 19,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 26648,
+          "nativeHeapKb": 59216,
+          "graphicsKb": 60980,
+          "totalPssKb": 204509,
+          "totalRssKb": 332768
+        },
+        "blank": {
+          "frames": 1026,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 41.3,
+        "temperatureEnd": 41.3
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 4114,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 17,
+          "p95Ms": 18,
+          "p99Ms": 19,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 24828,
+          "nativeHeapKb": 59484,
+          "graphicsKb": 60908,
+          "totalPssKb": 202946,
+          "totalRssKb": 330828
+        },
+        "blank": {
+          "frames": 1000,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 41.5,
+        "temperatureEnd": 41.5
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 4098,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 11,
+          "p95Ms": 11,
+          "p99Ms": 13,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 27104,
+          "nativeHeapKb": 60320,
+          "graphicsKb": 60816,
+          "totalPssKb": 206215,
+          "totalRssKb": 334232
+        },
+        "blank": {
+          "frames": 1030,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 41.8,
+        "temperatureEnd": 42
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 4102,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 11,
+          "p95Ms": 12,
+          "p99Ms": 13,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 26560,
+          "nativeHeapKb": 60444,
+          "graphicsKb": 60776,
+          "totalPssKb": 205588,
+          "totalRssKb": 333564
+        },
+        "blank": {
+          "frames": 982,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42,
+        "temperatureEnd": 42
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 3994,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 8,
+          "p90Ms": 10,
+          "p95Ms": 10,
+          "p99Ms": 12,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 20400,
+          "nativeHeapKb": 32384,
+          "graphicsKb": 61772,
+          "totalPssKb": 170262,
+          "totalRssKb": 298724
+        },
+        "blank": {
+          "frames": 1008,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 207,
+          "p50Ms": 0.78,
+          "p95Ms": 1.4,
+          "maxMs": 1.83,
+          "workletP50": 0.15,
+          "layoutP50": 0.06,
+          "applyP50": 0.45,
+          "measureHitsPercent": 69,
+          "firstP50": 1.38
+        },
+        "temperatureStart": 42,
+        "temperatureEnd": 42.3
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 3992,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 10,
+          "p95Ms": 10,
+          "p99Ms": 12,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 20292,
+          "nativeHeapKb": 32436,
+          "graphicsKb": 61760,
+          "totalPssKb": 170429,
+          "totalRssKb": 299172
+        },
+        "blank": {
+          "frames": 1005,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 207,
+          "p50Ms": 0.7,
+          "p95Ms": 1.22,
+          "maxMs": 1.78,
+          "workletP50": 0.14,
+          "layoutP50": 0.06,
+          "applyP50": 0.41,
+          "measureHitsPercent": 68,
+          "firstP50": 1.19
+        },
+        "temperatureStart": 42.3,
+        "temperatureEnd": 42.3
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 3850,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 12,
+          "p95Ms": 16,
+          "p99Ms": 18,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 19092,
+          "nativeHeapKb": 76764,
+          "graphicsKb": 62248,
+          "totalPssKb": 220613,
+          "totalRssKb": 350436
+        },
+        "blank": {
+          "frames": 1006,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42.3,
+        "temperatureEnd": 42.5
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 3896,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 11,
+          "p95Ms": 14,
+          "p99Ms": 18,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 17976,
+          "nativeHeapKb": 69476,
+          "graphicsKb": 62248,
+          "totalPssKb": 211894,
+          "totalRssKb": 341128
+        },
+        "blank": {
+          "frames": 1005,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42.5,
+        "temperatureEnd": 42.6
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 4052,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 10,
+          "p95Ms": 11,
+          "p99Ms": 12,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 8508,
+          "nativeHeapKb": 45016,
+          "graphicsKb": 60148,
+          "totalPssKb": 173564,
+          "totalRssKb": 302172
+        },
+        "blank": {
+          "frames": 1031,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42.6,
+        "temperatureEnd": 42.6
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 4064,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 11,
+          "p95Ms": 13,
+          "p99Ms": 18,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 29020,
+          "nativeHeapKb": 45196,
+          "graphicsKb": 60052,
+          "totalPssKb": 193111,
+          "totalRssKb": 321516
+        },
+        "blank": {
+          "frames": 1029,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42.7,
+        "temperatureEnd": 42.7
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 4068,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 11,
+          "p95Ms": 11,
+          "p99Ms": 18,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 10840,
+          "nativeHeapKb": 41860,
+          "graphicsKb": 62108,
+          "totalPssKb": 174022,
+          "totalRssKb": 303472
+        },
+        "blank": {
+          "frames": 1027,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 43,
+        "temperatureEnd": 43
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 4080,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 11,
+          "p95Ms": 15,
+          "p99Ms": 18,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 28808,
+          "nativeHeapKb": 47388,
+          "graphicsKb": 62056,
+          "totalPssKb": 196819,
+          "totalRssKb": 325204
+        },
+        "blank": {
+          "frames": 1022,
+          "meanPercent": 0,
+          "maxPercent": 15.7,
+          "framesOver": 4
+        },
+        "bind": null,
+        "temperatureStart": 43.1,
+        "temperatureEnd": 43.1
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": false,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 4002,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 8,
+          "p90Ms": 10,
+          "p95Ms": 10,
+          "p99Ms": 11,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 20452,
+          "nativeHeapKb": 35072,
+          "graphicsKb": 61848,
+          "totalPssKb": 174093,
+          "totalRssKb": 302264
+        },
+        "blank": {
+          "frames": 1006,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 43.2,
+        "temperatureEnd": 43.2
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": true,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 4030,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 10,
+          "p95Ms": 10,
+          "p99Ms": 11,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 20876,
+          "nativeHeapKb": 30032,
+          "graphicsKb": 61760,
+          "totalPssKb": 173501,
+          "totalRssKb": 294804
+        },
+        "blank": {
+          "frames": 1007,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42.8,
+        "temperatureEnd": 42.8
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 3964,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 8,
+          "p90Ms": 10,
+          "p95Ms": 10,
+          "p99Ms": 16,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 17748,
+          "nativeHeapKb": 52560,
+          "graphicsKb": 60288,
+          "totalPssKb": 185520,
+          "totalRssKb": 313532
+        },
+        "blank": {
+          "frames": 1000,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 60,
+          "p50Ms": 1.08,
+          "p95Ms": 2.46,
+          "maxMs": 2.94,
+          "workletP50": 0.21,
+          "layoutP50": 0.12,
+          "applyP50": 0.59,
+          "measureHitsPercent": 62,
+          "firstP50": 2.78
+        },
+        "temperatureStart": 42.7,
+        "temperatureEnd": 42.7
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 3972,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 10,
+          "p95Ms": 10,
+          "p99Ms": 12,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 18256,
+          "nativeHeapKb": 52708,
+          "graphicsKb": 60228,
+          "totalPssKb": 186218,
+          "totalRssKb": 314244
+        },
+        "blank": {
+          "frames": 1002,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": {
+          "n": 60,
+          "p50Ms": 1.03,
+          "p95Ms": 2.33,
+          "maxMs": 2.7,
+          "workletP50": 0.19,
+          "layoutP50": 0.1,
+          "applyP50": 0.55,
+          "measureHitsPercent": 62,
+          "firstP50": 2.95
+        },
+        "temperatureStart": 42.5,
+        "temperatureEnd": 42.5
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 3946,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 11,
+          "p95Ms": 12,
+          "p99Ms": 15,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 23104,
+          "nativeHeapKb": 66840,
+          "graphicsKb": 60852,
+          "totalPssKb": 207062,
+          "totalRssKb": 335160
+        },
+        "blank": {
+          "frames": 1002,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42.5,
+        "temperatureEnd": 42.5
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 3978,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 9,
+          "p90Ms": 10,
+          "p95Ms": 12,
+          "p99Ms": 14,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 23888,
+          "nativeHeapKb": 68256,
+          "graphicsKb": 60928,
+          "totalPssKb": 209873,
+          "totalRssKb": 337476
+        },
+        "blank": {
+          "frames": 1002,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42.5,
+        "temperatureEnd": 42.5
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 4098,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 11,
+          "p95Ms": 11,
+          "p99Ms": 13,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 26400,
+          "nativeHeapKb": 59424,
+          "graphicsKb": 60920,
+          "totalPssKb": 203999,
+          "totalRssKb": 331796
+        },
+        "blank": {
+          "frames": 1026,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42.5,
+        "temperatureEnd": 42.6
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 4114,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 11,
+          "p95Ms": 13,
+          "p99Ms": 17,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 24952,
+          "nativeHeapKb": 59508,
+          "graphicsKb": 60892,
+          "totalPssKb": 202466,
+          "totalRssKb": 330392
+        },
+        "blank": {
+          "frames": 1022,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42.6,
+        "temperatureEnd": 42.6
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 4092,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 16,
+          "p95Ms": 18,
+          "p99Ms": 19,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 26636,
+          "nativeHeapKb": 60468,
+          "graphicsKb": 60824,
+          "totalPssKb": 205286,
+          "totalRssKb": 333100
+        },
+        "blank": {
+          "frames": 1020,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42.6,
+        "temperatureEnd": 42.6
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 4112,
+          "jankyFrames": 0,
+          "jankyPercent": 0,
+          "p50Ms": 10,
+          "p90Ms": 11,
+          "p95Ms": 11,
+          "p99Ms": 13,
+          "deadlineMissed": 0
+        },
+        "memory": {
+          "javaHeapKb": 24308,
+          "nativeHeapKb": 60264,
+          "graphicsKb": 60772,
+          "totalPssKb": 201820,
+          "totalRssKb": 330020
+        },
+        "blank": {
+          "frames": 1031,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        },
+        "bind": null,
+        "temperatureStart": 42.7,
+        "temperatureEnd": 42.7
+      }
+    ],
+    "setData": []
+  },
+  {
+    "device": {
+      "serial": "9155bd62",
+      "model": "2510ERA8BG",
+      "android": "16",
+      "size": [1280, 2772],
+      "density": 520,
+      "refreshRate": 120.00001,
+      "battery": 51,
+      "ac": true
+    },
+    "startedAt": "2026-10-25T23:18:51.146Z",
+    "runs": [],
+    "setData": [
+      {
+        "round": 0,
+        "label": "react 10,000 keys, mount",
+        "line": {
+          "keys": 10000,
+          "items": 0,
+          "diffMs": 12.97,
+          "hostMs": 2.18
+        }
+      },
+      {
+        "round": 0,
+        "label": "react 10,000 keys, replace",
+        "line": {
+          "keys": 10000,
+          "items": 0,
+          "diffMs": 19.94,
+          "hostMs": 3.62
+        }
+      },
+      {
+        "round": 0,
+        "label": "worklet 1,000 items, mount",
+        "line": {
+          "keys": 1000,
+          "items": 1000,
+          "diffMs": 0.8,
+          "hostMs": 2.61
+        }
+      },
+      {
+        "round": 0,
+        "label": "worklet 500 changed items",
+        "line": {
+          "keys": 1000,
+          "items": 500,
+          "diffMs": 1.88,
+          "hostMs": 3.54
+        }
+      },
+      {
+        "round": 1,
+        "label": "react 10,000 keys, mount",
+        "line": {
+          "keys": 10000,
+          "items": 0,
+          "diffMs": 15.13,
+          "hostMs": 2.49
+        }
+      },
+      {
+        "round": 1,
+        "label": "react 10,000 keys, replace",
+        "line": {
+          "keys": 10000,
+          "items": 0,
+          "diffMs": 18.27,
+          "hostMs": 3.64
+        }
+      },
+      {
+        "round": 1,
+        "label": "worklet 1,000 items, mount",
+        "line": {
+          "keys": 1000,
+          "items": 1000,
+          "diffMs": 2.72,
+          "hostMs": 2.45
+        }
+      },
+      {
+        "round": 1,
+        "label": "worklet 500 changed items",
+        "line": {
+          "keys": 1000,
+          "items": 500,
+          "diffMs": 1.55,
+          "hostMs": 3.46
+        }
+      },
+      {
+        "round": 2,
+        "label": "react 10,000 keys, mount",
+        "line": {
+          "keys": 10000,
+          "items": 0,
+          "diffMs": 10.16,
+          "hostMs": 1.73
+        }
+      },
+      {
+        "round": 2,
+        "label": "react 10,000 keys, replace",
+        "line": {
+          "keys": 10000,
+          "items": 0,
+          "diffMs": 18.23,
+          "hostMs": 3.36
+        }
+      },
+      {
+        "round": 2,
+        "label": "worklet 1,000 items, mount",
+        "line": {
+          "keys": 1000,
+          "items": 1000,
+          "diffMs": 0.85,
+          "hostMs": 2.33
+        }
+      },
+      {
+        "round": 2,
+        "label": "worklet 500 changed items",
+        "line": {
+          "keys": 1000,
+          "items": 500,
+          "diffMs": 1.46,
+          "hostMs": 3.61
+        }
+      }
+    ],
+    "jumps": []
+  },
+  {
+    "device": {
+      "serial": "9155bd62",
+      "model": "2510ERA8BG",
+      "android": "16",
+      "size": [1280, 2772],
+      "density": 520,
+      "refreshRate": 120.00001,
+      "battery": 87,
+      "ac": true
+    },
+    "startedAt": "2026-10-26T13:40:14.537Z",
+    "runs": [],
+    "setData": [],
+    "jumps": [
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 5,
+          "jankyPercent": 22.73,
+          "p50Ms": 19,
+          "p90Ms": 34,
+          "p95Ms": 38,
+          "p99Ms": 38,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 17,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 348,
+          "jankyFrames": 5,
+          "jankyPercent": 1.44,
+          "p50Ms": 8,
+          "p90Ms": 10,
+          "p95Ms": 13,
+          "p99Ms": 36,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 179,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 5,
+          "jankyPercent": 22.73,
+          "p50Ms": 17,
+          "p90Ms": 28,
+          "p95Ms": 29,
+          "p99Ms": 29,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 21,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 346,
+          "jankyFrames": 4,
+          "jankyPercent": 1.16,
+          "p50Ms": 5,
+          "p90Ms": 5,
+          "p95Ms": 8,
+          "p99Ms": 23,
+          "deadlineMissed": 4
+        },
+        "blank": {
+          "frames": 179,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 48,
+          "jankyFrames": 8,
+          "jankyPercent": 16.67,
+          "p50Ms": 14,
+          "p90Ms": 32,
+          "p95Ms": 42,
+          "p99Ms": 46,
+          "deadlineMissed": 8
+        },
+        "blank": {
+          "frames": 30,
+          "meanPercent": 33.3,
+          "maxPercent": 100,
+          "framesOver": 10
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 352,
+          "jankyFrames": 6,
+          "jankyPercent": 1.7,
+          "p50Ms": 9,
+          "p90Ms": 15,
+          "p95Ms": 32,
+          "p99Ms": 38,
+          "deadlineMissed": 6
+        },
+        "blank": {
+          "frames": 183,
+          "meanPercent": 13.7,
+          "maxPercent": 100,
+          "framesOver": 25
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 48,
+          "jankyFrames": 9,
+          "jankyPercent": 18.75,
+          "p50Ms": 17,
+          "p90Ms": 40,
+          "p95Ms": 42,
+          "p99Ms": 42,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 31,
+          "meanPercent": 32.3,
+          "maxPercent": 100,
+          "framesOver": 10
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 336,
+          "jankyFrames": 5,
+          "jankyPercent": 1.49,
+          "p50Ms": 8,
+          "p90Ms": 14,
+          "p95Ms": 32,
+          "p99Ms": 42,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 176,
+          "meanPercent": 31.3,
+          "maxPercent": 100,
+          "framesOver": 55
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 30,
+          "jankyFrames": 4,
+          "jankyPercent": 13.33,
+          "p50Ms": 10,
+          "p90Ms": 24,
+          "p95Ms": 28,
+          "p99Ms": 28,
+          "deadlineMissed": 4
+        },
+        "blank": {
+          "frames": 22,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 458,
+          "jankyFrames": 5,
+          "jankyPercent": 1.09,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 11,
+          "p99Ms": 29,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 238,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 3,
+          "jankyPercent": 13.64,
+          "p50Ms": 13,
+          "p90Ms": 18,
+          "p95Ms": 24,
+          "p99Ms": 24,
+          "deadlineMissed": 3
+        },
+        "blank": {
+          "frames": 15,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 468,
+          "jankyFrames": 5,
+          "jankyPercent": 1.07,
+          "p50Ms": 5,
+          "p90Ms": 8,
+          "p95Ms": 9,
+          "p99Ms": 18,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 238,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 402,
+          "jankyFrames": 6,
+          "jankyPercent": 1.49,
+          "p50Ms": 8,
+          "p90Ms": 11,
+          "p95Ms": 12,
+          "p99Ms": 28,
+          "deadlineMissed": 6
+        },
+        "blank": {
+          "frames": 210,
+          "meanPercent": 4.8,
+          "maxPercent": 100,
+          "framesOver": 10
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 508,
+          "jankyFrames": 5,
+          "jankyPercent": 0.98,
+          "p50Ms": 9,
+          "p90Ms": 12,
+          "p95Ms": 16,
+          "p99Ms": 26,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 260,
+          "meanPercent": 7.7,
+          "maxPercent": 100,
+          "framesOver": 20
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 406,
+          "jankyFrames": 9,
+          "jankyPercent": 2.22,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 15,
+          "p99Ms": 32,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 209,
+          "meanPercent": 4.8,
+          "maxPercent": 100,
+          "framesOver": 10
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 528,
+          "jankyFrames": 6,
+          "jankyPercent": 1.14,
+          "p50Ms": 8,
+          "p90Ms": 10,
+          "p95Ms": 20,
+          "p99Ms": 30,
+          "deadlineMissed": 6
+        },
+        "blank": {
+          "frames": 275,
+          "meanPercent": 20.7,
+          "maxPercent": 100,
+          "framesOver": 57
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 5,
+          "jankyPercent": 22.73,
+          "p50Ms": 20,
+          "p90Ms": 34,
+          "p95Ms": 40,
+          "p99Ms": 40,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 21,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 344,
+          "jankyFrames": 5,
+          "jankyPercent": 1.45,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 13,
+          "p99Ms": 34,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 180,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 5,
+          "jankyPercent": 22.73,
+          "p50Ms": 15,
+          "p90Ms": 27,
+          "p95Ms": 31,
+          "p99Ms": 31,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 18,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 362,
+          "jankyFrames": 5,
+          "jankyPercent": 1.38,
+          "p50Ms": 5,
+          "p90Ms": 5,
+          "p95Ms": 7,
+          "p99Ms": 24,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 188,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 46,
+          "jankyFrames": 7,
+          "jankyPercent": 15.22,
+          "p50Ms": 16,
+          "p90Ms": 36,
+          "p95Ms": 38,
+          "p99Ms": 38,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 31,
+          "meanPercent": 32.3,
+          "maxPercent": 100,
+          "framesOver": 10
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 344,
+          "jankyFrames": 5,
+          "jankyPercent": 1.45,
+          "p50Ms": 8,
+          "p90Ms": 14,
+          "p95Ms": 27,
+          "p99Ms": 36,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 181,
+          "meanPercent": 9.4,
+          "maxPercent": 100,
+          "framesOver": 17
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 48,
+          "jankyFrames": 9,
+          "jankyPercent": 18.75,
+          "p50Ms": 18,
+          "p90Ms": 36,
+          "p95Ms": 40,
+          "p99Ms": 48,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 30,
+          "meanPercent": 40,
+          "maxPercent": 100,
+          "framesOver": 12
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 338,
+          "jankyFrames": 6,
+          "jankyPercent": 1.78,
+          "p50Ms": 8,
+          "p90Ms": 17,
+          "p95Ms": 32,
+          "p99Ms": 44,
+          "deadlineMissed": 6
+        },
+        "blank": {
+          "frames": 175,
+          "meanPercent": 36,
+          "maxPercent": 100,
+          "framesOver": 63
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 24,
+          "jankyFrames": 5,
+          "jankyPercent": 20.83,
+          "p50Ms": 12,
+          "p90Ms": 18,
+          "p95Ms": 18,
+          "p99Ms": 18,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 20,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 462,
+          "jankyFrames": 5,
+          "jankyPercent": 1.08,
+          "p50Ms": 5,
+          "p90Ms": 8,
+          "p95Ms": 9,
+          "p99Ms": 18,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 242,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 26,
+          "jankyFrames": 3,
+          "jankyPercent": 11.54,
+          "p50Ms": 8,
+          "p90Ms": 19,
+          "p95Ms": 21,
+          "p99Ms": 21,
+          "deadlineMissed": 3
+        },
+        "blank": {
+          "frames": 28,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 468,
+          "jankyFrames": 5,
+          "jankyPercent": 1.07,
+          "p50Ms": 5,
+          "p90Ms": 9,
+          "p95Ms": 9,
+          "p99Ms": 18,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 242,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 404,
+          "jankyFrames": 7,
+          "jankyPercent": 1.73,
+          "p50Ms": 5,
+          "p90Ms": 9,
+          "p95Ms": 13,
+          "p99Ms": 29,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 316,
+          "meanPercent": 6,
+          "maxPercent": 100,
+          "framesOver": 19
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 504,
+          "jankyFrames": 5,
+          "jankyPercent": 0.99,
+          "p50Ms": 9,
+          "p90Ms": 10,
+          "p95Ms": 15,
+          "p99Ms": 30,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 259,
+          "meanPercent": 6.9,
+          "maxPercent": 100,
+          "framesOver": 18
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 406,
+          "jankyFrames": 7,
+          "jankyPercent": 1.72,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 16,
+          "p99Ms": 31,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 249,
+          "meanPercent": 7.6,
+          "maxPercent": 100,
+          "framesOver": 19
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 530,
+          "jankyFrames": 5,
+          "jankyPercent": 0.94,
+          "p50Ms": 8,
+          "p90Ms": 11,
+          "p95Ms": 19,
+          "p99Ms": 29,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 272,
+          "meanPercent": 16.5,
+          "maxPercent": 100,
+          "framesOver": 45
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 5,
+          "jankyPercent": 22.73,
+          "p50Ms": 20,
+          "p90Ms": 34,
+          "p95Ms": 46,
+          "p99Ms": 46,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 18,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 380,
+          "jankyFrames": 5,
+          "jankyPercent": 1.32,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 10,
+          "p99Ms": 44,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 200,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 5,
+          "jankyPercent": 22.73,
+          "p50Ms": 14,
+          "p90Ms": 28,
+          "p95Ms": 32,
+          "p99Ms": 32,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 17,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 378,
+          "jankyFrames": 5,
+          "jankyPercent": 1.32,
+          "p50Ms": 5,
+          "p90Ms": 5,
+          "p95Ms": 8,
+          "p99Ms": 29,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 199,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 46,
+          "jankyFrames": 10,
+          "jankyPercent": 21.74,
+          "p50Ms": 13,
+          "p90Ms": 32,
+          "p95Ms": 34,
+          "p99Ms": 38,
+          "deadlineMissed": 10
+        },
+        "blank": {
+          "frames": 28,
+          "meanPercent": 35.7,
+          "maxPercent": 100,
+          "framesOver": 10
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 376,
+          "jankyFrames": 6,
+          "jankyPercent": 1.6,
+          "p50Ms": 9,
+          "p90Ms": 12,
+          "p95Ms": 27,
+          "p99Ms": 32,
+          "deadlineMissed": 6
+        },
+        "blank": {
+          "frames": 200,
+          "meanPercent": 16.5,
+          "maxPercent": 100,
+          "framesOver": 33
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 48,
+          "jankyFrames": 8,
+          "jankyPercent": 16.67,
+          "p50Ms": 12,
+          "p90Ms": 40,
+          "p95Ms": 42,
+          "p99Ms": 42,
+          "deadlineMissed": 8
+        },
+        "blank": {
+          "frames": 34,
+          "meanPercent": 29.4,
+          "maxPercent": 100,
+          "framesOver": 10
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 336,
+          "jankyFrames": 7,
+          "jankyPercent": 2.08,
+          "p50Ms": 8,
+          "p90Ms": 15,
+          "p95Ms": 36,
+          "p99Ms": 53,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 174,
+          "meanPercent": 32.2,
+          "maxPercent": 100,
+          "framesOver": 56
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 24,
+          "jankyFrames": 5,
+          "jankyPercent": 20.83,
+          "p50Ms": 17,
+          "p90Ms": 25,
+          "p95Ms": 32,
+          "p99Ms": 32,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 19,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 466,
+          "jankyFrames": 5,
+          "jankyPercent": 1.07,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 12,
+          "p99Ms": 19,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 243,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 2,
+          "jankyPercent": 9.09,
+          "p50Ms": 11,
+          "p90Ms": 17,
+          "p95Ms": 21,
+          "p99Ms": 21,
+          "deadlineMissed": 2
+        },
+        "blank": {
+          "frames": 22,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 466,
+          "jankyFrames": 4,
+          "jankyPercent": 0.86,
+          "p50Ms": 5,
+          "p90Ms": 9,
+          "p95Ms": 10,
+          "p99Ms": 24,
+          "deadlineMissed": 4
+        },
+        "blank": {
+          "frames": 238,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 404,
+          "jankyFrames": 7,
+          "jankyPercent": 1.73,
+          "p50Ms": 6,
+          "p90Ms": 9,
+          "p95Ms": 12,
+          "p99Ms": 32,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 206,
+          "meanPercent": 4.9,
+          "maxPercent": 100,
+          "framesOver": 10
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 508,
+          "jankyFrames": 5,
+          "jankyPercent": 0.98,
+          "p50Ms": 9,
+          "p90Ms": 11,
+          "p95Ms": 14,
+          "p99Ms": 28,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 260,
+          "meanPercent": 6.5,
+          "maxPercent": 100,
+          "framesOver": 17
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 408,
+          "jankyFrames": 8,
+          "jankyPercent": 1.96,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 12,
+          "p99Ms": 32,
+          "deadlineMissed": 8
+        },
+        "blank": {
+          "frames": 210,
+          "meanPercent": 4.8,
+          "maxPercent": 100,
+          "framesOver": 10
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flume-react",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 538,
+          "jankyFrames": 6,
+          "jankyPercent": 1.12,
+          "p50Ms": 8,
+          "p90Ms": 10,
+          "p95Ms": 16,
+          "p99Ms": 29,
+          "deadlineMissed": 6
+        },
+        "blank": {
+          "frames": 277,
+          "meanPercent": 15.5,
+          "maxPercent": 100,
+          "framesOver": 43
+        }
+      }
+    ]
+  },
+  {
+    "device": {
+      "serial": "9155bd62",
+      "model": "2510ERA8BG",
+      "android": "16",
+      "size": [1280, 2772],
+      "density": 520,
+      "refreshRate": 120.00001,
+      "battery": 89,
+      "ac": true
+    },
+    "startedAt": "2026-10-26T13:54:31.598Z",
+    "runs": [],
+    "setData": [],
+    "jumps": [
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 414,
+          "jankyFrames": 10,
+          "jankyPercent": 2.42,
+          "p50Ms": 9,
+          "p90Ms": 12,
+          "p95Ms": 21,
+          "p99Ms": 42,
+          "deadlineMissed": 10
+        },
+        "blank": {
+          "frames": 214,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 656,
+          "jankyFrames": 8,
+          "jankyPercent": 1.22,
+          "p50Ms": 9,
+          "p90Ms": 11,
+          "p95Ms": 12,
+          "p99Ms": 31,
+          "deadlineMissed": 8
+        },
+        "blank": {
+          "frames": 333,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 418,
+          "jankyFrames": 10,
+          "jankyPercent": 2.39,
+          "p50Ms": 5,
+          "p90Ms": 9,
+          "p95Ms": 18,
+          "p99Ms": 57,
+          "deadlineMissed": 10
+        },
+        "blank": {
+          "frames": 217,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 632,
+          "jankyFrames": 7,
+          "jankyPercent": 1.11,
+          "p50Ms": 5,
+          "p90Ms": 9,
+          "p95Ms": 12,
+          "p99Ms": 29,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 320,
+          "meanPercent": 2.5,
+          "maxPercent": 74.4,
+          "framesOver": 32
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 418,
+          "jankyFrames": 9,
+          "jankyPercent": 2.15,
+          "p50Ms": 9,
+          "p90Ms": 11,
+          "p95Ms": 15,
+          "p99Ms": 29,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 221,
+          "meanPercent": 1.4,
+          "maxPercent": 100,
+          "framesOver": 3
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 614,
+          "jankyFrames": 9,
+          "jankyPercent": 1.47,
+          "p50Ms": 9,
+          "p90Ms": 20,
+          "p95Ms": 25,
+          "p99Ms": 40,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 314,
+          "meanPercent": 31.6,
+          "maxPercent": 100,
+          "framesOver": 106
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 416,
+          "jankyFrames": 8,
+          "jankyPercent": 1.92,
+          "p50Ms": 8,
+          "p90Ms": 10,
+          "p95Ms": 13,
+          "p99Ms": 30,
+          "deadlineMissed": 8
+        },
+        "blank": {
+          "frames": 216,
+          "meanPercent": 2.1,
+          "maxPercent": 100,
+          "framesOver": 5
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 662,
+          "jankyFrames": 7,
+          "jankyPercent": 1.06,
+          "p50Ms": 5,
+          "p90Ms": 15,
+          "p95Ms": 19,
+          "p99Ms": 29,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 366,
+          "meanPercent": 31.9,
+          "maxPercent": 100,
+          "framesOver": 128
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 24,
+          "jankyFrames": 3,
+          "jankyPercent": 12.5,
+          "p50Ms": 11,
+          "p90Ms": 26,
+          "p95Ms": 28,
+          "p99Ms": 28,
+          "deadlineMissed": 3
+        },
+        "blank": {
+          "frames": 23,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 5,
+          "jankyPercent": 22.73,
+          "p50Ms": 14,
+          "p90Ms": 22,
+          "p95Ms": 22,
+          "p99Ms": 22,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 20,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 708,
+          "jankyFrames": 9,
+          "jankyPercent": 1.27,
+          "p50Ms": 9,
+          "p90Ms": 11,
+          "p95Ms": 13,
+          "p99Ms": 30,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 365,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 558,
+          "jankyFrames": 14,
+          "jankyPercent": 2.51,
+          "p50Ms": 12,
+          "p90Ms": 25,
+          "p95Ms": 150,
+          "p99Ms": 350,
+          "deadlineMissed": 14
+        },
+        "blank": {
+          "frames": 286,
+          "meanPercent": 2.1,
+          "maxPercent": 100,
+          "framesOver": 13
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 720,
+          "jankyFrames": 6,
+          "jankyPercent": 0.83,
+          "p50Ms": 7,
+          "p90Ms": 9,
+          "p95Ms": 10,
+          "p99Ms": 30,
+          "deadlineMissed": 6
+        },
+        "blank": {
+          "frames": 364,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 612,
+          "jankyFrames": 10,
+          "jankyPercent": 1.63,
+          "p50Ms": 13,
+          "p90Ms": 23,
+          "p95Ms": 150,
+          "p99Ms": 300,
+          "deadlineMissed": 10
+        },
+        "blank": {
+          "frames": 313,
+          "meanPercent": 7.9,
+          "maxPercent": 100,
+          "framesOver": 49
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 712,
+          "jankyFrames": 5,
+          "jankyPercent": 0.7,
+          "p50Ms": 8,
+          "p90Ms": 17,
+          "p95Ms": 17,
+          "p99Ms": 20,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 404,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 960,
+          "jankyFrames": 5,
+          "jankyPercent": 0.52,
+          "p50Ms": 9,
+          "p90Ms": 19,
+          "p95Ms": 23,
+          "p99Ms": 31,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 484,
+          "meanPercent": 19.6,
+          "maxPercent": 100,
+          "framesOver": 97
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 708,
+          "jankyFrames": 4,
+          "jankyPercent": 0.56,
+          "p50Ms": 5,
+          "p90Ms": 9,
+          "p95Ms": 9,
+          "p99Ms": 16,
+          "deadlineMissed": 4
+        },
+        "blank": {
+          "frames": 360,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 0,
+        "frames": {
+          "totalFrames": 1100,
+          "jankyFrames": 5,
+          "jankyPercent": 0.45,
+          "p50Ms": 5,
+          "p90Ms": 9,
+          "p95Ms": 14,
+          "p99Ms": 25,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 552,
+          "meanPercent": 21.9,
+          "maxPercent": 100,
+          "framesOver": 123
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 418,
+          "jankyFrames": 9,
+          "jankyPercent": 2.15,
+          "p50Ms": 9,
+          "p90Ms": 17,
+          "p95Ms": 22,
+          "p99Ms": 38,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 219,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 662,
+          "jankyFrames": 8,
+          "jankyPercent": 1.21,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 12,
+          "p99Ms": 34,
+          "deadlineMissed": 8
+        },
+        "blank": {
+          "frames": 339,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 420,
+          "jankyFrames": 10,
+          "jankyPercent": 2.38,
+          "p50Ms": 6,
+          "p90Ms": 9,
+          "p95Ms": 19,
+          "p99Ms": 48,
+          "deadlineMissed": 10
+        },
+        "blank": {
+          "frames": 215,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 680,
+          "jankyFrames": 9,
+          "jankyPercent": 1.32,
+          "p50Ms": 5,
+          "p90Ms": 9,
+          "p95Ms": 13,
+          "p99Ms": 24,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 347,
+          "meanPercent": 2.2,
+          "maxPercent": 63.8,
+          "framesOver": 32
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 428,
+          "jankyFrames": 7,
+          "jankyPercent": 1.64,
+          "p50Ms": 6,
+          "p90Ms": 10,
+          "p95Ms": 14,
+          "p99Ms": 32,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 220,
+          "meanPercent": 2.3,
+          "maxPercent": 100,
+          "framesOver": 6
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 602,
+          "jankyFrames": 9,
+          "jankyPercent": 1.5,
+          "p50Ms": 9,
+          "p90Ms": 24,
+          "p95Ms": 31,
+          "p99Ms": 38,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 347,
+          "meanPercent": 27.6,
+          "maxPercent": 100,
+          "framesOver": 100
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 416,
+          "jankyFrames": 8,
+          "jankyPercent": 1.92,
+          "p50Ms": 5,
+          "p90Ms": 9,
+          "p95Ms": 17,
+          "p99Ms": 29,
+          "deadlineMissed": 8
+        },
+        "blank": {
+          "frames": 264,
+          "meanPercent": 1,
+          "maxPercent": 100,
+          "framesOver": 3
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 674,
+          "jankyFrames": 7,
+          "jankyPercent": 1.04,
+          "p50Ms": 6,
+          "p90Ms": 14,
+          "p95Ms": 20,
+          "p99Ms": 27,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 423,
+          "meanPercent": 28.7,
+          "maxPercent": 100,
+          "framesOver": 134
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 5,
+          "jankyPercent": 22.73,
+          "p50Ms": 13,
+          "p90Ms": 19,
+          "p95Ms": 22,
+          "p99Ms": 22,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 19,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 4,
+          "jankyPercent": 18.18,
+          "p50Ms": 10,
+          "p90Ms": 17,
+          "p95Ms": 21,
+          "p99Ms": 21,
+          "deadlineMissed": 4
+        },
+        "blank": {
+          "frames": 158,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 714,
+          "jankyFrames": 7,
+          "jankyPercent": 0.98,
+          "p50Ms": 8,
+          "p90Ms": 17,
+          "p95Ms": 17,
+          "p99Ms": 32,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 424,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 582,
+          "jankyFrames": 15,
+          "jankyPercent": 2.58,
+          "p50Ms": 14,
+          "p90Ms": 22,
+          "p95Ms": 150,
+          "p99Ms": 300,
+          "deadlineMissed": 15
+        },
+        "blank": {
+          "frames": 301,
+          "meanPercent": 0.6,
+          "maxPercent": 100,
+          "framesOver": 5
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 710,
+          "jankyFrames": 6,
+          "jankyPercent": 0.85,
+          "p50Ms": 5,
+          "p90Ms": 9,
+          "p95Ms": 10,
+          "p99Ms": 30,
+          "deadlineMissed": 6
+        },
+        "blank": {
+          "frames": 369,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 604,
+          "jankyFrames": 11,
+          "jankyPercent": 1.82,
+          "p50Ms": 15,
+          "p90Ms": 24,
+          "p95Ms": 150,
+          "p99Ms": 300,
+          "deadlineMissed": 11
+        },
+        "blank": {
+          "frames": 306,
+          "meanPercent": 4.6,
+          "maxPercent": 100,
+          "framesOver": 32
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 720,
+          "jankyFrames": 5,
+          "jankyPercent": 0.69,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 10,
+          "p99Ms": 17,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 372,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 980,
+          "jankyFrames": 5,
+          "jankyPercent": 0.51,
+          "p50Ms": 8,
+          "p90Ms": 19,
+          "p95Ms": 22,
+          "p99Ms": 28,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 499,
+          "meanPercent": 21.6,
+          "maxPercent": 100,
+          "framesOver": 109
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 714,
+          "jankyFrames": 5,
+          "jankyPercent": 0.7,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 10,
+          "p99Ms": 22,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 360,
+          "meanPercent": 0.6,
+          "maxPercent": 100,
+          "framesOver": 2
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 1,
+        "frames": {
+          "totalFrames": 1082,
+          "jankyFrames": 5,
+          "jankyPercent": 0.46,
+          "p50Ms": 5,
+          "p90Ms": 10,
+          "p95Ms": 16,
+          "p99Ms": 29,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 548,
+          "meanPercent": 22.4,
+          "maxPercent": 100,
+          "framesOver": 123
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 414,
+          "jankyFrames": 7,
+          "jankyPercent": 1.69,
+          "p50Ms": 9,
+          "p90Ms": 17,
+          "p95Ms": 22,
+          "p99Ms": 46,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 216,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 682,
+          "jankyFrames": 7,
+          "jankyPercent": 1.03,
+          "p50Ms": 8,
+          "p90Ms": 10,
+          "p95Ms": 12,
+          "p99Ms": 42,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 348,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 420,
+          "jankyFrames": 10,
+          "jankyPercent": 2.38,
+          "p50Ms": 7,
+          "p90Ms": 10,
+          "p95Ms": 22,
+          "p99Ms": 46,
+          "deadlineMissed": 10
+        },
+        "blank": {
+          "frames": 214,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 706,
+          "jankyFrames": 5,
+          "jankyPercent": 0.71,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 16,
+          "p99Ms": 38,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 359,
+          "meanPercent": 1.9,
+          "maxPercent": 64.9,
+          "framesOver": 26
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 416,
+          "jankyFrames": 9,
+          "jankyPercent": 2.16,
+          "p50Ms": 9,
+          "p90Ms": 17,
+          "p95Ms": 19,
+          "p99Ms": 34,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 216,
+          "meanPercent": 0.9,
+          "maxPercent": 100,
+          "framesOver": 2
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 620,
+          "jankyFrames": 9,
+          "jankyPercent": 1.45,
+          "p50Ms": 9,
+          "p90Ms": 22,
+          "p95Ms": 26,
+          "p99Ms": 34,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 316,
+          "meanPercent": 32,
+          "maxPercent": 100,
+          "framesOver": 107
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 426,
+          "jankyFrames": 7,
+          "jankyPercent": 1.64,
+          "p50Ms": 6,
+          "p90Ms": 10,
+          "p95Ms": 18,
+          "p99Ms": 32,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 220,
+          "meanPercent": 3.1,
+          "maxPercent": 100,
+          "framesOver": 9
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 734,
+          "jankyFrames": 9,
+          "jankyPercent": 1.23,
+          "p50Ms": 8,
+          "p90Ms": 15,
+          "p95Ms": 20,
+          "p99Ms": 36,
+          "deadlineMissed": 9
+        },
+        "blank": {
+          "frames": 369,
+          "meanPercent": 32.2,
+          "maxPercent": 100,
+          "framesOver": 126
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 5,
+          "jankyPercent": 22.73,
+          "p50Ms": 14,
+          "p90Ms": 30,
+          "p95Ms": 31,
+          "p99Ms": 31,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 19,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "chat",
+        "impl": "native",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 22,
+          "jankyFrames": 4,
+          "jankyPercent": 18.18,
+          "p50Ms": 10,
+          "p90Ms": 19,
+          "p95Ms": 21,
+          "p99Ms": 21,
+          "deadlineMissed": 4
+        },
+        "blank": {
+          "frames": 19,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 716,
+          "jankyFrames": 7,
+          "jankyPercent": 0.98,
+          "p50Ms": 9,
+          "p90Ms": 17,
+          "p95Ms": 17,
+          "p99Ms": 32,
+          "deadlineMissed": 7
+        },
+        "blank": {
+          "frames": 361,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 620,
+          "jankyFrames": 15,
+          "jankyPercent": 2.42,
+          "p50Ms": 15,
+          "p90Ms": 27,
+          "p95Ms": 150,
+          "p99Ms": 300,
+          "deadlineMissed": 15
+        },
+        "blank": {
+          "frames": 314,
+          "meanPercent": 0.7,
+          "maxPercent": 100,
+          "framesOver": 4
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 718,
+          "jankyFrames": 5,
+          "jankyPercent": 0.7,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 10,
+          "p99Ms": 38,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 363,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "flashlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 546,
+          "jankyFrames": 15,
+          "jankyPercent": 2.75,
+          "p50Ms": 14,
+          "p90Ms": 26,
+          "p95Ms": 150,
+          "p99Ms": 400,
+          "deadlineMissed": 15
+        },
+        "blank": {
+          "frames": 281,
+          "meanPercent": 5.3,
+          "maxPercent": 100,
+          "framesOver": 25
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 724,
+          "jankyFrames": 5,
+          "jankyPercent": 0.69,
+          "p50Ms": 9,
+          "p90Ms": 16,
+          "p95Ms": 17,
+          "p99Ms": 22,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 364,
+          "meanPercent": 1.1,
+          "maxPercent": 100,
+          "framesOver": 4
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": false,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 980,
+          "jankyFrames": 5,
+          "jankyPercent": 0.51,
+          "p50Ms": 8,
+          "p90Ms": 17,
+          "p95Ms": 21,
+          "p99Ms": 27,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 496,
+          "meanPercent": 22.1,
+          "maxPercent": 100,
+          "framesOver": 111
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": false,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 718,
+          "jankyFrames": 5,
+          "jankyPercent": 0.7,
+          "p50Ms": 8,
+          "p90Ms": 9,
+          "p95Ms": 10,
+          "p99Ms": 25,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 366,
+          "meanPercent": 0,
+          "maxPercent": 0,
+          "framesOver": 0
+        }
+      },
+      {
+        "scenario": "feed",
+        "impl": "legendlist",
+        "load": true,
+        "count": 1000,
+        "animated": true,
+        "repeat": 2,
+        "frames": {
+          "totalFrames": 1104,
+          "jankyFrames": 5,
+          "jankyPercent": 0.45,
+          "p50Ms": 6,
+          "p90Ms": 10,
+          "p95Ms": 16,
+          "p99Ms": 22,
+          "deadlineMissed": 5
+        },
+        "blank": {
+          "frames": 558,
+          "meanPercent": 22.8,
+          "maxPercent": 100,
+          "framesOver": 129
+        }
+      }
+    ]
+  }
+]

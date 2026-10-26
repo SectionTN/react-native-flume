@@ -1,6 +1,6 @@
 # Benchmark
 
-The benchmark flings through a chat and a feed built with five lists on an Android phone. It reports dropped frames, blank area, memory and Flume's own bind and `setData` times.
+The benchmark flings through a chat and a feed built with five lists on an Android phone, then jumps far into them with `scrollToIndex`. It reports dropped frames, blank area, memory and Flume's own bind and `setData` times.
 
 ## Lists
 
@@ -34,17 +34,118 @@ A configuration runs on a freshly started release build:
 
 Before the first configuration, 40 flings each way through each scenario fill the image cache that all the lists share. The repeats run every configuration once, in turn.
 
+A jump pass records the screen while `scrollToIndex` sends the list to 50, 10, 90, 30 and 70 percent of its items, 800 ms apart. Each configuration runs one pass of instant jumps and one of animated jumps. The RecyclerView runs the instant pass only.
+
 ## Metrics
 
 | Metric | Source |
 | --- | --- |
 | Janky frames, p90 frame time, deadlines missed | `dumpsys gfxinfo` over the measured flings. |
+| Janky frames and p99 frame time in a jump pass | `dumpsys gfxinfo` over the five jumps. |
 | Blank area | Every row paints an opaque background over a magenta list background. Each recorded frame counts the magenta pixels inside the list. A frame over 1% counts as blank. |
+| Blank frames | The recorded frames of a jump pass that count as blank. |
 | Memory | Total proportional set size (PSS) from `dumpsys meminfo` after the measured flings. |
 | Bind p50 and p95 | Flume's stats switch, `unstable_setFlumeStats`, for worklet cells. |
 | `setData` | Flume's time for the diff and the native call, with 10,000 React keys and with 500 changed worklet items. |
 
 The summary shows the median of each value over the repeats.
+
+## Results
+
+Device: Redmi Note 15 Pro+ 5G (2510ERA8BG), Qualcomm SM7635, Android 16, 1280x2772 at 520 dpi and 120 Hz, on AC power.
+
+The results come from three repeats on a release build. The flings and `setData` rounds ran on 2026-10-25 and the jumps on 2026-10-26. The raw runs are in [`results/2026-10-26-redmi.json`](results/2026-10-26-redmi.json).
+
+Limits:
+
+- One phone
+- Network images served from a cache that the priming flings fill
+- Emulator numbers catch regressions only
+
+### Flings
+
+Chat:
+
+| impl | load | janky % | p90 frame ms | deadlines missed | blank mean % | blank max % | PSS MB | bind p50/p95 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| flume | off | 0.00 | 13.00 | 0.00 | 0.00 | 0.00 | 166.27 | 0.78/1.40 |
+| flume | on | 0.00 | 13.00 | 0.00 | 0.00 | 0.00 | 165.91 | 0.69/1.20 |
+| flume-react | off | 0.00 | 13.00 | 0.00 | 0.00 | 0.00 | 216.47 | n/a |
+| flume-react | on | 0.00 | 13.00 | 0.00 | 0.00 | 0.00 | 211.62 | n/a |
+| flashlist | off | 0.00 | 12.00 | 0.00 | 0.00 | 0.00 | 169.50 | n/a |
+| flashlist | on | 0.00 | 12.00 | 0.00 | 0.00 | 0.00 | 188.35 | n/a |
+| legendlist | off | 0.00 | 13.00 | 0.00 | 0.00 | 0.00 | 170.11 | n/a |
+| legendlist | on | 0.00 | 12.00 | 0.00 | 0.00 | 0.00 | 191.93 | n/a |
+| native | off | 0.00 | 10.00 | 0.00 | 0.00 | 0.00 | 170.26 | n/a |
+| native | on | 0.00 | 10.00 | 0.00 | 0.00 | 0.00 | 170.54 | n/a |
+
+Feed:
+
+| impl | load | janky % | p90 frame ms | deadlines missed | blank mean % | blank max % | PSS MB | bind p50/p95 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| flume | off | 0.00 | 10.00 | 0.00 | 0.00 | 0.00 | 182.38 | 1.08/2.46 |
+| flume | on | 0.00 | 10.00 | 0.00 | 0.00 | 0.00 | 181.85 | 1.11/2.19 |
+| flume-react | off | 0.00 | 11.00 | 0.00 | 0.00 | 0.00 | 203.01 | n/a |
+| flume-react | on | 0.00 | 10.00 | 0.00 | 0.00 | 0.00 | 204.47 | n/a |
+| flashlist | off | 0.00 | 11.00 | 0.00 | 0.00 | 0.00 | 199.22 | n/a |
+| flashlist | on | 0.00 | 13.00 | 0.00 | 0.00 | 0.00 | 197.72 | n/a |
+| legendlist | off | 0.00 | 12.00 | 0.00 | 0.00 | 0.00 | 200.47 | n/a |
+| legendlist | on | 0.00 | 11.00 | 0.00 | 0.00 | 0.00 | 197.26 | n/a |
+
+### `setData`
+
+| call | keys | items | diff ms | host ms |
+| --- | --- | --- | --- | --- |
+| react 10,000 keys, mount | 10000 | 0 | 12.97 | 2.18 |
+| react 10,000 keys, replace | 10000 | 0 | 18.27 | 3.62 |
+| worklet 1,000 items, mount | 1000 | 1000 | 0.85 | 2.45 |
+| worklet 500 changed items | 1000 | 500 | 1.55 | 3.54 |
+
+### Jumps
+
+Chat:
+
+| impl | load | scroll | blank frames | blank max % | blank mean % | janky frames | p99 frame ms |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| flume | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 40.00 |
+| flume | off | animated | 0.00 | 0.00 | 0.00 | 5.00 | 36.00 |
+| flume | on | instant | 0.00 | 0.00 | 0.00 | 5.00 | 31.00 |
+| flume | on | animated | 0.00 | 0.00 | 0.00 | 5.00 | 24.00 |
+| flume-react | off | instant | 10.00 | 100.00 | 33.30 | 8.00 | 38.00 |
+| flume-react | off | animated | 25.00 | 100.00 | 13.70 | 6.00 | 36.00 |
+| flume-react | on | instant | 10.00 | 100.00 | 32.30 | 9.00 | 42.00 |
+| flume-react | on | animated | 56.00 | 100.00 | 32.20 | 6.00 | 44.00 |
+| flashlist | off | instant | 0.00 | 0.00 | 0.00 | 9.00 | 42.00 |
+| flashlist | off | animated | 0.00 | 0.00 | 0.00 | 8.00 | 34.00 |
+| flashlist | on | instant | 0.00 | 0.00 | 0.00 | 10.00 | 48.00 |
+| flashlist | on | animated | 32.00 | 64.90 | 2.20 | 7.00 | 29.00 |
+| legendlist | off | instant | 3.00 | 100.00 | 1.40 | 9.00 | 32.00 |
+| legendlist | off | animated | 106.00 | 100.00 | 31.60 | 9.00 | 38.00 |
+| legendlist | on | instant | 5.00 | 100.00 | 2.10 | 8.00 | 30.00 |
+| legendlist | on | animated | 128.00 | 100.00 | 31.90 | 7.00 | 29.00 |
+| native | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 28.00 |
+| native | on | instant | 0.00 | 0.00 | 0.00 | 4.00 | 21.00 |
+
+Feed:
+
+| impl | load | scroll | blank frames | blank max % | blank mean % | janky frames | p99 frame ms |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| flume | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 28.00 |
+| flume | off | animated | 0.00 | 0.00 | 0.00 | 5.00 | 19.00 |
+| flume | on | instant | 0.00 | 0.00 | 0.00 | 3.00 | 21.00 |
+| flume | on | animated | 0.00 | 0.00 | 0.00 | 5.00 | 18.00 |
+| flume-react | off | instant | 10.00 | 100.00 | 4.90 | 7.00 | 29.00 |
+| flume-react | off | animated | 18.00 | 100.00 | 6.90 | 5.00 | 28.00 |
+| flume-react | on | instant | 10.00 | 100.00 | 4.80 | 8.00 | 32.00 |
+| flume-react | on | animated | 45.00 | 100.00 | 16.50 | 6.00 | 29.00 |
+| flashlist | off | instant | 0.00 | 0.00 | 0.00 | 7.00 | 32.00 |
+| flashlist | off | animated | 5.00 | 100.00 | 0.70 | 15.00 | 300.00 |
+| flashlist | on | instant | 0.00 | 0.00 | 0.00 | 6.00 | 30.00 |
+| flashlist | on | animated | 32.00 | 100.00 | 5.30 | 11.00 | 300.00 |
+| legendlist | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 20.00 |
+| legendlist | off | animated | 109.00 | 100.00 | 21.60 | 5.00 | 28.00 |
+| legendlist | on | instant | 0.00 | 0.00 | 0.00 | 5.00 | 22.00 |
+| legendlist | on | animated | 123.00 | 100.00 | 22.40 | 5.00 | 25.00 |
 
 ## Run it
 
@@ -54,12 +155,13 @@ Requirements:
 - ffmpeg and ffprobe on the `PATH`
 - Node 26
 
-Install the example's release build, then run the flings and the `setData` rounds:
+Install the example's release build, then run the flings, the `setData` rounds and the jumps:
 
 ```sh
 yarn example android:release --device <serial>
 yarn bench --serial <serial>
 yarn bench --serial <serial> --setdata
+yarn bench --serial <serial> --jump
 ```
 
 A run writes `results.json` and `summary.md` to `example/benchmark/out/`.
@@ -74,11 +176,10 @@ A run writes `results.json` and `summary.md` to `example/benchmark/out/`.
 | `--count` | `1000` | The number of items in each list. |
 | `--no-record` | | Skips the recorded pass and the blank area. |
 | `--setdata` | | Runs the `setData` rounds instead of the flings. |
+| `--jump` | | Runs the jump passes instead of the flings. |
 
 The runner stops a run when:
 
 - Another app comes to the front
 - The list doesn't report its position within 60 seconds
-- A pass draws fewer than 10 frames per fling
-
-The emulator runs the benchmark too, but its numbers only catch regressions.
+- A fling pass draws fewer than 10 frames per fling
