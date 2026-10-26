@@ -99,8 +99,8 @@ export interface NativeProps extends ViewProps {
     minimumViewTime?: CodegenTypes.Double;
     waitForInteraction?: boolean;
   }>;
-  onPress?: CodegenTypes.DirectEventHandler<PressEvent>;
-  onLongPress?: CodegenTypes.DirectEventHandler<PressEvent>;
+  onCellPress?: CodegenTypes.DirectEventHandler<PressEvent>;
+  onCellLongPress?: CodegenTypes.DirectEventHandler<PressEvent>;
   onScroll?: CodegenTypes.DirectEventHandler<ScrollEvent>;
   onScrollBeginDrag?: CodegenTypes.DirectEventHandler<ScrollEvent>;
   onScrollEndDrag?: CodegenTypes.DirectEventHandler<ScrollEvent>;

@@ -351,8 +351,8 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       ref={nativeRef}
       storeId={storeId}
       itemAnimations={itemAnimations}
-      onPress={press(onPress)}
-      onLongPress={press(onLongPress)}
+      onCellPress={press(onPress)}
+      onCellLongPress={press(onLongPress)}
       style={style}
       onLayout={onLayout}
       testID={testID}

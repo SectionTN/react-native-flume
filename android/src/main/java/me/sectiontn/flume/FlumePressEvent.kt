@@ -4,7 +4,7 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.uimanager.events.Event
 
-// topPress and topLongPress carry the row index, its key and the pressable id, "" for the cell itself.
+// topCellPress and topCellLongPress carry the row index, its key and the pressable id, "" for the cell itself.
 class FlumePressEvent(
   surfaceId: Int,
   viewTag: Int,
@@ -22,7 +22,7 @@ class FlumePressEvent(
   }
 
   companion object {
-    const val PRESS = "topPress"
-    const val LONG_PRESS = "topLongPress"
+    const val PRESS = "topCellPress"
+    const val LONG_PRESS = "topCellLongPress"
   }
 }

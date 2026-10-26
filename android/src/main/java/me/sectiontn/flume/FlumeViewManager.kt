@@ -38,8 +38,8 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
   }
 
   override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> = mutableMapOf(
-    FlumePressEvent.PRESS to mapOf("registrationName" to "onPress"),
-    FlumePressEvent.LONG_PRESS to mapOf("registrationName" to "onLongPress"),
+    FlumePressEvent.PRESS to mapOf("registrationName" to "onCellPress"),
+    FlumePressEvent.LONG_PRESS to mapOf("registrationName" to "onCellLongPress"),
     ScrollKind.SCROLL.eventName to mapOf("registrationName" to "onScroll"),
     ScrollKind.BEGIN_DRAG.eventName to mapOf("registrationName" to "onScrollBeginDrag"),
     ScrollKind.END_DRAG.eventName to mapOf("registrationName" to "onScrollEndDrag"),

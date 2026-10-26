@@ -209,7 +209,7 @@ describe('Flume props', () => {
     const onPress = vi.fn();
     const tree = await mount(createElement(Flume, { data: [item], renderCell, onPress }));
     const native = tree.root.find((node) => String(node.type) === 'FlumeView');
-    native.props.onPress({ nativeEvent: { index: 0, key: 'a', id: '' } });
+    native.props.onCellPress({ nativeEvent: { index: 0, key: 'a', id: '' } });
     expect(onPress).toHaveBeenCalledWith({ item, index: 0, id: undefined });
   });
 
