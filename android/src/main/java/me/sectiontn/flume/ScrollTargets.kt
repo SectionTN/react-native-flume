@@ -40,7 +40,8 @@ object ScrollTargets {
   // The positions a jump shows, placed as FlatList places the item; a zero-length position belongs to the row before it.
   fun jumpWindow(target: Int, viewPosition: Float, viewportPx: Int, itemCount: Int, lengthPx: (Int) -> Int): IntRange {
     if (itemCount <= 0) return IntRange.EMPTY
-    val at = target.coerceIn(0, itemCount - 1)
+    var at = target.coerceIn(0, itemCount - 1)
+    while (at > 0 && lengthPx(at) == 0) at--
     val before = (viewPosition * (viewportPx - lengthPx(at))).roundToInt().coerceAtLeast(0)
     var first = at
     var covered = 0

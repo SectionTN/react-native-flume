@@ -130,6 +130,11 @@ class ScrollTargetsTest {
   }
 
   @Test
+  fun aGridTargetPastTheFirstColumnCoversItsWholeRow() {
+    assertEquals(46..89, ScrollTargets.jumpWindow(51, 0f, 1000, 100) { if (it % 4 == 0) 100 else 0 })
+  }
+
+  @Test
   fun aGlideKeepsTheRowsNearestTheTarget() {
     assertEquals(464..511, ScrollTargets.glideWindow(0..11, 500..511))
     assertEquals(500..547, ScrollTargets.glideWindow(600..611, 500..511))
