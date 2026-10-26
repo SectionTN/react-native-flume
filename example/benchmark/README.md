@@ -54,7 +54,7 @@ The summary shows the median of each value over the repeats.
 
 Device: Redmi Note 15 Pro+ 5G (2510ERA8BG), Qualcomm SM7635, Android 16, 1280x2772 at 520 dpi and 120 Hz, on AC power.
 
-The results come from three repeats on a release build. The flings and `setData` rounds ran on 2026-10-25 and the jumps on 2026-10-26. The raw runs are in [`results/2026-10-26-redmi.json`](results/2026-10-26-redmi.json).
+The results come from three repeats on a release build. The flings ran on 2026-10-25, and the `setData` rounds and the jumps ran on 2026-10-26. The raw runs are in [`results/2026-10-26-redmi.json`](results/2026-10-26-redmi.json).
 
 Limits:
 
@@ -96,10 +96,10 @@ Feed:
 
 | call | keys | items | diff ms | host ms |
 | --- | --- | --- | --- | --- |
-| react 10,000 keys, mount | 10000 | 0 | 12.97 | 2.18 |
-| react 10,000 keys, replace | 10000 | 0 | 18.27 | 3.62 |
-| worklet 1,000 items, mount | 1000 | 1000 | 0.85 | 2.45 |
-| worklet 500 changed items | 1000 | 500 | 1.55 | 3.54 |
+| react 10,000 keys, mount | 10000 | 0 | 5.71 | 1.20 |
+| react 10,000 keys, replace | 10000 | 0 | 8.04 | 1.22 |
+| worklet 1,000 items, mount | 1000 | 1000 | 0.95 | 2.60 |
+| worklet 500 changed items | 1000 | 500 | 0.73 | 1.80 |
 
 ### Jumps
 
@@ -107,45 +107,45 @@ Chat:
 
 | impl | load | scroll | blank frames | blank max % | blank mean % | janky frames | p99 frame ms |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| flume | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 40.00 |
-| flume | off | animated | 0.00 | 0.00 | 0.00 | 5.00 | 36.00 |
-| flume | on | instant | 0.00 | 0.00 | 0.00 | 5.00 | 31.00 |
-| flume | on | animated | 0.00 | 0.00 | 0.00 | 5.00 | 24.00 |
-| flume-react | off | instant | 10.00 | 100.00 | 33.30 | 8.00 | 38.00 |
-| flume-react | off | animated | 25.00 | 100.00 | 13.70 | 6.00 | 36.00 |
-| flume-react | on | instant | 10.00 | 100.00 | 32.30 | 9.00 | 42.00 |
-| flume-react | on | animated | 56.00 | 100.00 | 32.20 | 6.00 | 44.00 |
-| flashlist | off | instant | 0.00 | 0.00 | 0.00 | 9.00 | 42.00 |
-| flashlist | off | animated | 0.00 | 0.00 | 0.00 | 8.00 | 34.00 |
-| flashlist | on | instant | 0.00 | 0.00 | 0.00 | 10.00 | 48.00 |
-| flashlist | on | animated | 32.00 | 64.90 | 2.20 | 7.00 | 29.00 |
-| legendlist | off | instant | 3.00 | 100.00 | 1.40 | 9.00 | 32.00 |
-| legendlist | off | animated | 106.00 | 100.00 | 31.60 | 9.00 | 38.00 |
-| legendlist | on | instant | 5.00 | 100.00 | 2.10 | 8.00 | 30.00 |
-| legendlist | on | animated | 128.00 | 100.00 | 31.90 | 7.00 | 29.00 |
-| native | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 28.00 |
-| native | on | instant | 0.00 | 0.00 | 0.00 | 4.00 | 21.00 |
+| flume | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 53.00 |
+| flume | off | animated | 0.00 | 0.00 | 0.00 | 5.00 | 46.00 |
+| flume | on | instant | 0.00 | 0.00 | 0.00 | 5.00 | 44.00 |
+| flume | on | animated | 0.00 | 0.00 | 0.00 | 5.00 | 48.00 |
+| flume-react | off | instant | 0.00 | 0.00 | 0.00 | 10.00 | 65.00 |
+| flume-react | off | animated | 0.00 | 0.00 | 0.00 | 5.00 | 73.00 |
+| flume-react | on | instant | 0.00 | 0.00 | 0.00 | 10.00 | 57.00 |
+| flume-react | on | animated | 0.00 | 0.00 | 0.00 | 6.00 | 65.00 |
+| flashlist | off | instant | 0.00 | 0.00 | 0.00 | 9.00 | 85.00 |
+| flashlist | off | animated | 0.00 | 0.00 | 0.00 | 10.00 | 48.00 |
+| flashlist | on | instant | 0.00 | 0.00 | 0.00 | 10.00 | 69.00 |
+| flashlist | on | animated | 37.00 | 48.00 | 2.30 | 8.00 | 46.00 |
+| legendlist | off | instant | 7.00 | 100.00 | 3.30 | 9.00 | 32.00 |
+| legendlist | off | animated | 81.00 | 100.00 | 25.60 | 12.00 | 53.00 |
+| legendlist | on | instant | 7.00 | 100.00 | 2.50 | 9.00 | 40.00 |
+| legendlist | on | animated | 109.00 | 100.00 | 31.50 | 8.00 | 48.00 |
+| native | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 23.00 |
+| native | on | instant | 0.00 | 0.00 | 0.00 | 4.00 | 26.00 |
 
 Feed:
 
 | impl | load | scroll | blank frames | blank max % | blank mean % | janky frames | p99 frame ms |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| flume | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 28.00 |
-| flume | off | animated | 0.00 | 0.00 | 0.00 | 5.00 | 19.00 |
-| flume | on | instant | 0.00 | 0.00 | 0.00 | 3.00 | 21.00 |
-| flume | on | animated | 0.00 | 0.00 | 0.00 | 5.00 | 18.00 |
-| flume-react | off | instant | 10.00 | 100.00 | 4.90 | 7.00 | 29.00 |
-| flume-react | off | animated | 18.00 | 100.00 | 6.90 | 5.00 | 28.00 |
-| flume-react | on | instant | 10.00 | 100.00 | 4.80 | 8.00 | 32.00 |
-| flume-react | on | animated | 45.00 | 100.00 | 16.50 | 6.00 | 29.00 |
-| flashlist | off | instant | 0.00 | 0.00 | 0.00 | 7.00 | 32.00 |
-| flashlist | off | animated | 5.00 | 100.00 | 0.70 | 15.00 | 300.00 |
-| flashlist | on | instant | 0.00 | 0.00 | 0.00 | 6.00 | 30.00 |
-| flashlist | on | animated | 32.00 | 100.00 | 5.30 | 11.00 | 300.00 |
-| legendlist | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 20.00 |
-| legendlist | off | animated | 109.00 | 100.00 | 21.60 | 5.00 | 28.00 |
-| legendlist | on | instant | 0.00 | 0.00 | 0.00 | 5.00 | 22.00 |
-| legendlist | on | animated | 123.00 | 100.00 | 22.40 | 5.00 | 25.00 |
+| flume | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 34.00 |
+| flume | off | animated | 0.00 | 0.00 | 0.00 | 5.00 | 29.00 |
+| flume | on | instant | 0.00 | 0.00 | 0.00 | 5.00 | 40.00 |
+| flume | on | animated | 0.00 | 0.00 | 0.00 | 5.00 | 27.00 |
+| flume-react | off | instant | 0.00 | 0.00 | 0.00 | 5.00 | 57.00 |
+| flume-react | off | animated | 0.00 | 0.00 | 0.00 | 5.00 | 65.00 |
+| flume-react | on | instant | 0.00 | 0.00 | 0.00 | 5.00 | 61.00 |
+| flume-react | on | animated | 0.00 | 0.00 | 0.00 | 5.00 | 61.00 |
+| flashlist | off | instant | 0.00 | 0.00 | 0.00 | 10.00 | 44.00 |
+| flashlist | off | animated | 15.00 | 100.00 | 4.40 | 15.00 | 750.00 |
+| flashlist | on | instant | 0.00 | 0.00 | 0.00 | 10.00 | 46.00 |
+| flashlist | on | animated | 42.00 | 100.00 | 11.90 | 15.00 | 1350.00 |
+| legendlist | off | instant | 2.00 | 100.00 | 0.70 | 5.00 | 28.00 |
+| legendlist | off | animated | 75.00 | 100.00 | 19.50 | 8.00 | 48.00 |
+| legendlist | on | instant | 2.00 | 100.00 | 0.70 | 5.00 | 30.00 |
+| legendlist | on | animated | 108.00 | 100.00 | 26.80 | 5.00 | 38.00 |
 
 ## Run it
 
