@@ -27,9 +27,12 @@ void OpBatch::frame(int id, float x, float y, float w, float h) {
 }
 
 void OpBatch::viewStyle(int id, const Style& s) {
-  ints.insert(ints.end(), {code(Op::ViewStyle), id, color(s.backgroundColor, 0), color(s.borderColor, 0xFF000000u)});
+  ints.insert(ints.end(), {code(Op::ViewStyle), id, color(s.backgroundColor, 0), color(s.borderColor, 0xFF000000u),
+                           color(s.shadowColor, 0xFF000000u)});
+  const auto offset = s.shadowOffset.value_or(std::pair<float, float>{0, -3});
   floats.insert(floats.end(), {s.opacity.value_or(1), radius(s, 0), radius(s, 1), radius(s, 2), radius(s, 3),
-                               s.borderWidth.value_or(0), s.elevation.value_or(0)});
+                               s.borderWidth.value_or(0), s.elevation.value_or(0), s.shadowOpacity.value_or(0),
+                               s.shadowRadius.value_or(3), offset.first, offset.second});
   count_++;
 }
 

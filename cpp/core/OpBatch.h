@@ -29,7 +29,7 @@ using Headers = std::vector<std::pair<std::string, std::string>>;
 // Create 1: ints [1, id, kind, parentId, index]
 // Remove 2: ints [2, id]
 // Frame 3: ints [3, id]; floats [x, y, w, h]
-// ViewStyle 4: ints [4, id, backgroundColor, borderColor]; floats [opacity, rTL, rTR, rBR, rBL, borderWidth, elevation]
+// ViewStyle 4: ints [4, id, backgroundColor, borderColor, shadowColor]; floats [opacity, rTL, rTR, rBR, rBL, borderWidth, elevation, shadowOpacity, shadowRadius, shadowOffsetX, shadowOffsetY]
 // Text 5: ints [5, id, textIdx, color, weight, lines, familyIdx (-1 none), italic, align, decoration, fontScaling]; floats [fontSize, maxWidth, lineHeight (0 none), letterSpacing, insetLeft, insetTop]
 // Image 6: ints [6, id, uriIdx, resizeMode, hasTint, tint, headerCount, (keyIdx, valueIdx)...]; floats [w, h, rTL, rTR, rBR, rBL]
 // Pressable 7: ints [7, id, pressIdIdx]; floats [pressedOpacity]

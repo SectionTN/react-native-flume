@@ -54,8 +54,8 @@ class CellTree<V : Any>(private val views: CellViews<V>, private val density: Fl
         4 -> {
           val radii = FloatArray(4) { floats[f + 1 + it] * density }
           target(id)?.let { views.viewStyle(it, ints[i + 2], ints[i + 3], floats[f], radii, floats[f + 5] * density, floats[f + 6] * density) }
-          i += 4
-          f += 7
+          i += 5
+          f += 11
         }
         5 -> {
           val spec = TextSpec(

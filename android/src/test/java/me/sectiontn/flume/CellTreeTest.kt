@@ -85,6 +85,16 @@ class CellTreeTest {
   }
 
   @Test
+  fun aViewStyleWithAShadowLeavesTheNextOpIntact() {
+    val style = intArrayOf(4, 1, 0, 0xFF000000.toInt(), 0xFF000000.toInt())
+    val styleFloats = floatArrayOf(1f, 0f, 0f, 0f, 0f, 0f, 0f, 0.5f, 3f, 0f, -3f)
+    tree.apply(batch(intArrayOf(1, 1, 0, 0, 0) + style + intArrayOf(3, 1), styleFloats + floatArrayOf(10f, 5f, 100f, 20f), first = true))
+    var frame: List<Int>? = null
+    tree.frames { view, left, top, width, height -> if (view === views.created[0]) frame = listOf(left, top, width, height) }
+    assertEquals(listOf(20, 10, 200, 40), frame)
+  }
+
+  @Test
   fun theRootFrameSetsTheCellHeight() {
     assertEquals(128, tree.apply(batch(intArrayOf(3, 0), floatArrayOf(0f, 0f, 360f, 64f), first = true)))
     assertNull(views.root.text)
