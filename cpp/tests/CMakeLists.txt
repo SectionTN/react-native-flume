@@ -24,10 +24,15 @@ if(FLUME_BINDINGS_SOURCES)
   target_link_libraries(flume_bindings PRIVATE flume_core)
 endif()
 
+# The platform-neutral half of the in-process adapters (iOS).
+file(GLOB_RECURSE FLUME_ADAPTER_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/../adapter/*.cpp")
+add_library(flume_adapter STATIC ${FLUME_ADAPTER_SOURCES})
+target_link_libraries(flume_adapter PUBLIC flume_core)
+
 file(GLOB FLUME_TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/*_test.cpp")
 add_executable(flume_tests ${FLUME_TEST_SOURCES} "${CMAKE_SOURCE_DIR}/main.cpp")
 target_include_directories(flume_tests PRIVATE "${CMAKE_SOURCE_DIR}/vendor" "${CMAKE_SOURCE_DIR}")
-target_link_libraries(flume_tests PRIVATE flume_core)
+target_link_libraries(flume_tests PRIVATE flume_core flume_adapter)
 
 # The bindings suite runs on a Hermes runtime linked from React Native's macOS framework.
 if(DEFINED HERMES_DIR)
