@@ -92,12 +92,13 @@ jsi::Value FlumeHost::get(jsi::Runtime& rt, const jsi::PropNameID& nameId) {
                         });
   }
   if (name == "setData") {
-    return hostFunction(rt, "setData", 5,
+    return hostFunction(rt, "setData", 8,
                         [&engine](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args, size_t count) {
-                          if (count < 6) throw jsi::JSError(rt, "setData needs six arguments");
+                          if (count < 7) throw jsi::JSError(rt, "setData needs seven arguments");
                           engine.setData(static_cast<int>(args[0].asNumber()), stringsOf(rt, args[1]),
-                                         stringsOf(rt, args[2]), intsOf(rt, args[3]), valuesOf(rt, args[4], engine),
-                                         args[5].getBool(), count > 6 && args[6].getBool());
+                                         typesOf(rt, args[2], args[3]), intsOf(rt, args[4]),
+                                         valuesOf(rt, args[5], engine), args[6].getBool(),
+                                         count > 7 && args[7].getBool());
                           return jsi::Value::undefined();
                         });
   }

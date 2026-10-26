@@ -172,7 +172,8 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     host.setData(
       storeId,
       diff.keys,
-      diff.types,
+      diff.typeTable,
+      diff.typeIds,
       diff.changedIndices,
       diff.changedItems,
       diff.stableKeys,

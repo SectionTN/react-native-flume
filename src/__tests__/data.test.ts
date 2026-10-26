@@ -128,3 +128,17 @@ describe('diffData state', () => {
     expect(itemOf(d.next, 'a')).toBe(a2);
   });
 });
+
+describe('diffData types for native', () => {
+  it('numbers each type by its first appearance', () => {
+    const items = [
+      { id: 'a', t: 'x' },
+      { id: 'b', t: 'y' },
+      { id: 'c', t: 'x' },
+    ];
+    const d = diffData(undefined, items, undefined, (i) => i.t);
+    expect(d.typeTable).toEqual(['x', 'y']);
+    expect([...d.typeIds]).toEqual([0, 1, 0]);
+    expect(d.typeIds).toBeInstanceOf(Int32Array);
+  });
+});

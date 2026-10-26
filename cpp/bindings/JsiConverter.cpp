@@ -1,5 +1,7 @@
 #include "bindings/JsiConverter.h"
 
+#include <cstdint>
+
 namespace flume {
 
 namespace jsi = facebook::jsi;
@@ -66,6 +68,30 @@ jsi::Value toJsi(jsi::Runtime& rt, const Value& value) {
     }
   }
   return jsi::Value::undefined();
+}
+
+std::vector<std::string> typesOf(jsi::Runtime& rt, const jsi::Value& table, const jsi::Value& ids) {
+  jsi::Array names = table.asObject(rt).asArray(rt);
+  std::vector<std::string> nameList;
+  nameList.reserve(names.size(rt));
+  for (size_t i = 0; i < names.size(rt); i++) nameList.push_back(names.getValueAtIndex(rt, i).asString(rt).utf8(rt));
+  jsi::Object view = ids.asObject(rt);
+  jsi::ArrayBuffer buffer = view.getPropertyAsObject(rt, "buffer").getArrayBuffer(rt);
+  auto offset = static_cast<size_t>(view.getProperty(rt, "byteOffset").asNumber());
+  auto length = static_cast<size_t>(view.getProperty(rt, "length").asNumber());
+  if (offset + length * sizeof(int32_t) > buffer.size(rt)) {
+    throw jsi::JSError(rt, "react-native-flume: type ids out of range");
+  }
+  const auto* data = reinterpret_cast<const int32_t*>(buffer.data(rt) + offset);
+  std::vector<std::string> out;
+  out.reserve(length);
+  for (size_t i = 0; i < length; i++) {
+    if (data[i] < 0 || static_cast<size_t>(data[i]) >= nameList.size()) {
+      throw jsi::JSError(rt, "react-native-flume: type id out of range");
+    }
+    out.push_back(nameList[static_cast<size_t>(data[i])]);
+  }
+  return out;
 }
 
 }  // namespace flume

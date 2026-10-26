@@ -22,6 +22,9 @@ export type DataDiff<T> = {
   duplicates: string[];
   // Same keys, types and native items as the previous state, so native needs no call.
   sameForNative: boolean;
+  // Native gets each distinct type once and an index per key, so no per-key string crosses JSI.
+  typeTable: string[];
+  typeIds: Int32Array;
 };
 
 function ownKey(item: unknown): string | undefined {
@@ -84,6 +87,11 @@ function scan<T>(
   const sendsAll = sendsItem === undefined;
   const sendsNone = sendsItem === 'none';
   const sendsByType = new Map<string, boolean>();
+  const typeTable: string[] = [];
+  const typeIds = new Int32Array(count);
+  const typeIndex = new Map<string, number>();
+  let idType: string | undefined;
+  let typeId = 0;
   let lastType: string | undefined;
   let lastSends = false;
   let stableKeys = true;
@@ -105,6 +113,12 @@ function scan<T>(
     keys[i] = key;
     const type = getItemType?.(item, i) ?? 'default';
     types[i] = type;
+    if (type !== idType) {
+      idType = type;
+      typeId = typeIndex.get(type) ?? typeTable.push(type) - 1;
+      typeIndex.set(type, typeId);
+    }
+    typeIds[i] = typeId;
     if (same && (prev?.keys[i] !== key || prev?.types[i] !== type)) same = false;
     if (sendsNone) continue;
     if (!sendsAll && type !== lastType) {
@@ -133,5 +147,7 @@ function scan<T>(
     stableKeys,
     duplicates,
     sameForNative: same && changedIndices.length === 0,
+    typeTable,
+    typeIds,
   };
 }

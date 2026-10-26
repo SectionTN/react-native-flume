@@ -27,6 +27,8 @@ type DataCall = {
   changedItems: unknown[];
   alive: boolean;
   deferred: boolean;
+  typeTable: string[];
+  typeIds: number[];
 };
 type CellCall = { storeId: number; alive: boolean };
 type KindsCall = { storeId: number; reactByDefault: boolean; reactTypes: string[] };
@@ -51,10 +53,21 @@ function installHost() {
     releaseStore: (storeId) => {
       alive.delete(storeId);
     },
-    setData: (storeId, keys, _types, changedIndices, changedItems, _stableKeys, deferred) => {
+    setData: (
+      storeId,
+      keys,
+      typeTable,
+      typeIds,
+      changedIndices,
+      changedItems,
+      _stableKeys,
+      deferred,
+    ) => {
       data.push({
         storeId,
         keys,
+        typeTable,
+        typeIds: [...typeIds],
         changedIndices,
         changedItems,
         alive: alive.has(storeId),
@@ -163,6 +176,8 @@ describe('Flume store lifecycle', () => {
     expect(host.data.at(-1)).toEqual({
       storeId,
       keys: ['a'],
+      typeTable: ['default'],
+      typeIds: [0],
       changedIndices: [0],
       changedItems: [item],
       alive: true,
@@ -628,5 +643,22 @@ describe('Flume native calls', () => {
     });
     expect(data).toHaveLength(1);
     expect(infos.at(-1)?.item).toBe(next);
+  });
+});
+
+describe('Flume types for native', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('sends each type once with an index per key', async () => {
+    const { data } = installHost();
+    const { Flume } = await import('../Flume');
+    const { renderItem } = recordingCell();
+    const list = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    const getItemType = (_entry: unknown, index: number) => (index === 1 ? 'voice' : 'text');
+    await mount(createElement(Flume, { data: list, renderItem, getItemType }));
+    expect(data[0]?.typeTable).toEqual(['text', 'voice']);
+    expect(data[0]?.typeIds).toEqual([0, 1, 0]);
   });
 });

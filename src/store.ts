@@ -16,7 +16,8 @@ export type FlumeHost = {
   setData(
     storeId: number,
     keys: string[],
-    types: string[],
+    typeTable: string[],
+    typeIds: Int32Array,
     changedIndices: number[],
     changedItems: unknown[],
     stableKeys: boolean,
