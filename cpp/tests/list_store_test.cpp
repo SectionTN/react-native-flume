@@ -77,3 +77,23 @@ TEST_CASE("a key whose type changes is reported changed") {
   CHECK(ops->changed == std::vector<int>{1});
   CHECK(ops->inserted.empty());
 }
+
+TEST_CASE("a store is detached until attached and again after detach") {
+  flume::ListStore store;
+  CHECK_FALSE(store.attached());
+  store.setAttached(true);
+  CHECK(store.attached());
+  store.setAttached(false);
+  CHECK_FALSE(store.attached());
+}
+
+TEST_CASE("data set while detached waits for the attach to apply it") {
+  flume::ListStore store;
+  store.setPending({"a", "b"}, {"t", "t"}, {0, 1}, {V(1), V(2)}, true);
+  CHECK_FALSE(store.attached());
+  store.setAttached(true);
+  auto ops = store.applyPending();
+  REQUIRE(ops);
+  CHECK(ops->inserted == std::vector<Range>{{0, 2}});
+  CHECK(store.count() == 2);
+}

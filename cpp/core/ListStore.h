@@ -23,6 +23,11 @@ class ListStore {
   // JS thread; the next applyPending applies it, also when no data is pending.
   void setKinds(bool reactByDefault, std::vector<std::string> reactTypes);
 
+  // UI thread, before the attach applies the pending data, so a snapshot that saw the store detached is still applied.
+  void setAttached(bool attached);
+  // Any thread; a detached store needs no UI wake, its attach applies what is pending.
+  bool attached() const;
+
   // UI thread; nullopt when nothing was pending.
   std::optional<ListOps> applyPending();
   int count() const { return static_cast<int>(keys_.size()); }
@@ -52,6 +57,7 @@ class ListStore {
   void resolveKinds();
 
   mutable std::mutex mutex_;
+  bool attached_ = false;
   std::optional<Pending> pending_;
   std::optional<Kinds> pendingKinds_;
   Kinds kinds_;

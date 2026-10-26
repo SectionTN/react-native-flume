@@ -30,6 +30,16 @@ void ListStore::setPending(std::vector<std::string> keys, std::vector<std::strin
   pending_ = Pending{std::move(keys), std::move(types), std::move(changedIndices), std::move(changedItems), stableKeys};
 }
 
+void ListStore::setAttached(bool attached) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  attached_ = attached;
+}
+
+bool ListStore::attached() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return attached_;
+}
+
 void ListStore::setKinds(bool reactByDefault, std::vector<std::string> reactTypes) {
   std::lock_guard<std::mutex> lock(mutex_);
   pendingKinds_ = Kinds{reactByDefault, {reactTypes.begin(), reactTypes.end()}};

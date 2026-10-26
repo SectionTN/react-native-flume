@@ -75,7 +75,10 @@ void Engine::setCellKinds(int storeId, bool reactByDefault, std::vector<std::str
   scheduleRefresh(store, true);
 }
 
+// A wake makes the kernel run the UI thread in place of the waker, so a detached store, whose attach applies what is
+// pending, never wakes it.
 void Engine::scheduleRefresh(const std::shared_ptr<Store>& store, bool always) {
+  if (!store->list.attached()) return;
   std::shared_ptr<worklets::UIScheduler> scheduler;
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -168,13 +171,16 @@ int Engine::attach(int storeId, StoreListener* listener, std::unique_ptr<TextMea
     store->reconciler = std::make_unique<Reconciler>(*store->layout);
   }
   store->listener = listener;
+  store->list.setAttached(true);
   store->list.applyPending();
   return store->list.count();
 }
 
 void Engine::detach(int storeId) {
   auto store = find(storeId);
-  if (store != nullptr) store->listener = nullptr;
+  if (store == nullptr) return;
+  store->listener = nullptr;
+  store->list.setAttached(false);
 }
 
 int Engine::count(int storeId) {
