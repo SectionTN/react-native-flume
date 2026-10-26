@@ -6,7 +6,8 @@
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android --variant debugOptimized",
-    "android:release": "expo run:android --variant release"
+    "android:release": "expo run:android --variant release",
+    "ios": "expo run:ios --port 8082"
   },
   "dependencies": {
     "@legendapp/list": "3.6.0",

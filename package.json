@@ -94,6 +94,21 @@
     "jsSrcsDir": "src/specs",
     "android": {
       "javaPackageName": "me.sectiontn.flume"
+    },
+    "ios": {
+      "components": {
+        "FlumeView": {
+          "className": "FLMView"
+        },
+        "FlumeSlotView": {
+          "className": "FLMSlotView"
+        }
+      },
+      "modules": {
+        "NativeFlume": {
+          "className": "FLMFlumeModule"
+        }
+      }
     }
   },
   "react-native-builder-bob": {
