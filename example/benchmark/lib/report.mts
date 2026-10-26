@@ -15,6 +15,16 @@ export type RunResult = {
   temperatureEnd: number | null;
 };
 
+export type JumpResult = {
+  scenario: Scenario;
+  impl: Impl;
+  load: boolean;
+  animated: boolean;
+  repeat: number;
+  frames: FrameStats;
+  blank: BlankSummary;
+};
+
 export type DeviceInfo = {
   serial: string;
   model: string;
@@ -36,7 +46,7 @@ export function median(values: number[]): number {
 }
 
 // The median over the repeats that have the value, two decimals; n/a when none has it.
-function cell(runs: RunResult[], pick: (run: RunResult) => number | null | undefined): string {
+function cell<T>(runs: T[], pick: (run: T) => number | null | undefined): string {
   const values = runs
     .map(pick)
     .filter((value): value is number => typeof value === 'number' && !Number.isNaN(value));
@@ -80,4 +90,37 @@ export function toMarkdown(runs: RunResult[], device: DeviceInfo): string {
     }
   }
   return `${lines.join('\n')}\n`;
+}
+
+const JUMP_COLUMNS =
+  '| impl | load | scroll | blank frames | blank max % | blank mean % | janky frames | p99 frame ms |';
+
+// One table per scenario; blank frames are the recorded frames over the blank threshold, and a jump draws in bursts, so frames are counted, not shares.
+export function jumpMarkdown(runs: JumpResult[]): string {
+  const lines: string[] = [];
+  for (const scenario of ['chat', 'feed'] as const) {
+    const inScenario = runs.filter((run) => run.scenario === scenario);
+    if (inScenario.length === 0) continue;
+    lines.push(
+      '',
+      `### ${scenario} jumps`,
+      '',
+      JUMP_COLUMNS,
+      '| --- | --- | --- | --- | --- | --- | --- | --- |',
+    );
+    for (const impl of IMPLS[scenario]) {
+      for (const load of [false, true]) {
+        for (const animated of [false, true]) {
+          const group = inScenario.filter(
+            (run) => run.impl === impl && run.load === load && run.animated === animated,
+          );
+          if (group.length === 0) continue;
+          lines.push(
+            `| ${impl} | ${load ? 'on' : 'off'} | ${animated ? 'animated' : 'instant'} | ${cell(group, (run) => run.blank.framesOver)} | ${cell(group, (run) => run.blank.maxPercent)} | ${cell(group, (run) => run.blank.meanPercent)} | ${cell(group, (run) => run.frames.jankyFrames)} | ${cell(group, (run) => run.frames.p99Ms)} |`,
+          );
+        }
+      }
+    }
+  }
+  return lines.length === 0 ? '' : `${lines.join('\n')}\n`;
 }

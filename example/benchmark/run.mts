@@ -24,7 +24,13 @@ import {
   parseSetData,
   type SetDataLine,
 } from './lib/parse.mts';
-import { median, type RunResult, toMarkdown } from './lib/report.mts';
+import {
+  type JumpResult,
+  jumpMarkdown,
+  median,
+  type RunResult,
+  toMarkdown,
+} from './lib/report.mts';
 import { blankFractions, videoSize } from './lib/video.mts';
 
 const FLINGS = 12;
@@ -36,6 +42,9 @@ const READY_TIMEOUT_MS = 60_000;
 const SETTLE_MS = 3_000;
 const BLANK_TOLERANCE = 24;
 const BLANK_FRAME_THRESHOLD = 0.01;
+// Jump targets as shares of the list, each far from the one before.
+const JUMPS = [0.5, 0.1, 0.9, 0.3, 0.7];
+const JUMP_SETTLE_MS = 800;
 
 type Config = Pick<BenchParams, 'scenario' | 'impl' | 'load' | 'count'>;
 type SetDataResult = { round: number; label: string; line: SetDataLine };
@@ -50,6 +59,7 @@ const { values } = parseArgs({
     count: { type: 'string', default: '1000' },
     'no-record': { type: 'boolean', default: false },
     setdata: { type: 'boolean', default: false },
+    jump: { type: 'boolean', default: false },
   },
 });
 
@@ -89,9 +99,14 @@ async function launch(adb: Adb, config: Config): Promise<ReadyInfo> {
   return ready;
 }
 
-async function action(adb: Adb, config: Config, name: BenchAction) {
+async function action(
+  adb: Adb,
+  config: Config,
+  name: BenchAction,
+  jump?: Pick<BenchParams, 'index' | 'animated'>,
+) {
   nonce += 1;
-  adb.start(benchUrl({ ...config, action: name, nonce: String(nonce) }));
+  adb.start(benchUrl({ ...config, ...jump, action: name, nonce: String(nonce) }));
   await sleep(1_000);
 }
 
@@ -254,6 +269,36 @@ async function runConfig(
   return { ...config, repeat, frames, memory, blank, bind, temperatureStart, temperatureEnd };
 }
 
+// Far scrollToIndex jumps; a blank frame is a row the list had not rendered when the jump drew.
+async function jumpPass(
+  adb: Adb,
+  config: Config,
+  animated: boolean,
+  repeat: number,
+  out: string,
+  screen: [number, number],
+): Promise<JumpResult> {
+  const ready = await launch(adb, config);
+  adb.gfxinfoReset();
+  const kind = animated ? 'animated' : 'instant';
+  const name = `jump-${config.scenario}-${config.impl}-${config.load ? 'load' : 'idle'}-${kind}-${repeat}`;
+  const recorder = record(adb, out, name, screen);
+  await sleep(500);
+  for (const share of JUMPS) {
+    adb.assertForeground();
+    await action(adb, config, 'jump', { index: Math.round(share * (config.count - 1)), animated });
+    await sleep(JUMP_SETTLE_MS);
+  }
+  const path = await recorder.stop();
+  const frames = parseGfxinfo(adb.gfxinfo());
+  const crop = cropFor(ready.rect, screen, videoSize(path));
+  const blank = summarizeBlank(
+    await blankFractions(path, crop, SENTINEL_RGB, BLANK_TOLERANCE),
+    BLANK_FRAME_THRESHOLD,
+  );
+  return { ...config, animated, repeat, frames, blank };
+}
+
 async function prime(adb: Adb, scenario: Scenario, count: number) {
   const ready = await launch(adb, { scenario, impl: 'flume', load: false, count });
   for (let done = 0; done < PRIMING; done += 10) {
@@ -342,26 +387,43 @@ async function main() {
   mkdirSync(out, { recursive: true });
   const runs: RunResult[] = [];
   let setData: SetDataResult[] = [];
+  const jumps: JumpResult[] = [];
   const write = () => {
     writeFileSync(
       join(out, 'results.json'),
-      `${JSON.stringify({ device, startedAt, runs, setData }, null, 2)}\n`,
+      `${JSON.stringify({ device, startedAt, runs, setData, jumps }, null, 2)}\n`,
     );
-    writeFileSync(join(out, 'summary.md'), toMarkdown(runs, device) + setDataMarkdown(setData));
+    writeFileSync(
+      join(out, 'summary.md'),
+      toMarkdown(runs, device) + setDataMarkdown(setData) + jumpMarkdown(jumps),
+    );
   };
+  const scenarios = values.scenarios.split(',') as Scenario[];
+  const impls = values.impls?.split(',') as Impl[] | undefined;
+  const loads = values.load.split(',').map((value) => value === '1');
+  const count = Number(values.count);
+  const configs: Config[] = scenarios.flatMap((scenario) =>
+    IMPLS[scenario]
+      .filter((impl) => impls === undefined || impls.includes(impl))
+      .flatMap((impl) => loads.map((load) => ({ scenario, impl, load, count }))),
+  );
   try {
     if (values.setdata) {
       setData = await setDataRounds(adb, Number(values.repeat));
+    } else if (values.jump) {
+      for (let repeat = 0; repeat < Number(values.repeat); repeat++) {
+        for (const config of configs) {
+          // The plain RecyclerView's stock smooth scroll takes seconds over 500 rows, so it jumps instantly only.
+          for (const animated of config.impl === 'native' ? [false] : [false, true]) {
+            console.log(
+              `repeat ${repeat + 1}: jump ${animated ? 'animated' : 'instant'} ${label(config)}`,
+            );
+            jumps.push(await jumpPass(adb, config, animated, repeat, out, device.size));
+            write();
+          }
+        }
+      }
     } else {
-      const scenarios = values.scenarios.split(',') as Scenario[];
-      const impls = values.impls?.split(',') as Impl[] | undefined;
-      const loads = values.load.split(',').map((value) => value === '1');
-      const count = Number(values.count);
-      const configs: Config[] = scenarios.flatMap((scenario) =>
-        IMPLS[scenario]
-          .filter((impl) => impls === undefined || impls.includes(impl))
-          .flatMap((impl) => loads.map((load) => ({ scenario, impl, load, count }))),
-      );
       for (const scenario of scenarios) {
         console.log(`priming ${scenario}`);
         await prime(adb, scenario, count);

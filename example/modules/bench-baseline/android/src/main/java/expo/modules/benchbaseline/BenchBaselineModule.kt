@@ -9,6 +9,7 @@ class BenchBaselineModule : Module() {
 
     View(BenchBaselineView::class) {
       Prop("rows") { view: BenchBaselineView, rows: List<ChatRowRecord> -> view.setRows(rows) }
+      AsyncFunction("scrollToIndex") { view: BenchBaselineView, index: Int -> view.scrollToIndex(index) }
     }
   }
 }

@@ -1,6 +1,12 @@
 import { expect, it } from 'vitest';
 import type { FrameStats, MemoryStats } from './lib/parse.mts';
-import { type DeviceInfo, type RunResult, toMarkdown } from './lib/report.mts';
+import {
+  type DeviceInfo,
+  type JumpResult,
+  jumpMarkdown,
+  type RunResult,
+  toMarkdown,
+} from './lib/report.mts';
 
 const frames = (jankyPercent: number, p90Ms: number | null): FrameStats => ({
   totalFrames: 400,
@@ -50,4 +56,21 @@ it('takes medians over repeats and writes n/a for missing values', () => {
   const table = toMarkdown(runs, device);
   expect(table).toContain('| flume | on | 3.00 |');
   expect(table).toContain('n/a');
+});
+
+const jump = (repeat: number, framesOver: number, animated: boolean): JumpResult => ({
+  scenario: 'chat',
+  impl: 'flashlist',
+  load: true,
+  animated,
+  repeat,
+  frames: frames(2, 20),
+  blank: { frames: 300, meanPercent: 1.5, maxPercent: 40, framesOver },
+});
+
+it('writes one jump row per list, load and scroll kind with the medians', () => {
+  const runs = [jump(0, 10, false), jump(1, 30, false), jump(2, 20, false), jump(0, 50, true)];
+  const table = jumpMarkdown(runs);
+  expect(table).toContain('| flashlist | on | instant | 20.00 | 40.00 | 1.50 | 4.00 | 30.00 |');
+  expect(table).toContain('| flashlist | on | animated | 50.00 |');
 });

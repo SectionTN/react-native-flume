@@ -2,7 +2,14 @@ import { LegendList } from '@legendapp/list/react-native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { ParamListBase } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
-import { type ComponentType, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ComponentType,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Button, type HostInstance, PixelRatio, StyleSheet, Text, View } from 'react-native';
 import {
   type CellNode,
@@ -10,7 +17,7 @@ import {
   unstable_logFlumeStats,
   unstable_setFlumeStats,
 } from 'react-native-flume';
-import { BenchBaselineView } from '../../modules/bench-baseline';
+import { type BenchBaselineHandle, BenchBaselineView } from '../../modules/bench-baseline';
 import { chatCell, feedCell } from '../bench/cells';
 import {
   type BenchAction,
@@ -45,7 +52,11 @@ type ListProps<T extends Item> = {
   renderCell: (item: T, index: number) => CellNode;
   Row: ComponentType<{ item: T }>;
   getItemType: (item: T, index: number) => string;
+  jumper: RefObject<Jumper | null>;
 };
+
+// The part of each list's ref the jump action calls.
+type Jumper = { scrollToIndex(params: { index: number; animated: boolean }): void };
 
 const keyExtractor = (item: Item) => item.id;
 const chatType = (item: BenchChat) => item.kind;
@@ -59,12 +70,20 @@ function BenchList<T extends Item>({
   renderCell,
   Row,
   getItemType,
+  jumper,
 }: ListProps<T>) {
   const renderItem = useCallback(({ item }: { item: T }) => <Row item={item} />, [Row]);
+  const attach = useCallback(
+    (list: Jumper | null) => {
+      jumper.current = list;
+    },
+    [jumper],
+  );
   switch (impl) {
     case 'flume':
       return (
         <Flume
+          ref={attach}
           data={data}
           renderCell={renderCell}
           keyExtractor={keyExtractor}
@@ -76,6 +95,7 @@ function BenchList<T extends Item>({
     case 'flume-react':
       return (
         <Flume
+          ref={attach}
           data={data}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
@@ -87,6 +107,7 @@ function BenchList<T extends Item>({
     case 'flashlist':
       return (
         <FlashList
+          ref={attach}
           data={data}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
@@ -97,6 +118,7 @@ function BenchList<T extends Item>({
     case 'legendlist':
       return (
         <LegendList
+          ref={attach}
           data={data}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
@@ -129,11 +151,13 @@ type RunProps = {
   load: boolean;
   count: number;
   action: BenchAction;
+  index: number;
+  animated: boolean;
   nonce: string;
 };
 
 // One configuration: the sentinel behind a transparent list, one ready line per mount, actions once per nonce.
-function BenchRun({ scenario, impl, load, count, action, nonce }: RunProps) {
+function BenchRun({ scenario, impl, load, count, action, index, animated, nonce }: RunProps) {
   const flume = impl === 'flume' || impl === 'flume-react';
   // Before the list's first commit: its setData layout effect runs before this component's effects.
   useState(() => {
@@ -141,6 +165,15 @@ function BenchRun({ scenario, impl, load, count, action, nonce }: RunProps) {
     return null;
   });
   const [data, setData] = useState(() => makeData(scenario, count, 0));
+  const jumper = useRef<Jumper | null>(null);
+  // The plain RecyclerView jumps without animation only.
+  const attachNative = useCallback((view: BenchBaselineHandle | null) => {
+    jumper.current = view && {
+      scrollToIndex: ({ index }) => {
+        void view.scrollToIndex(index);
+      },
+    };
+  }, []);
   const handled = useRef(nonce);
   useEffect(() => {
     if (nonce === handled.current) return;
@@ -149,7 +182,8 @@ function BenchRun({ scenario, impl, load, count, action, nonce }: RunProps) {
     else if (action === 'change500') setData((d) => ({ ...d, chats: changeChats(d.chats, 500) }));
     else if (action === 'resetStats') unstable_setFlumeStats(true);
     else if (action === 'logStats') unstable_logFlumeStats();
-  }, [action, nonce, scenario, count]);
+    else if (action === 'jump') jumper.current?.scrollToIndex({ index, animated });
+  }, [action, nonce, scenario, count, index, animated]);
 
   const box = useRef<HostInstance>(null);
   const ready = useRef(false);
@@ -171,7 +205,7 @@ function BenchRun({ scenario, impl, load, count, action, nonce }: RunProps) {
   return (
     <View ref={box} onLayout={onLayout} style={styles.sentinel}>
       {scenario === 'chat' && impl === 'native' ? (
-        <BenchBaselineView rows={data.chats} style={styles.fill} />
+        <BenchBaselineView ref={attachNative} rows={data.chats} style={styles.fill} />
       ) : scenario === 'chat' ? (
         <BenchList
           impl={impl}
@@ -180,6 +214,7 @@ function BenchRun({ scenario, impl, load, count, action, nonce }: RunProps) {
           renderCell={chatCell}
           Row={ChatRow}
           getItemType={chatType}
+          jumper={jumper}
         />
       ) : (
         <BenchList
@@ -189,6 +224,7 @@ function BenchRun({ scenario, impl, load, count, action, nonce }: RunProps) {
           renderCell={feedCell}
           Row={FeedRow}
           getItemType={postType}
+          jumper={jumper}
         />
       )}
     </View>

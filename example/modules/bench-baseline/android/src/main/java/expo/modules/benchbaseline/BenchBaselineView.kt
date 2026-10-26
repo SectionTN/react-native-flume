@@ -31,11 +31,12 @@ class BenchBaselineView(context: Context, appContext: AppContext) : ExpoView(con
     get() = true
 
   private val rowsAdapter = RowsAdapter()
+  private val rowsLayout = LinearLayoutManager(context).apply { stackFromEnd = true }
 
   init {
     addView(
       RecyclerView(context).apply {
-        layoutManager = LinearLayoutManager(context).apply { stackFromEnd = true }
+        layoutManager = rowsLayout
         adapter = rowsAdapter
       },
       LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
@@ -44,6 +45,11 @@ class BenchBaselineView(context: Context, appContext: AppContext) : ExpoView(con
 
   fun setRows(rows: List<ChatRowRecord>) {
     rowsAdapter.submit(rows)
+  }
+
+  // The item at the top edge, as Flume's and FlatList's scrollToIndex place it.
+  fun scrollToIndex(index: Int) {
+    rowsLayout.scrollToPositionWithOffset(index, 0)
   }
 }
 

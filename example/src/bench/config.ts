@@ -5,13 +5,16 @@ export const READY_PREFIX = 'FlumeBench ready ';
 
 export type Scenario = 'chat' | 'feed';
 export type Impl = 'flume' | 'flume-react' | 'flashlist' | 'legendlist' | 'native';
-export type BenchAction = 'none' | 'replace' | 'change500' | 'resetStats' | 'logStats';
+export type BenchAction = 'none' | 'replace' | 'change500' | 'resetStats' | 'logStats' | 'jump';
 export type BenchParams = {
   scenario: Scenario;
   impl: Impl;
   load: boolean;
   count: number;
   action: BenchAction;
+  // The jump action's target and scroll kind.
+  index: number;
+  animated: boolean;
   nonce: string;
 };
 
@@ -31,13 +34,22 @@ export type ReadyInfo = {
 
 const SCENARIOS: readonly Scenario[] = ['chat', 'feed'];
 const ALL_IMPLS: readonly Impl[] = IMPLS.chat;
-const ACTIONS: readonly BenchAction[] = ['none', 'replace', 'change500', 'resetStats', 'logStats'];
+const ACTIONS: readonly BenchAction[] = [
+  'none',
+  'replace',
+  'change500',
+  'resetStats',
+  'logStats',
+  'jump',
+];
 const DEFAULTS: BenchParams = {
   scenario: 'chat',
   impl: 'flume',
   load: false,
   count: 1000,
   action: 'none',
+  index: 0,
+  animated: false,
   nonce: '',
 };
 
@@ -49,12 +61,15 @@ export function parseBenchParams(
   params: Readonly<Record<string, string | undefined>> | undefined,
 ): BenchParams {
   const count = Number(params?.count);
+  const index = Number(params?.index);
   return {
     scenario: oneOf(params?.scenario, SCENARIOS, DEFAULTS.scenario),
     impl: oneOf(params?.impl, ALL_IMPLS, DEFAULTS.impl),
     load: params?.load === '1',
     count: Number.isInteger(count) && count >= 0 ? count : DEFAULTS.count,
     action: oneOf(params?.action, ACTIONS, DEFAULTS.action),
+    index: Number.isInteger(index) && index >= 0 ? index : DEFAULTS.index,
+    animated: params?.animated === '1',
     nonce: params?.n ?? DEFAULTS.nonce,
   };
 }
@@ -67,6 +82,8 @@ export function benchUrl(params: Partial<BenchParams>): string {
     load: p.load ? '1' : '0',
     count: String(p.count),
     action: p.action,
+    index: String(p.index),
+    animated: p.animated ? '1' : '0',
     n: p.nonce,
   });
   return `flume-example://bench?${query.toString()}`;

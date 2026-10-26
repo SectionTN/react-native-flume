@@ -7,7 +7,9 @@ it('round-trips every field through the URL', () => {
     impl: 'legendlist',
     load: true,
     count: 10000,
-    action: 'replace',
+    action: 'jump',
+    index: 499,
+    animated: true,
     nonce: '7',
   } as const;
   const url = new URL(benchUrl(params));
@@ -21,8 +23,12 @@ it('falls back to chat, flume, no load, 1,000 items and no action', () => {
     load: false,
     count: 1000,
     action: 'none',
+    index: 0,
+    animated: false,
     nonce: '',
   };
   expect(parseBenchParams(undefined)).toEqual(fallback);
-  expect(parseBenchParams({ impl: 'other', count: 'many', action: 'jump' })).toEqual(fallback);
+  expect(parseBenchParams({ impl: 'other', count: 'many', action: 'other', index: '-1' })).toEqual(
+    fallback,
+  );
 });
