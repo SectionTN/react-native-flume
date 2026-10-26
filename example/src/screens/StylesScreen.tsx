@@ -39,6 +39,10 @@ function borders(): CellNode {
       borderColor: '#bbbbbb',
       borderRadius: 8,
       elevation: 4,
+      shadowColor: '#000000',
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
     }),
   ]);
 }
