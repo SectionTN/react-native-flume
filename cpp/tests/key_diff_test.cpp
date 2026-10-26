@@ -44,7 +44,7 @@ TEST_CASE("append, prepend and remove") {
 
 TEST_CASE("a reversal moves one at a time") {
   auto ops = flume::diffKeys({"a", "b", "c"}, {"c", "b", "a"}, {}, true);
-  CHECK(ops.moved == std::vector<std::pair<int, int>>{{2, 0}, {2, 1}});
+  CHECK(ops.moved.size() == 2);
   CHECK(apply({"a", "b", "c"}, {"c", "b", "a"}, ops) == Keys{"c", "b", "a"});
 }
 
@@ -76,4 +76,66 @@ TEST_CASE("random orders replay to the next order") {
     auto ops = flume::diffKeys(previous, next, {}, true);
     CHECK(apply(previous, next, ops) == next);
   }
+}
+
+namespace {
+
+// The longest increasing run of next's keys by their previous positions, by the O(n^2) definition.
+size_t longestInOrder(const Keys& previous, const Keys& next) {
+  std::vector<int> positions;
+  for (const std::string& key : next) {
+    positions.push_back(static_cast<int>(std::find(previous.begin(), previous.end(), key) - previous.begin()));
+  }
+  std::vector<size_t> best(positions.size(), 1);
+  size_t longest = 0;
+  for (size_t i = 0; i < positions.size(); i++) {
+    for (size_t j = 0; j < i; j++) {
+      if (positions[j] < positions[i]) best[i] = std::max(best[i], best[j] + 1);
+    }
+    longest = std::max(longest, best[i]);
+  }
+  return longest;
+}
+
+Keys numbered(int count) {
+  Keys keys;
+  for (int i = 0; i < count; i++) keys.push_back(std::to_string(i));
+  return keys;
+}
+
+}  // namespace
+
+TEST_CASE("moving the first key to the end is one move") {
+  Keys previous{"a", "b", "c", "d"};
+  Keys next{"b", "c", "d", "a"};
+  auto ops = flume::diffKeys(previous, next, {}, true);
+  CHECK(ops.moved.size() == 1);
+  CHECK(apply(previous, next, ops) == next);
+}
+
+TEST_CASE("random orders replay with the fewest moves") {
+  std::mt19937 rng(7);
+  for (int i = 0; i < 300; i++) {
+    Keys previous = numbered(static_cast<int>(rng() % 13));
+    Keys next = previous;
+    std::shuffle(next.begin(), next.end(), rng);
+    auto ops = flume::diffKeys(previous, next, {}, true);
+    CHECK(apply(previous, next, ops) == next);
+    CHECK(ops.moved.size() == next.size() - longestInOrder(previous, next));
+  }
+}
+
+TEST_CASE("more moves than the cap reset") {
+  auto reversed = [](Keys keys) {
+    std::reverse(keys.begin(), keys.end());
+    return keys;
+  };
+  Keys atCap = numbered(flume::kMaxMoves + 1);
+  auto kept = flume::diffKeys(atCap, reversed(atCap), {}, true);
+  CHECK_FALSE(kept.reset);
+  CHECK(kept.moved.size() == static_cast<size_t>(flume::kMaxMoves));
+  Keys pastCap = numbered(flume::kMaxMoves + 2);
+  CHECK(flume::diffKeys(pastCap, reversed(pastCap), {}, true).reset);
+  Keys long_ = numbered(10000);
+  CHECK(flume::diffKeys(long_, reversed(long_), {}, true).reset);
 }
