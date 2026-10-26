@@ -50,6 +50,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private var throttle = ScrollThrottle(16)
   private var scrollState = RecyclerView.SCROLL_STATE_IDLE
   private var pendingAlign: PendingAlign? = null
+
+  // A jump onto React rows waits for the rows it shows; its retained slots are lent to their binds when it runs.
+  private data class Jump(val position: Int, val animated: Boolean, val viewPosition: Float, val viewOffsetDp: Double, val owner: Int)
+
+  private val jumps = JumpGate<Jump>()
+  private val jumpDue = Runnable { jumps.due(SystemClock.uptimeMillis())?.let { runJump(it) } }
+  private var reclaimOnLayout = false
+  private var reclaimOnIdle = false
   var emitScrollEvents = false
   private val viewability = ViewabilityTracker(ViewabilityConfig())
   var emitViewabilityEvents = false
@@ -163,6 +171,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   init {
+    slots.onRendered = { slot -> jumps.rendered(slot)?.let { runJump(it) } }
     recycler.layoutManager = layoutManager
     recycler.adapter = adapter
     recycler.itemAnimator = animator
@@ -201,12 +210,17 @@ class FlumeView(context: Context) : FrameLayout(context) {
         scrollState = newState
         if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
           pendingAlign = null
+          jumps.cancel()?.let { dropJump(it) }
           viewability.interacted = true
           evaluateViewability()
           if (keyboardDismissOnDrag) recycler.dismissKeyboard()
         }
         if (newState == RecyclerView.SCROLL_STATE_IDLE && throttle.flush() && emitScrollEvents) emitScroll(ScrollKind.SCROLL)
         if (newState == RecyclerView.SCROLL_STATE_IDLE) realign()
+        if (newState == RecyclerView.SCROLL_STATE_IDLE && reclaimOnIdle) {
+          reclaimOnIdle = false
+          slots.reclaim()
+        }
         onScrollState?.invoke(newState)
       }
     })
@@ -265,6 +279,10 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   private fun onLaidOut() {
+    if (reclaimOnLayout) {
+      reclaimOnLayout = false
+      slots.reclaim()
+    }
     if (pendingAlign != null) {
       removeCallbacks(realignAfterLayout)
       post(realignAfterLayout)
@@ -318,7 +336,61 @@ class FlumeView(context: Context) : FrameLayout(context) {
     scrollToPosition(rows.position(target), animated, viewPosition, viewOffsetDp)
   }
 
+  // React rows paint a frame or more after their bind, so a jump first has the rows it will show rendered.
   private fun scrollToPosition(position: Int, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
+    val target = ScrollTargets.clampIndex(position, rows.itemCount) ?: return
+    jumps.cancel()?.let { dropJump(it) }
+    val owner = adapter.allocateHolderId()
+    val window = jumpWindow(target, animated, viewPosition)
+    val requests = window.filter { isReactRow(it) }.map { adapter.slotRequest(it, viewTypeAt(it)) }
+    val waiting = slots.reserve(owner, requests)
+    val jump = Jump(target, animated, viewPosition, viewOffsetDp, owner)
+    if (waiting.isEmpty()) {
+      runJump(jump)
+      return
+    }
+    jumps.request(jump, waiting, SystemClock.uptimeMillis())
+    removeCallbacks(jumpDue)
+    postDelayed(jumpDue, ScrollTargets.JUMP_WAIT_MS)
+  }
+
+  private fun runJump(jump: Jump) {
+    removeCallbacks(jumpDue)
+    slots.lend(jump.owner)
+    if (jump.animated) reclaimOnIdle = true else reclaimOnLayout = true
+    startScroll(jump.position, jump.animated, jump.viewPosition, jump.viewOffsetDp)
+  }
+
+  private fun dropJump(jump: Jump) {
+    removeCallbacks(jumpDue)
+    slots.dropReserved(jump.owner)
+  }
+
+  // An instant jump shows one screen around its target; an animated one also its landing screen and the rows it glides over.
+  private fun jumpWindow(target: Int, animated: Boolean, viewPosition: Float): IntRange {
+    val viewportPx = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
+    val window = ScrollTargets.jumpWindow(target, viewPosition, viewportPx, rows.itemCount, ::windowLengthPx)
+    if (!animated) return window
+    val first = layoutManager.findFirstVisibleItemPosition()
+    if (first == RecyclerView.NO_POSITION) return window
+    val last = layoutManager.findLastVisibleItemPosition()
+    val near = ScrollTargets.preJump(first, target, last - first + 1, rows.itemCount)
+    val landing = if (near == null) first..last else ScrollTargets.jumpWindow(near, 0f, viewportPx, rows.itemCount, ::windowLengthPx)
+    return ScrollTargets.glideWindow(landing, window)
+  }
+
+  // A laid-out row's length, else its group's estimate; 0 for a grid position that does not start its row.
+  private fun windowLengthPx(position: Int): Int {
+    val spanCount = (layoutManager as? GridLayoutManager)?.spanCount ?: 1
+    val fullSpans = adapter.fullSpans
+    if (spanCount > 1 && position > 0 && fullSpans.groupIndex(position, spanCount) == fullSpans.groupIndex(position - 1, spanCount)) {
+      return 0
+    }
+    layoutManager.findViewByPosition(position)?.let { return if (geometry.horizontal) it.width else it.height }
+    return slots.estimator.estimatePx(SlotGroup(viewTypeAt(position)))
+  }
+
+  private fun startScroll(position: Int, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
     val target = ScrollTargets.clampIndex(position, rows.itemCount) ?: return
     viewability.interacted = true
     recycler.stopScroll()

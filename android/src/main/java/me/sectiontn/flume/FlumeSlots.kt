@@ -63,6 +63,7 @@ class FlumeSlots(private val host: FlumeView) {
         recordLength(holder)
         holder.refresh()
       }
+      onRendered?.invoke(measured.slot)
     }
     if (view.slot < 0) register(view)
     val holder = holders[view.slot]
@@ -96,6 +97,43 @@ class FlumeSlots(private val host: FlumeView) {
     holder.show(null)
     flush()
   }
+
+  // Called with a slot once its view has its React content, parked or shown.
+  var onRendered: ((Int) -> Unit)? = null
+
+  // Retains a slot for each row whose key has no rendered slot its holder could take; returns those still rendering.
+  fun reserve(owner: Int, requests: List<SlotRequest>): Set<Int> {
+    val waiting = HashSet<Int>()
+    for (request in requests) {
+      if (hasRendered(request)) continue
+      val slot = pool.acquire(owner, request.group, request.kind, request.key, request.index)
+      if (!isRendered(slot)) waiting.add(slot)
+    }
+    flush()
+    return waiting
+  }
+
+  // The owner's retained slots go to the binds of their keys; reclaim returns the ones no bind took to the released.
+  fun lend(owner: Int) {
+    pool.lend(owner)
+    flush()
+  }
+
+  fun reclaim() {
+    pool.reclaim()
+    flush()
+  }
+
+  fun dropReserved(owner: Int) {
+    pool.lend(owner)
+    reclaim()
+  }
+
+  private fun hasRendered(request: SlotRequest): Boolean = pool.slotsFor(request.kind, request.key).any { slot ->
+    pool.groupOf(slot).let { it == null || it == request.group } && isRendered(slot)
+  }
+
+  private fun isRendered(slot: Int): Boolean = (children.bySlot(slot) as? FlumeSlotView)?.measured == true
 
   // A slot its owner keeps with no holder bound to it, such as a sticky row's copy waiting to pin.
   fun retain(owner: Int, group: SlotGroup, kind: Int, key: String, index: Int): Int {

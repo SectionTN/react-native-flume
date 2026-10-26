@@ -240,17 +240,22 @@ class FlumeAdapter(
     }
   }
 
+  fun slotRequest(position: Int, viewType: Int): SlotRequest {
+    val group = SlotGroup(viewType)
+    return when (rows.kind(position)) {
+      RowKind.HEADER -> SlotRequest(group, SlotKinds.HEADER, "header", -1)
+      RowKind.EMPTY -> SlotRequest(group, SlotKinds.EMPTY, "empty", -1)
+      RowKind.FOOTER -> SlotRequest(group, SlotKinds.FOOTER, "footer", -1)
+      RowKind.DATA -> rows.dataIndex(position).let { SlotRequest(group, SlotKinds.ROW, FlumeJni.keyAt(storeId, it), it) }
+    }
+  }
+
   override fun onBindViewHolder(holder: Holder, position: Int) {
     if (!geometry.ready) return
     holder.slot?.let { slot ->
       if (slot.horizontal != geometry.horizontal) orient(slot)
-      val group = SlotGroup(holder.itemViewType)
-      when (rows.kind(position)) {
-        RowKind.HEADER -> slots.bind(slot, group, SlotKinds.HEADER, "header", -1)
-        RowKind.EMPTY -> slots.bind(slot, group, SlotKinds.EMPTY, "empty", -1)
-        RowKind.FOOTER -> slots.bind(slot, group, SlotKinds.FOOTER, "footer", -1)
-        RowKind.DATA -> rows.dataIndex(position).let { slots.bind(slot, group, SlotKinds.ROW, FlumeJni.keyAt(storeId, it), it) }
-      }
+      val request = slotRequest(position, holder.itemViewType)
+      slots.bind(slot, request.group, request.kind, request.key, request.index)
       return
     }
     val cell = holder.cell ?: return

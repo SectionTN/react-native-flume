@@ -20,6 +20,9 @@ data class SlotEntry(
   val minMainDp: Float = 0f,
 )
 
+// The slot a React row asks for when it binds: its holders' group, its kind, its key and its data index.
+data class SlotRequest(val group: SlotGroup, val kind: Int, val key: String, val index: Int)
+
 // Which slot each holder shows: a slot belongs to one key for life, and a released one waits for its key to come back.
 // A pre-rendered slot (a negative id from JS) waits the same way, in no group until a bind for its key adopts it.
 class SlotPool(private val maxFree: Int = MAX_FREE) {
@@ -133,6 +136,9 @@ class SlotPool(private val maxFree: Int = MAX_FREE) {
   }
 
   fun ownerOf(slot: Int): Int? = slots[slot]?.owner?.takeIf { it != 0 }
+
+  // Null for a pre-rendered slot no bind has adopted, which any group may take.
+  fun groupOf(slot: Int): SlotGroup? = slots[slot]?.group
 
   fun entry(slot: Int): SlotEntry? = slots[slot]?.toEntry()
 
