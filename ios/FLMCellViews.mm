@@ -1,14 +1,11 @@
 #import "FLMCellViews.h"
 
+#import "FLMBoxView.h"
 #import "FLMColor.h"
+#import "FLMText.h"
+#import "FLMTextView.h"
 
 #include <algorithm>
-
-// A cell view that keeps its corner mask and shadow path in step with its bounds.
-@interface FLMBoxView : UIView
-@property (nonatomic) std::array<float, 4> radii;  // topLeft, topRight, bottomRight, bottomLeft
-@property (nonatomic) BOOL opaqueShadow;
-@end
 
 static BOOL FLMUniformRadii(const std::array<float, 4> &radii, CGFloat *radius)
 {
@@ -91,9 +88,9 @@ flume::ViewHandle FLMCellViews::root()
   return (__bridge flume::ViewHandle)root_;
 }
 
-flume::ViewHandle FLMCellViews::create(flume::ViewKind)
+flume::ViewHandle FLMCellViews::create(flume::ViewKind kind)
 {
-  FLMBoxView *view = [FLMBoxView new];
+  FLMBoxView *view = kind == flume::ViewKind::Text ? [FLMTextView new] : [FLMBoxView new];
   [pending_ addObject:view];
   return (__bridge flume::ViewHandle)view;
 }
@@ -162,7 +159,17 @@ void FLMCellViews::viewStyle(flume::ViewHandle handle, const flume::ViewStyleSpe
   [view setNeedsLayout];
 }
 
-void FLMCellViews::text(flume::ViewHandle, const flume::TextSpec &, float, float) {}
+void FLMCellViews::text(flume::ViewHandle handle, const flume::TextSpec &text, float insetLeft, float insetTop)
+{
+  UIView *view = FLMUIView(handle);
+  if (![view isKindOfClass:FLMTextView.class]) {
+    return;
+  }
+  [(FLMTextView *)view setText:FLMAttributedString(text.text, FLMTextStyleOf(text))
+                         lines:text.numberOfLines
+                      maxWidth:text.maxWidth
+                         inset:CGPointMake(insetLeft, insetTop)];
+}
 
 void FLMCellViews::image(flume::ViewHandle, const flume::ImageSpec &) {}
 

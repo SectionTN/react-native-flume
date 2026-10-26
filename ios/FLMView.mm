@@ -7,6 +7,7 @@
 #import "FLMCell.h"
 #import "FLMLayout.h"
 #import "FLMStoreListener.h"
+#import "FLMText.h"
 
 #include <cmath>
 #include <memory>
@@ -18,15 +19,6 @@
 using namespace facebook::react;
 
 namespace {
-
-// Every text measures empty until the text measurer lands.
-class FLMEmptyMeasurer final : public flume::TextMeasurer {
- public:
-  flume::TextMetrics measure(const flume::TextMeasureRequest &) override
-  {
-    return {0, 0};
-  }
-};
 
 NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
 {
@@ -144,7 +136,7 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   }
   _listener = std::make_unique<FLMStoreListener>(self);
   const float scale = self.traitCollection.displayScale > 0 ? self.traitCollection.displayScale : 1;
-  _count = flume::Engine::instance().attach(_storeId, _listener.get(), std::make_unique<FLMEmptyMeasurer>(), scale);
+  _count = flume::Engine::instance().attach(_storeId, _listener.get(), std::make_unique<FLMTextMeasurer>(), scale);
   _attached = YES;
   [_layout resetWithCount:_count typeOf:[self typeOf]];
   [_collectionView reloadData];
