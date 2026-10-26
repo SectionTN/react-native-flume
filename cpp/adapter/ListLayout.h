@@ -36,7 +36,8 @@ class ListLayout {
   void configure(const ListLayoutConfig& config, std::vector<int> fullSpan);  // fullSpan ascending
   void reset(int count, const TypeOf& typeOf);
   void apply(const ListOps& ops, int count, const TypeOf& typeOf);
-  float setLength(int index, float length, int anchor);  // how far the anchor moved along the scroll axis
+  // How far the anchor moved along the scroll axis: its top edge, or its bottom edge when inverted.
+  float setLength(int index, float length, int anchor, float viewportLength = 0);
   void invalidateLengths();
   int count() const { return static_cast<int>(items_.size()); }
   bool measured(int index) const;
@@ -70,6 +71,7 @@ class ListLayout {
   void updateRow(int row);
   float rowStart(int row) const;  // from the start of item 0, inside the padding
   float startOf(int row, float viewportLength) const;  // in content coordinates
+  float anchorEdge(int row, float viewportLength) const;
   int rowAt(float offset, float viewportLength) const;  // offset in content coordinates
 
   ListLayoutConfig config_;

@@ -54,10 +54,10 @@ void ListLayout::apply(const ListOps& ops, int count, const TypeOf& typeOf) {
   rebuildRows();
 }
 
-float ListLayout::setLength(int index, float length, int anchor) {
+float ListLayout::setLength(int index, float length, int anchor, float viewportLength) {
   if (index < 0 || index >= count()) return 0;
   const bool hasAnchor = anchor >= 0 && anchor < count();
-  const float before = hasAnchor ? startOf(rowOf_[anchor], 0) : 0;
+  const float before = hasAnchor ? anchorEdge(rowOf_[anchor], viewportLength) : 0;
   Item& item = items_[index];
   Mean& mean = means_[item.type];
   if (item.measured) {
@@ -69,7 +69,7 @@ float ListLayout::setLength(int index, float length, int anchor) {
   item.length = length;
   item.measured = true;
   updateRow(rowOf_[index]);
-  return hasAnchor ? startOf(rowOf_[anchor], 0) - before : 0;
+  return hasAnchor ? anchorEdge(rowOf_[anchor], viewportLength) - before : 0;
 }
 
 void ListLayout::invalidateLengths() {
@@ -183,6 +183,11 @@ float ListLayout::rowStart(int row) const {
 float ListLayout::startOf(int row, float viewportLength) const {
   if (!config_.inverted) return config_.paddingStart + rowStart(row);
   return contentLength(viewportLength) - config_.paddingEnd - rowStart(row) - rows_[row].length;
+}
+
+float ListLayout::anchorEdge(int row, float viewportLength) const {
+  const float start = startOf(row, viewportLength);
+  return config_.inverted ? start + rows_[row].length : start;
 }
 
 int ListLayout::rowAt(float offset, float viewportLength) const {

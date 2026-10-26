@@ -222,3 +222,14 @@ TEST_CASE("an inverted list pins the first header at or above the top row") {
   CHECK(pushed->index == 14);
   CHECK(pushed->start == 900);
 }
+
+TEST_CASE("inverted: the bottom anchor's own growth keeps its bottom edge") {
+  ListLayout layout = inverted(20, 100);
+  CHECK(layout.setLength(3, 150, 3, 1000) == 50);
+}
+
+TEST_CASE("short inverted content does not move the anchor") {
+  ListLayout layout = inverted(3, 100);
+  CHECK(layout.setLength(0, 150, 0, 1000) == 0);
+  CHECK(layout.setLength(2, 150, 0, 1000) == 0);
+}
