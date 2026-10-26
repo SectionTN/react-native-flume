@@ -66,6 +66,8 @@ export function diffData<T>(
   );
 }
 
+const SHORT_TABLE = 8;
+
 // Without dedupe a repeated key ends the scan, so unique data pays one map write per item.
 function scan<T>(
   prev: DataState<T> | undefined,
@@ -86,14 +88,12 @@ function scan<T>(
   const duplicates: string[] = [];
   const sendsAll = sendsItem === undefined;
   const sendsNone = sendsItem === 'none';
-  const sendsByType = new Map<string, boolean>();
   const typeTable: string[] = [];
   const typeIds = new Int32Array(count);
   const typeIndex = new Map<string, number>();
+  const sendsById: boolean[] = [];
   let idType: string | undefined;
   let typeId = 0;
-  let lastType: string | undefined;
-  let lastSends = false;
   let stableKeys = true;
   let same = prev !== undefined && prev.keys.length === count;
   for (let i = 0; i < count; i++) {
@@ -113,20 +113,20 @@ function scan<T>(
     keys[i] = key;
     const type = getItemType?.(item, i) ?? 'default';
     types[i] = type;
+    // Lists switch type often and have few types: a short table is searched in place, a long one through the map.
     if (type !== idType) {
       idType = type;
-      typeId = typeIndex.get(type) ?? typeTable.push(type) - 1;
-      typeIndex.set(type, typeId);
+      typeId =
+        typeTable.length <= SHORT_TABLE ? typeTable.indexOf(type) : (typeIndex.get(type) ?? -1);
+      if (typeId === -1) {
+        typeId = typeTable.push(type) - 1;
+        typeIndex.set(type, typeId);
+        sendsById.push(sendsAll || (!sendsNone && (sendsItem as (type: string) => boolean)(type)));
+      }
     }
     typeIds[i] = typeId;
     if (same && (prev?.keys[i] !== key || prev?.types[i] !== type)) same = false;
-    if (sendsNone) continue;
-    if (!sendsAll && type !== lastType) {
-      lastType = type;
-      lastSends = sendsByType.get(type) ?? (sendsItem as (type: string) => boolean)(type);
-      sendsByType.set(type, lastSends);
-    }
-    if (!sendsAll && !lastSends) continue;
+    if (!sendsById[typeId]) continue;
     let changed = true;
     if (prev !== undefined) {
       const previous = prev.keys[i] === key ? i : prev.index.get(key);

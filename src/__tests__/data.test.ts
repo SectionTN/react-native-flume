@@ -142,3 +142,19 @@ describe('diffData types for native', () => {
     expect(d.typeIds).toBeInstanceOf(Int32Array);
   });
 });
+
+describe('diffData with many types', () => {
+  it('numbers types past a short table and keeps sending per type', () => {
+    const items = Array.from({ length: 24 }, (_, i) => ({ id: `k${i}`, t: `t${i % 12}` }));
+    const d = diffData(
+      undefined,
+      items,
+      undefined,
+      (i) => i.t,
+      (t) => t === 't11',
+    );
+    expect(d.typeTable).toHaveLength(12);
+    expect([...d.typeIds]).toEqual(items.map((_, i) => i % 12));
+    expect(d.changedIndices).toEqual([11, 23]);
+  });
+});
