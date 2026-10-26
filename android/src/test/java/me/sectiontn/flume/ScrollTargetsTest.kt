@@ -63,6 +63,21 @@ class ScrollTargetsTest {
   }
 
   @Test
+  fun aReactTargetRealignsUnlessTheAnchorKeepsIt() {
+    assertFalse(ScrollTargets.realigns(reactTarget = true, viewPosition = 0f, stacksFromEnd = false))
+    assertTrue(ScrollTargets.realigns(reactTarget = true, viewPosition = 0f, stacksFromEnd = true))
+    assertTrue(ScrollTargets.realigns(reactTarget = true, viewPosition = 0.5f, stacksFromEnd = false))
+    assertFalse(ScrollTargets.realigns(reactTarget = false, viewPosition = 1f, stacksFromEnd = true))
+  }
+
+  @Test
+  fun aStartAlignedTargetRealignsWhenTheListStacksFromTheEnd() {
+    val pending = PendingAlign(12, 0f, 0, 150, anchoredAtEnd = true)
+    assertEquals(0, AlignCorrection.offsetPx(pending, targetReady = true, targetLengthPx = 240, targetStartPx = 230, viewportPx = 1000))
+    assertNull(AlignCorrection.offsetPx(pending, targetReady = true, targetLengthPx = 240, targetStartPx = 0, viewportPx = 1000))
+  }
+
+  @Test
   fun aTargetThatMeasuresLongerRealigns() {
     val pending = PendingAlign(position = 12, viewPosition = 1f, viewOffsetPx = 0, assumedLengthPx = 150)
     assertEquals(760, AlignCorrection.offsetPx(pending, targetReady = true, targetLengthPx = 240, targetStartPx = 850, viewportPx = 1000))

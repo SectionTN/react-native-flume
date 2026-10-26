@@ -26,6 +26,10 @@ object ScrollTargets {
   // At viewPosition 0 the offset does not depend on the row's length.
   fun needsLength(viewPosition: Float): Boolean = viewPosition != 0f
 
+  // A list that stacks from the end anchors relayouts on its last row, so even a start-aligned React target drifts.
+  fun realigns(reactTarget: Boolean, viewPosition: Float, stacksFromEnd: Boolean): Boolean =
+    reactTarget && (needsLength(viewPosition) || stacksFromEnd)
+
   // A ScrollView animates any distance in a fixed time; a long jump speeds up so it fits the budget.
   fun speedMsPerPx(defaultMsPerPx: Float, distancePx: Int, budgetMs: Int): Float =
     if (distancePx <= 0) defaultMsPerPx else min(defaultMsPerPx, budgetMs.toFloat() / distancePx)
@@ -43,20 +47,22 @@ object ScrollTargets {
 }
 
 // A React row is aligned with the length it has when the scroll starts, often the estimate, and the layout manager then
-// anchors on the first visible row: rows measuring above the target push it, and it may measure at another length itself.
+// anchors on the first visible row (the last under stackFromEnd): rows measuring between it and the target push it, and
+// it may measure at another length itself.
 data class PendingAlign(
   val position: Int,
   val viewPosition: Float,
   val viewOffsetPx: Int,
   val assumedLengthPx: Int,
   val corrections: Int = 0,
+  val anchoredAtEnd: Boolean = false,
 )
 
 object AlignCorrection {
   // The offset to apply again when the target does not start where its length puts it (targetStartPx null: out of the
-  // layout); null where it sits, and at viewPosition 0, which the anchor keeps.
+  // layout); null where it sits, and at viewPosition 0 when the anchor keeps it (not under stackFromEnd).
   fun offsetPx(pending: PendingAlign, targetReady: Boolean, targetLengthPx: Int, targetStartPx: Int?, viewportPx: Int): Int? {
-    if (pending.viewPosition == 0f) return null
+    if (pending.viewPosition == 0f && !pending.anchoredAtEnd) return null
     val length = if (targetReady) targetLengthPx else pending.assumedLengthPx
     val desired = ScrollTargets.offsetPx(pending.viewPosition, pending.viewOffsetPx, viewportPx, length)
     return if (targetStartPx == desired) null else desired

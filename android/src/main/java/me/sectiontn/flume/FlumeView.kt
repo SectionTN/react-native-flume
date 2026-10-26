@@ -323,7 +323,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
     viewability.interacted = true
     recycler.stopScroll()
     val viewOffsetPx = (viewOffsetDp * density).roundToInt()
-    val realigns = isReactRow(target) && ScrollTargets.needsLength(viewPosition)
+    val anchoredAtEnd = layoutManager.stackFromEnd
+    val realigns = ScrollTargets.realigns(isReactRow(target), viewPosition, anchoredAtEnd)
     pendingAlign = null
     if (animated) {
       val frames = childFrames()
@@ -337,7 +338,13 @@ class FlumeView(context: Context) : FrameLayout(context) {
       scroller.targetPosition = target
       if (realigns) {
         scroller.onTarget = { view ->
-          pendingAlign = PendingAlign(target, viewPosition, viewOffsetPx, if (geometry.horizontal) view.width else view.height)
+          pendingAlign = PendingAlign(
+            target,
+            viewPosition,
+            viewOffsetPx,
+            if (geometry.horizontal) view.width else view.height,
+            anchoredAtEnd = anchoredAtEnd,
+          )
         }
       }
       layoutManager.startSmoothScroll(scroller)
@@ -345,7 +352,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     }
     val viewportPx = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
     val itemPx = if (ScrollTargets.needsLength(viewPosition)) rowLengthPx(target) else 0
-    if (realigns) pendingAlign = PendingAlign(target, viewPosition, viewOffsetPx, itemPx)
+    if (realigns) pendingAlign = PendingAlign(target, viewPosition, viewOffsetPx, itemPx, anchoredAtEnd = anchoredAtEnd)
     layoutManager.scrollToPositionWithOffset(target, ScrollTargets.offsetPx(viewPosition, viewOffsetPx, viewportPx, itemPx))
   }
 
