@@ -10,6 +10,7 @@
 #import "FLMStoreListener.h"
 #import "FLMText.h"
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <unordered_set>
@@ -52,6 +53,10 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   BOOL _itemAnimations;
   BOOL _horizontal;
   BOOL _rowsPressable;
+  BOOL _inverted;
+  BOOL _everAttached;
+  BOOL _pinToEnd;  // an inverted list opens at its newest row once it has a size
+  CGFloat _lastCross;
   UILongPressGestureRecognizer *_rowLongPress;
 }
 
@@ -91,6 +96,10 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
     _children = [UIView new];
     _children.hidden = YES;
     [self addSubview:_children];
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(contentSizeCategoryChanged:)
+                                               name:UIContentSizeCategoryDidChangeNotification
+                                             object:nil];
   }
   return self;
 }
@@ -103,16 +112,100 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
 - (void)updateProps:(const Props::Shared &)props oldProps:(const Props::Shared &)oldProps
 {
   const auto &next = *std::static_pointer_cast<const FlumeViewProps>(props);
+  const auto &old = static_cast<const FlumeViewProps &>(*_props);
+  // Fabric can send a prop again with the value the view already has, so only a changed value acts (bug-089).
+  const BOOL shape = next.horizontal != old.horizontal || next.numColumns != old.numColumns ||
+      [self crossPadding:next] != [self crossPadding:old];
+  const BOOL layout = shape || next.inverted != old.inverted || next.contentPaddingTop != old.contentPaddingTop ||
+      next.contentPaddingLeft != old.contentPaddingLeft || next.contentPaddingBottom != old.contentPaddingBottom ||
+      next.contentPaddingRight != old.contentPaddingRight || next.estimatedItemSize != old.estimatedItemSize ||
+      next.stickyHeaderIndices != old.stickyHeaderIndices;
+  if (layout) {
+    [self configureLayout:next];
+  }
+  if (next.inverted && !old.inverted) {
+    _pinToEnd = YES;
+    [self setNeedsLayout];
+  }
   if (next.storeId != _storeId) {
     [self detach];
     _storeId = next.storeId;
+    _everAttached = NO;
     [self attach];
+  } else if (shape) {
+    [self rebind];
   }
   _itemAnimations = next.itemAnimations;
   _rowsPressable = next.rowsPressable;
   _collectionView.allowsSelection = _rowsPressable;
   _rowLongPress.enabled = _rowsPressable;
   [super updateProps:props oldProps:oldProps];
+}
+
+- (std::pair<double, double>)crossPadding:(const FlumeViewProps &)props
+{
+  return props.horizontal ? std::make_pair(props.contentPaddingTop, props.contentPaddingBottom)
+                          : std::make_pair(props.contentPaddingLeft, props.contentPaddingRight);
+}
+
+- (void)configureLayout:(const FlumeViewProps &)props
+{
+  flume::ListLayoutConfig config;
+  config.horizontal = props.horizontal;
+  config.inverted = props.inverted;
+  config.lanes = std::max(1, props.numColumns);
+  config.paddingStart = props.horizontal ? props.contentPaddingLeft : props.contentPaddingTop;
+  config.paddingEnd = props.horizontal ? props.contentPaddingRight : props.contentPaddingBottom;
+  const auto cross = [self crossPadding:props];
+  config.paddingCrossStart = cross.first;
+  config.paddingCrossEnd = cross.second;
+  config.estimatedItemLength = props.estimatedItemSize > 0 ? props.estimatedItemSize : -1;
+  std::vector<int> sticky = props.stickyHeaderIndices;
+  std::sort(sticky.begin(), sticky.end());
+  // A sticky header spans every column of a grid, as on Android.
+  std::vector<int> fullSpan = config.lanes > 1 ? sticky : std::vector<int>();
+  [_layout configure:config fullSpan:fullSpan sticky:sticky];
+  _horizontal = props.horizontal;
+  _inverted = props.inverted;
+  _collectionView.alwaysBounceVertical = !_horizontal;
+  _collectionView.alwaysBounceHorizontal = _horizontal;
+}
+
+// A new cell size across the scroll axis or a new text size: every row binds and measures again.
+- (void)rebind
+{
+  if (!_attached) {
+    return;
+  }
+  flume::Engine::instance().invalidateMeasures(_storeId);
+  [_layout invalidateLengths];
+  [_collectionView reloadData];
+}
+
+- (void)contentSizeCategoryChanged:(NSNotification *)notification
+{
+  [self rebind];
+}
+
+- (void)layoutSubviews
+{
+  [super layoutSubviews];
+  const CGSize size = _collectionView.bounds.size;
+  const CGFloat cross = _horizontal ? size.height : size.width;
+  if (cross != _lastCross) {
+    const BOOL resized = _lastCross > 0;
+    _lastCross = cross;
+    if (resized) {
+      [self rebind];
+    }
+  }
+  if (_pinToEnd && _attached && size.width > 0 && size.height > 0) {
+    _pinToEnd = NO;
+    [_collectionView layoutIfNeeded];
+    const CGSize content = _collectionView.collectionViewLayout.collectionViewContentSize;
+    _collectionView.contentOffset = _horizontal ? CGPointMake(std::max<CGFloat>(0, content.width - size.width), 0)
+                                                : CGPointMake(0, std::max<CGFloat>(0, content.height - size.height));
+  }
 }
 
 - (void)didMoveToWindow
@@ -153,6 +246,11 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   const float scale = self.traitCollection.displayScale > 0 ? self.traitCollection.displayScale : 1;
   _count = flume::Engine::instance().attach(_storeId, _listener.get(), std::make_unique<FLMTextMeasurer>(), scale);
   _attached = YES;
+  if (_inverted && !_everAttached) {
+    _pinToEnd = YES;
+    [self setNeedsLayout];
+  }
+  _everAttached = YES;
   [_layout resetWithCount:_count typeOf:[self typeOf]];
   [_collectionView reloadData];
 }

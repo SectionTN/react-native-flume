@@ -206,7 +206,7 @@
   const int anchor = _model.indexAt(edge, viewport);
   const CGFloat before = [self mainLength:[self frameOf:index].size];
   const CGFloat length = [self mainLength:preferred.size];
-  const CGFloat moved = _model.setLength(index, length, anchor);
+  const CGFloat moved = _model.setLength(index, length, anchor, viewport);
   context.contentOffsetAdjustment = _config.horizontal ? CGPointMake(moved, 0) : CGPointMake(0, moved);
   context.contentSizeAdjustment = _config.horizontal ? CGSizeMake(length - before, 0) : CGSizeMake(0, length - before);
   return context;
