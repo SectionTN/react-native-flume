@@ -1,8 +1,10 @@
 #import "FLMCell.h"
 
+#import "FLMBindStats.h"
 #import "FLMCellViews.h"
 
 #include <memory>
+#include <time.h>
 
 #include "bindings/Engine.h"
 
@@ -33,10 +35,14 @@
 - (BOOL)bindStore:(int)storeId index:(NSInteger)index width:(CGFloat)width height:(CGFloat)height horizontal:(BOOL)horizontal
 {
   _horizontal = horizontal;
+  uint64_t start = FLMBindStats.enabled ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
   if (!flume::Engine::instance().bind(storeId, _holderId, static_cast<int>(index), width, height, _batch)) {
     return NO;
   }
   _tree->apply(_batch);
+  if (_batch.timed) {
+    [FLMBindStats record:static_cast<int64_t>(clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start) stats:_batch.stats];
+  }
   _bound = YES;
   return YES;
 }

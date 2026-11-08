@@ -1,5 +1,6 @@
 #import "FLMFlumeModule.h"
 
+#import "FLMBindStats.h"
 #import "FLMImages.h"
 
 #include "bindings/Engine.h"
@@ -30,13 +31,20 @@ RCT_EXPORT_MODULE(NativeFlume)
   FLMImages.shared.loader = [self.moduleRegistry moduleForName:"ImageLoader"];
 }
 
+// Binds touch the stats rings on the main thread.
 - (void)setStats:(BOOL)enabled
 {
-  flume::Engine::instance().setStatsEnabled(enabled);
+  dispatch_async(dispatch_get_main_queue(), ^{
+    flume::Engine::instance().setStatsEnabled(enabled);
+    FLMBindStats.enabled = enabled;
+  });
 }
 
 - (void)logStats
 {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [FLMBindStats log];
+  });
 }
 
 @end
