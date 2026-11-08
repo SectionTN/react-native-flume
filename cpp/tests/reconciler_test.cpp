@@ -253,6 +253,26 @@ TEST_CASE("a border change re-emits the view style") {
   CHECK(static_cast<uint32_t>(op.ints[1]) == 0xFF000000u);
 }
 
+TEST_CASE("a shadow change re-emits the view style") {
+  auto card = [](double opacity) {
+    return obj({{"type", V("view")},
+                {"style", obj({{"backgroundColor", V("#fff")}, {"shadowColor", V("#000")},
+                               {"shadowOpacity", V(opacity)}, {"shadowRadius", V(4)}})}});
+  };
+  Rig rig;
+  rig.bind(card(0.4));
+  rig.bind(card(0));
+  CHECK(firstOp(rig.batch, 4, 0).floats[7] == 0.0f);
+}
+
+TEST_CASE("a view styled with a shadow only gets a view style") {
+  Rig rig;
+  rig.bind(obj({{"type", V("view")}, {"style", obj({{"shadowOpacity", V(0.3)}, {"shadowRadius", V(6)}})}}));
+  auto op = firstOp(rig.batch, 4, 0);
+  CHECK(op.floats[7] == doctest::Approx(0.3));
+  CHECK(op.floats[8] == 6.0f);
+}
+
 namespace {
 
 flume::Value keyed(const char* key, const char* text) {

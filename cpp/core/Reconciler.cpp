@@ -24,12 +24,15 @@ bool anyRadius(const Style& s) {
 
 bool hasVisual(const Style& s) {
   return s.backgroundColor.has_value() || s.opacity.has_value() || anyRadius(s) || s.borderWidth.has_value() ||
-         s.borderColor.has_value() || s.elevation.has_value();
+         s.borderColor.has_value() || s.elevation.has_value() || s.shadowColor.has_value() ||
+         s.shadowOpacity.has_value() || s.shadowRadius.has_value() || s.shadowOffset.has_value();
 }
 
 bool visualChanged(const Style& a, const Style& b) {
   return a.backgroundColor != b.backgroundColor || a.opacity != b.opacity || a.borderRadii != b.borderRadii ||
-         a.borderWidth != b.borderWidth || a.borderColor != b.borderColor || a.elevation != b.elevation;
+         a.borderWidth != b.borderWidth || a.borderColor != b.borderColor || a.elevation != b.elevation ||
+         a.shadowColor != b.shadowColor || a.shadowOpacity != b.shadowOpacity || a.shadowRadius != b.shadowRadius ||
+         a.shadowOffset != b.shadowOffset;
 }
 
 bool textStyleChanged(const Style& a, const Style& b) {
