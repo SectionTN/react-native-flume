@@ -251,3 +251,18 @@ TEST_CASE("inverted: the newest row ending at the viewport's end stays the ancho
   ListLayout layout = inverted(20, 100);
   CHECK(layout.anchorAt(1000, 1000) == 0);
 }
+
+TEST_CASE("apply reports the changed items whose type changed, to be measured again") {
+  std::vector<int> types = {0, 0, 0};
+  const ListLayout::TypeOf typeOf = [&types](int index) { return types[index]; };
+  ListLayout layout;
+  layout.configure({}, {});
+  layout.reset(3, typeOf);
+  for (int i = 0; i < 3; i++) layout.setLength(i, 100, 0);
+  types[1] = 2;
+  ListOps ops;
+  ops.changed = {0, 1};
+  CHECK(layout.apply(ops, 3, typeOf) == std::vector<int>{1});
+  CHECK(layout.measured(0));
+  CHECK_FALSE(layout.measured(1));
+}

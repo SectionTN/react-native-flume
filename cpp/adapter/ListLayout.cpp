@@ -30,10 +30,10 @@ void ListLayout::reset(int count, const TypeOf& typeOf) {
   rebuildRows();
 }
 
-void ListLayout::apply(const ListOps& ops, int count, const TypeOf& typeOf) {
+std::vector<int> ListLayout::apply(const ListOps& ops, int count, const TypeOf& typeOf) {
   if (ops.reset) {
     reset(count, typeOf);
-    return;
+    return {};
   }
   for (const auto& range : ops.removed) {
     if (range.index < 0 || range.index + range.count > this->count()) continue;
@@ -53,12 +53,26 @@ void ListLayout::apply(const ListOps& ops, int count, const TypeOf& typeOf) {
   }
   if (this->count() != count) {
     reset(count, typeOf);
-    return;
+    return {};
   }
+  std::vector<int> retyped;
   for (int index : ops.changed) {
-    if (index >= 0 && index < count) items_[index].type = typeOf(index);
+    if (index < 0 || index >= count) continue;
+    Item& item = items_[index];
+    const int type = typeOf(index);
+    if (type == item.type) continue;
+    // Its measured length leaves the old type's mean; the new cell measures it again.
+    if (item.measured) {
+      Mean& mean = means_[item.type];
+      mean.sum -= item.length;
+      mean.count--;
+      item.measured = false;
+    }
+    item.type = type;
+    retyped.push_back(index);
   }
   rebuildRows();
+  return retyped;
 }
 
 float ListLayout::setLength(int index, float length, int anchor, float viewportLength) {

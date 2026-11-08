@@ -288,10 +288,11 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
     [_collectionView reloadData];
     return;
   }
+  __block std::vector<int> retyped;
   void (^update)(void) = ^{
     [self->_collectionView performBatchUpdates:^{
       self->_count = count;
-      [self->_layout applyOps:ops count:count typeOf:[self typeOf]];
+      retyped = [self->_layout applyOps:ops count:count typeOf:[self typeOf]];
       [self->_collectionView deleteItemsAtIndexPaths:FLMIndexPaths(batch.deletes)];
       [self->_collectionView insertItemsAtIndexPaths:FLMIndexPaths(batch.inserts)];
       for (const auto &[from, to] : batch.moves) {
@@ -300,15 +301,19 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
       }
     }
                                     completion:nil];
-    NSMutableArray<NSIndexPath *> *visible = [NSMutableArray array];
-    NSSet<NSIndexPath *> *shown = [NSSet setWithArray:self->_collectionView.indexPathsForVisibleItems];
-    for (NSIndexPath *path in FLMIndexPaths(batch.reconfigures)) {
-      if ([shown containsObject:path]) {
-        [visible addObject:path];
+    // UIKit reconfigures within one cell type only, so a row whose type changed is reloaded instead.
+    std::vector<int> reconfigures;
+    for (int index : batch.reconfigures) {
+      if (std::find(retyped.begin(), retyped.end(), index) == retyped.end()) {
+        reconfigures.push_back(index);
       }
     }
-    if (visible.count > 0) {
-      [self->_collectionView reconfigureItemsAtIndexPaths:visible];
+    if (!retyped.empty()) {
+      [self->_collectionView reloadItemsAtIndexPaths:FLMIndexPaths(retyped)];
+    }
+    // Every changed row, so the cells UIKit prepared ahead of the viewport update too.
+    if (!reconfigures.empty()) {
+      [self->_collectionView reconfigureItemsAtIndexPaths:FLMIndexPaths(reconfigures)];
     }
   };
   if (_itemAnimations) {

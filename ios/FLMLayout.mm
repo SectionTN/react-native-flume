@@ -32,9 +32,9 @@
   [self invalidateLayout];
 }
 
-- (void)applyOps:(const flume::ListOps &)ops count:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf
+- (std::vector<int>)applyOps:(const flume::ListOps &)ops count:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf
 {
-  _model.apply(ops, static_cast<int>(count), typeOf);
+  return _model.apply(ops, static_cast<int>(count), typeOf);
 }
 
 - (void)invalidateLengths
