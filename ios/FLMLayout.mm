@@ -154,16 +154,17 @@
   return attributes;
 }
 
+// Any new size lays out again: an inverted list shorter than its viewport sits at the viewport's end.
 - (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds
 {
-  return [self crossLength:newBounds.size] != [self crossLength:_bounds] || !_sticky.empty();
+  return !CGSizeEqualToSize(newBounds.size, _bounds) || !_sticky.empty();
 }
 
 // A scroll with sticky headers moves only the pinned header and the one taking its place.
 - (UICollectionViewLayoutInvalidationContext *)invalidationContextForBoundsChange:(CGRect)newBounds
 {
   UICollectionViewLayoutInvalidationContext *context = [super invalidationContextForBoundsChange:newBounds];
-  if ([self crossLength:newBounds.size] != [self crossLength:_bounds]) {
+  if (!CGSizeEqualToSize(newBounds.size, _bounds)) {
     return context;
   }
   NSMutableArray<NSIndexPath *> *paths = [NSMutableArray array];
