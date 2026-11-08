@@ -3,6 +3,7 @@
 #import <react/renderer/components/FlumeSpec/ComponentDescriptors.h>
 #import <react/renderer/components/FlumeSpec/Props.h>
 #import <react/renderer/components/FlumeSpec/RCTComponentViewHelpers.h>
+#import <React/RCTUtils.h>
 
 #import "FLMCell.h"
 #import "FLMLayout.h"
@@ -57,6 +58,7 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   BOOL _everAttached;
   BOOL _pinToEnd;  // an inverted list opens at its newest row once it has a size
   CGFloat _lastCross;
+  CGFloat _fontScale;  // the font size multiplier the store's text was measured at
   UILongPressGestureRecognizer *_rowLongPress;
 }
 
@@ -178,6 +180,7 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
     return;
   }
   flume::Engine::instance().invalidateMeasures(_storeId);
+  _fontScale = RCTFontSizeMultiplier();
   [_layout invalidateLengths];
   [_collectionView reloadData];
 }
@@ -245,6 +248,12 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   _listener = std::make_unique<FLMStoreListener>(self);
   const float scale = self.traitCollection.displayScale > 0 ? self.traitCollection.displayScale : 1;
   const int count = flume::Engine::instance().attach(_storeId, _listener.get(), std::make_unique<FLMTextMeasurer>(), scale);
+  // A text size change while the list was off screen left its text measured at the old size.
+  const CGFloat fontScale = RCTFontSizeMultiplier();
+  if (_everAttached && fontScale != _fontScale) {
+    flume::Engine::instance().invalidateMeasures(_storeId);
+  }
+  _fontScale = fontScale;
   _attached = YES;
   if (_inverted && !_everAttached) {
     _pinToEnd = YES;
