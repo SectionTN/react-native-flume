@@ -202,8 +202,7 @@
       [super invalidationContextForPreferredLayoutAttributes:preferred withOriginalAttributes:original];
   const int index = static_cast<int>(original.indexPath.item);
   const CGFloat viewport = [self mainLength:_bounds];
-  const CGFloat edge = _config.inverted ? [self viewportStart] + viewport - 0.5 : [self viewportStart];
-  const int anchor = _model.indexAt(edge, viewport);
+  const int anchor = _model.anchorAt([self viewportStart], viewport);
   const CGFloat before = [self mainLength:[self frameOf:index].size];
   const CGFloat length = [self mainLength:preferred.size];
   const CGFloat moved = _model.setLength(index, length, anchor, viewport);

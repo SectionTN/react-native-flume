@@ -4,6 +4,13 @@
 
 namespace flume {
 
+namespace {
+
+// A row edge within half a point of the viewport's edge counts as on it.
+constexpr float kEdgeSlop = 0.5f;
+
+}  // namespace
+
 void ListLayout::configure(const ListLayoutConfig& config, std::vector<int> fullSpan) {
   config_ = config;
   config_.lanes = std::max(1, config.lanes);
@@ -110,6 +117,23 @@ ItemRect ListLayout::rectOf(int index, float listCrossLength, float viewportLeng
 int ListLayout::indexAt(float offset, float viewportLength) const {
   if (rows_.empty()) return -1;
   return rows_[rowAt(offset, viewportLength)].first;
+}
+
+// The first row that starts in the viewport (ends in it, inverted): a row cut by that edge grows out of sight.
+int ListLayout::anchorAt(float viewportStart, float viewportLength) const {
+  if (rows_.empty()) return -1;
+  const int last = static_cast<int>(rows_.size()) - 1;
+  int row;
+  bool cut;
+  if (config_.inverted) {
+    const float end = viewportStart + viewportLength;
+    row = rowAt(end - kEdgeSlop, viewportLength);
+    cut = anchorEdge(row, viewportLength) > end + kEdgeSlop;
+  } else {
+    row = rowAt(viewportStart, viewportLength);
+    cut = startOf(row, viewportLength) < viewportStart - kEdgeSlop;
+  }
+  return rows_[cut && row < last ? row + 1 : row].first;
 }
 
 std::vector<int> ListLayout::itemsIn(float start, float end, float viewportLength) const {

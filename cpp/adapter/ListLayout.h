@@ -46,6 +46,8 @@ class ListLayout {
   float crossLength(int index, float listCrossLength) const;  // the size a cell binds at across the scroll axis
   ItemRect rectOf(int index, float listCrossLength, float viewportLength) const;
   int indexAt(float offset, float viewportLength) const;
+  // The item whose edge stays put while rows measure, for setLength.
+  int anchorAt(float viewportStart, float viewportLength) const;
   std::vector<int> itemsIn(float start, float end, float viewportLength) const;
   std::optional<Pinned> pinned(const std::vector<int>& sticky, float viewportStart, float viewportLength) const;
 

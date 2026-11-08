@@ -233,3 +233,21 @@ TEST_CASE("short inverted content does not move the anchor") {
   CHECK(layout.setLength(0, 150, 0, 1000) == 0);
   CHECK(layout.setLength(2, 150, 0, 1000) == 0);
 }
+
+TEST_CASE("a row cut by the top edge is not the anchor, so it grows out of sight") {
+  ListLayout layout = measured(10, 100);
+  CHECK(layout.anchorAt(300, 1000) == 3);
+  CHECK(layout.anchorAt(250, 1000) == 3);
+  CHECK(layout.setLength(2, 150, layout.anchorAt(250, 1000), 1000) == 50);
+}
+
+TEST_CASE("inverted: a row cut by the bottom edge is not the anchor, so it grows out of sight") {
+  ListLayout layout = inverted(20, 100);
+  CHECK(layout.anchorAt(950, 1000) == 1);
+  CHECK(layout.setLength(0, 150, layout.anchorAt(950, 1000), 1000) == 0);
+}
+
+TEST_CASE("inverted: the newest row ending at the viewport's end stays the anchor") {
+  ListLayout layout = inverted(20, 100);
+  CHECK(layout.anchorAt(1000, 1000) == 0);
+}
