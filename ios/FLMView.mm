@@ -548,8 +548,8 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
       [self->_collectionView reconfigureItemsAtIndexPaths:FLMIndexPaths(reconfigures)];
     }
   };
-  // An animated batch while the list is dragged or decelerating draws its rows twice for a few frames.
-  if (_itemAnimations && !_collectionView.isDragging && !_collectionView.isDecelerating) {
+  // While the list moves on its own an animated batch draws its rows twice, or slides them out of view under a glide.
+  if (_itemAnimations && !_collectionView.isDragging && !_collectionView.isDecelerating && !_pendingTarget) {
     update();
   } else {
     [UIView performWithoutAnimation:update];
