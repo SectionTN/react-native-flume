@@ -406,6 +406,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   if (self.window != nil) {
     [self attach];
   } else {
+    _pendingTarget.reset();
     [self emitScrollEvents:_scrollEvents.leftWindow() velocity:CGPointZero];
     [self detach];
   }
@@ -551,6 +552,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
     [UIView performWithoutAnimation:update];
   }
   if (anchor.outcome == flume::AnchorOutcome::ScrollToEdge) {
+    _pendingTarget.reset();
     [self scrollTo:[_layout offsetForVisualEdge:anchor.edge] animated:anchor.animated];
   }
 }
@@ -652,6 +654,13 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   if (_emitScrollEvents && _scrollEvents.scrolled(CACurrentMediaTime() * 1000)) {
     [self emitScrollEvents:std::vector<flume::ScrollEventKind>{flume::ScrollEventKind::Scroll} velocity:CGPointZero];
   }
+}
+
+// The status bar tap's own animation ends in scrollViewDidScrollToTop:, never in a command's re-land.
+- (BOOL)scrollViewShouldScrollToTop:(UIScrollView *)scrollView
+{
+  _pendingTarget.reset();
+  return YES;
 }
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
@@ -872,7 +881,9 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 // React Native sends nothing for a move under half a point; an animated scroll's events come from its frames.
 - (void)scrollTo:(CGFloat)offset animated:(BOOL)animated
 {
+  // No animation will end, so no command waits to land again.
   if (std::fabs(offset - [self currentOffset]) <= 0.5) {
+    _pendingTarget.reset();
     return;
   }
   if (animated) {
