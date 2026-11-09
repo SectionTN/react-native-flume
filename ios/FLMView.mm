@@ -20,11 +20,13 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <optional>
 #include <time.h>
 #include <unordered_set>
 
 #include "adapter/BatchUpdates.h"
 #include "adapter/EdgeTracker.h"
+#include "adapter/ScrollTargets.h"
 #include "adapter/Viewability.h"
 #include "bindings/Engine.h"
 
@@ -76,6 +78,14 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   return UIScrollViewKeyboardDismissModeNone;
 }
 
+// An animated command's landing, computed again when its animation ends.
+struct FLMPendingTarget {
+  enum class Kind { Index, Start, End } kind;  // Start and End are the content's edges, padding included
+  int index;
+  double viewPosition;
+  double viewOffset;
+};
+
 flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 {
   switch (mode) {
@@ -126,6 +136,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   FLMKeyboardTaps *_keyboardTaps;
   int _measureHolder;  // binds rows no cell shows, for their lengths; 0 until the first measure
   flume::OpBatch _measureBatch;
+  std::optional<FLMPendingTarget> _pendingTarget;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -605,6 +616,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
+  _pendingTarget.reset();
   [self emitScrollEvents:_scrollEvents.willBeginDragging() velocity:CGPointZero];
   _viewability.interacted = true;
   [self evaluateViewability];
@@ -711,8 +723,18 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   [self emitScrollEvents:_scrollEvents.didEndDecelerating() velocity:CGPointZero];
 }
 
+// Rows measured during the glide can move the target, so an animated command lands on it again.
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
 {
+  if (_pendingTarget && _count > 0) {
+    FLMPendingTarget target = *_pendingTarget;
+    target.index = *flume::clampIndex(target.index, static_cast<int>(_count));
+    const CGFloat offset = [self offsetOf:target];
+    if (std::fabs(offset - [self currentOffset]) > 0.5) {
+      [_collectionView setContentOffset:[self pointAt:offset] animated:NO];
+    }
+  }
+  _pendingTarget.reset();
   [self emitScrollEvents:_scrollEvents.didEndScrollingAnimation() velocity:CGPointZero];
 }
 
@@ -796,17 +818,110 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   RCTFlumeViewHandleCommand(self, commandName, args);
 }
 
-// The scroll commands do nothing on iOS yet.
-- (void)scrollToIndex:(NSInteger)index animated:(BOOL)animated viewPosition:(double)viewPosition viewOffset:(double)viewOffset
+- (CGFloat)currentOffset
 {
+  return _horizontal ? _collectionView.contentOffset.x : _collectionView.contentOffset.y;
 }
 
+- (CGPoint)pointAt:(CGFloat)offset
+{
+  const CGPoint current = _collectionView.contentOffset;
+  return _horizontal ? CGPointMake(offset, current.y) : CGPointMake(current.x, offset);
+}
+
+// React Native sends nothing for a move under half a point; an animated scroll's events come from its frames.
+- (void)scrollTo:(CGFloat)offset animated:(BOOL)animated
+{
+  if (std::fabs(offset - [self currentOffset]) <= 0.5) {
+    return;
+  }
+  if (animated) {
+    _scrollEvents.scrolledProgrammatically(true);
+    [_collectionView setContentOffset:[self pointAt:offset] animated:YES];
+    return;
+  }
+  [_collectionView setContentOffset:[self pointAt:offset] animated:NO];
+  [self emitScrollEvents:_scrollEvents.scrolledProgrammatically(false) velocity:CGPointZero];
+}
+
+// The content start is the visual top, or the bottom when inverted.
+- (CGFloat)offsetOf:(const FLMPendingTarget &)target
+{
+  switch (target.kind) {
+    case FLMPendingTarget::Kind::Start:
+      return [_layout offsetForVisualEdge:_inverted ? flume::VisualEdge::Bottom : flume::VisualEdge::Top];
+    case FLMPendingTarget::Kind::End:
+      return [_layout offsetForVisualEdge:_inverted ? flume::VisualEdge::Top : flume::VisualEdge::Bottom];
+    case FLMPendingTarget::Kind::Index:
+      break;
+  }
+  return [_layout targetOffsetForIndex:target.index viewPosition:target.viewPosition viewOffset:target.viewOffset];
+}
+
+// Past two viewports an animated scroll jumps first, so it glides over measured rows only.
+- (void)scrollToTarget:(const FLMPendingTarget &)target animated:(BOOL)animated
+{
+  _viewability.interacted = true;
+  _pendingTarget.reset();
+  if (!animated) {
+    [self scrollTo:[self offsetOf:target] animated:NO];
+    return;
+  }
+  const CGFloat viewport = [_layout viewportFor:_collectionView.bounds].length;
+  const std::optional<float> near = flume::preJumpOffset(static_cast<float>([self currentOffset]),
+                                                         static_cast<float>([self offsetOf:target]),
+                                                         static_cast<float>(viewport));
+  if (near) {
+    [_collectionView setContentOffset:[self pointAt:*near] animated:NO];
+    [_collectionView layoutIfNeeded];
+  }
+  [_layout measureGlideToIndex:target.index viewPosition:target.viewPosition];
+  const CGFloat offset = [self offsetOf:target];
+  _pendingTarget = target;
+  [self scrollTo:offset animated:YES];
+}
+
+- (void)scrollToIndex:(NSInteger)index animated:(BOOL)animated viewPosition:(double)viewPosition viewOffset:(double)viewOffset
+{
+  if (!_attached || _count == 0) {
+    return;
+  }
+  const int clamped = *flume::clampIndex(static_cast<int>(index), static_cast<int>(_count));
+  [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::Index, clamped, viewPosition, viewOffset}
+              animated:animated];
+}
+
+// The content start lands on measured rows; further offsets stay on the estimates.
 - (void)scrollToOffset:(double)offset animated:(BOOL)animated
 {
+  if (!_attached || _count == 0) {
+    return;
+  }
+  if (offset <= 0) {
+    [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::Start, 0, 0, 0} animated:animated];
+    return;
+  }
+  _viewability.interacted = true;
+  _pendingTarget.reset();
+  const UIEdgeInsets insets = _collectionView.adjustedContentInset;
+  const CGSize content = _collectionView.contentSize;
+  const CGSize bounds = _collectionView.bounds.size;
+  const float contentLength = static_cast<float>(_horizontal ? content.width : content.height);
+  const float boundsLength = static_cast<float>(_horizontal ? bounds.width : bounds.height);
+  const float start = flume::contentStartOffset(static_cast<float>(offset), contentLength, boundsLength, _inverted);
+  [self scrollTo:flume::clampOffset(start, contentLength, boundsLength,
+                                    static_cast<float>(_horizontal ? insets.left : insets.top),
+                                    static_cast<float>(_horizontal ? insets.right : insets.bottom))
+        animated:animated];
 }
 
 - (void)scrollToEnd:(BOOL)animated
 {
+  if (!_attached || _count == 0) {
+    return;
+  }
+  [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::End, static_cast<int>(_count) - 1, 1, 0}
+              animated:animated];
 }
 
 - (void)setNativeRefreshing:(BOOL)refreshing
