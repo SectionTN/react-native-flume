@@ -3,6 +3,7 @@
 #import <react/renderer/components/FlumeSpec/ComponentDescriptors.h>
 #import <react/renderer/components/FlumeSpec/Props.h>
 #import <react/renderer/components/FlumeSpec/RCTComponentViewHelpers.h>
+#import <React/RCTConversions.h>
 #import <React/RCTUtils.h>
 
 #import "FLMCell.h"
@@ -156,7 +157,11 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   const BOOL layout = shape || next.inverted != old.inverted || next.contentPaddingTop != old.contentPaddingTop ||
       next.contentPaddingLeft != old.contentPaddingLeft || next.contentPaddingBottom != old.contentPaddingBottom ||
       next.contentPaddingRight != old.contentPaddingRight || next.estimatedItemSize != old.estimatedItemSize ||
-      next.stickyHeaderIndices != old.stickyHeaderIndices;
+      next.stickyHeaderIndices != old.stickyHeaderIndices || next.separatorSize != old.separatorSize ||
+      next.separatorInsetStart != old.separatorInsetStart || next.separatorInsetEnd != old.separatorInsetEnd;
+  if (next.separatorColor != old.separatorColor) {
+    _layout.separatorColor = RCTUIColorFromSharedColor(next.separatorColor);
+  }
   if (layout) {
     [self configureLayout:next];
   }
@@ -243,6 +248,9 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   config.paddingCrossStart = cross.first;
   config.paddingCrossEnd = cross.second;
   config.estimatedItemLength = props.estimatedItemSize > 0 ? props.estimatedItemSize : -1;
+  config.separator = std::max(0.0, props.separatorSize);
+  config.separatorInsetStart = props.separatorInsetStart;
+  config.separatorInsetEnd = props.separatorInsetEnd;
   std::vector<int> sticky = props.stickyHeaderIndices;
   std::sort(sticky.begin(), sticky.end());
   // A sticky header spans every column of a grid, as on Android.

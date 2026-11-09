@@ -1,5 +1,7 @@
 #import "FLMLayout.h"
 
+#import "FLMLayoutAttributes.h"
+
 #include <cmath>
 
 @implementation FLMLayout {
@@ -78,10 +80,24 @@
 
 - (UICollectionViewLayoutAttributes *)attributesOf:(int)index
 {
-  UICollectionViewLayoutAttributes *attributes =
-      [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:[NSIndexPath indexPathForItem:index inSection:0]];
+  FLMLayoutAttributes *attributes =
+      [FLMLayoutAttributes layoutAttributesForCellWithIndexPath:[NSIndexPath indexPathForItem:index inSection:0]];
   attributes.frame = [self frameOf:index];
+  auto separator = _model.separatorRect(index, [self crossLength:_bounds]);
+  if (separator) {
+    attributes.separatorFrame = CGRectMake(separator->x, separator->y, separator->width, separator->height);
+    attributes.separatorColor = _separatorColor;
+  }
   return attributes;
+}
+
+- (void)setSeparatorColor:(UIColor *)separatorColor
+{
+  if (separatorColor == _separatorColor || [separatorColor isEqual:_separatorColor]) {
+    return;
+  }
+  _separatorColor = separatorColor;
+  [self invalidateLayout];
 }
 
 - (std::optional<flume::Pinned>)pinned
@@ -105,6 +121,11 @@
 }
 
 #pragma mark - UICollectionViewLayout
+
++ (Class)layoutAttributesClass
+{
+  return FLMLayoutAttributes.class;
+}
 
 - (void)prepareLayout
 {

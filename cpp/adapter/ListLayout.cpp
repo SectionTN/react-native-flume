@@ -158,8 +158,9 @@ std::vector<int> ListLayout::itemsIn(float start, float end, float viewportLengt
   const int a = rowAt(start, viewportLength);
   const int b = rowAt(end, viewportLength);
   for (int row = std::min(a, b); row <= std::max(a, b); row++) {
-    const float rowFrom = startOf(row, viewportLength);
-    if (rowFrom >= end || rowFrom + rows_[row].length <= start) continue;
+    // An inverted row's separator sits above it; either way a row whose separator shows is listed.
+    const float rowFrom = startOf(row, viewportLength) - (config_.inverted ? stride(row) - rows_[row].length : 0);
+    if (rowFrom >= end || rowFrom + stride(row) <= start) continue;
     for (int i = 0; i < rows_[row].count; i++) out.push_back(rows_[row].first + i);
   }
   return out;
@@ -183,6 +184,21 @@ std::optional<Pinned> ListLayout::pinned(const std::vector<int>& sticky, float v
   float start = viewportStart;
   if (pusher) start = std::min(start, startOf(rowOf_[*pusher], viewportLength) - items_[*index].length);
   return Pinned{*index, start};
+}
+
+std::optional<ItemRect> ListLayout::separatorRect(int index, float listCrossLength) const {
+  if (index < 0 || index >= count() || config_.separator <= 0) return std::nullopt;
+  const int row = rowOf_[index];
+  if (row + 1 >= static_cast<int>(rows_.size())) return std::nullopt;
+  const ItemRect item = rectOf(index, listCrossLength, 0);
+  const float crossAt = config_.horizontal ? item.y : item.x;
+  const float cross = config_.horizontal ? item.height : item.width;
+  const float from = std::max(0.f, config_.paddingCrossStart + config_.separatorInsetStart - crossAt);
+  const float to = std::min(cross, listCrossLength - config_.paddingCrossEnd - config_.separatorInsetEnd - crossAt);
+  if (to <= from) return std::nullopt;
+  const float main = config_.inverted ? -config_.separator : rows_[row].length;
+  if (config_.horizontal) return ItemRect{main, from, config_.separator, to - from};
+  return ItemRect{from, main, to - from, config_.separator};
 }
 
 bool ListLayout::fullSpan(int index) const { return std::binary_search(fullSpan_.begin(), fullSpan_.end(), index); }
@@ -215,8 +231,13 @@ void ListLayout::updateRow(int row) {
   dirtyFrom_ = std::min(dirtyFrom_, row);
 }
 
+float ListLayout::stride(int row) const {
+  const bool last = row + 1 >= static_cast<int>(rows_.size());
+  return rows_[row].length + (last ? 0 : config_.separator);
+}
+
 float ListLayout::rowStart(int row) const {
-  for (; dirtyFrom_ < row; dirtyFrom_++) starts_[dirtyFrom_ + 1] = starts_[dirtyFrom_] + rows_[dirtyFrom_].length;
+  for (; dirtyFrom_ < row; dirtyFrom_++) starts_[dirtyFrom_ + 1] = starts_[dirtyFrom_] + stride(dirtyFrom_);
   return starts_[row];
 }
 

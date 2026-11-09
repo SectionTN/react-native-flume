@@ -13,6 +13,8 @@ struct FLMViewport {
 @interface FLMLayout : UICollectionViewLayout
 
 - (FLMViewport)viewportFor:(CGRect)bounds;  // the part of the bounds inside the adjusted content insets
+
+@property (nonatomic, strong, nullable) UIColor *separatorColor;  // nil keeps the gap and draws nothing
 - (void)configure:(const flume::ListLayoutConfig &)config fullSpan:(std::vector<int>)fullSpan sticky:(std::vector<int>)sticky;
 - (void)resetWithCount:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf;
 - (std::vector<int>)applyOps:(const flume::ListOps &)ops count:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf;

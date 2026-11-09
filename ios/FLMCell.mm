@@ -2,6 +2,7 @@
 
 #import "FLMBindStats.h"
 #import "FLMCellViews.h"
+#import "FLMLayoutAttributes.h"
 
 #include <memory>
 #include <time.h>
@@ -14,6 +15,7 @@
   flume::OpBatch _batch;
   BOOL _bound;
   BOOL _horizontal;
+  UIView *_separator;  // on the cell itself: the cell tree owns contentView's subviews
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -28,8 +30,23 @@
       }
     };
     _tree = std::make_unique<flume::CellTree>(*_views);
+    _separator = [UIView new];
+    _separator.userInteractionEnabled = NO;
+    _separator.hidden = YES;
+    [self addSubview:_separator];
   }
   return self;
+}
+
+- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+{
+  [super applyLayoutAttributes:layoutAttributes];
+  FLMLayoutAttributes *attributes =
+      [layoutAttributes isKindOfClass:FLMLayoutAttributes.class] ? (FLMLayoutAttributes *)layoutAttributes : nil;
+  const CGRect frame = attributes != nil ? attributes.separatorFrame : CGRectZero;
+  _separator.hidden = CGRectIsEmpty(frame) || attributes.separatorColor == nil;
+  _separator.frame = frame;
+  _separator.backgroundColor = attributes.separatorColor;
 }
 
 - (BOOL)bindStore:(int)storeId index:(NSInteger)index width:(CGFloat)width height:(CGFloat)height horizontal:(BOOL)horizontal

@@ -17,10 +17,13 @@ struct ListLayoutConfig {
   float paddingCrossStart = 0, paddingCrossEnd = 0;
   float estimatedItemLength = -1;  // estimatedItemSize; negative for the per-type mean
   float estimateFloor = 50;
+  float separator = 0;  // the gap after every row but the last, along the scroll axis
+  float separatorInsetStart = 0, separatorInsetEnd = 0;  // across the scroll axis, from the padded edges
 };
 
 struct ItemRect {
   float x, y, width, height;
+  bool operator==(const ItemRect&) const = default;
 };
 
 struct Pinned {
@@ -56,6 +59,8 @@ class ListLayout {
   int anchorAt(float viewportStart, float viewportLength) const;
   std::vector<int> itemsIn(float start, float end, float viewportLength) const;
   std::optional<Pinned> pinned(const std::vector<int>& sticky, float viewportStart, float viewportLength) const;
+  // Relative to the item's origin: the gap after its row in content order, none after the last row.
+  std::optional<ItemRect> separatorRect(int index, float listCrossLength) const;
 
  private:
   struct Item {
@@ -77,6 +82,7 @@ class ListLayout {
   bool fullSpan(int index) const;
   void rebuildRows();
   void updateRow(int row);
+  float stride(int row) const;  // the row's length and the separator after it
   float rowStart(int row) const;  // from the start of item 0, inside the padding
   float startOf(int row, float viewportLength) const;  // in content coordinates
   float anchorEdge(int row, float viewportLength) const;

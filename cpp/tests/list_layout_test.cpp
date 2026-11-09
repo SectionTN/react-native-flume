@@ -283,3 +283,89 @@ TEST_CASE("an inverted list shorter than its viewport keeps its content length")
   CHECK(change.contentMoved == 0);
   CHECK(change.anchorMoved == 0);
 }
+
+namespace {
+
+ListLayoutConfig separated(float size = 2) {
+  ListLayoutConfig config;
+  config.separator = size;
+  return config;
+}
+
+}  // namespace
+
+TEST_CASE("a separator moves the rows after it by its size") {
+  ListLayout layout = measured(4, 50, separated());
+  CHECK(y(layout, 1) == 52);
+  CHECK(y(layout, 3) == 156);
+  CHECK(layout.contentLength(1000) == 206);
+}
+
+TEST_CASE("the last row has no separator") {
+  ListLayout layout = measured(4, 50, separated());
+  CHECK_FALSE(layout.separatorRect(3, 400));
+}
+
+TEST_CASE("a list's separator sits below its row") {
+  ListLayout layout = measured(4, 50, separated());
+  CHECK(*layout.separatorRect(0, 400) == ItemRect{0, 50, 400, 2});
+}
+
+TEST_CASE("an inverted list's separator sits above its row") {
+  ListLayoutConfig config = separated();
+  config.inverted = true;
+  ListLayout layout = measured(4, 50, config);
+  CHECK(*layout.separatorRect(0, 400) == ItemRect{0, -2, 400, 2});
+}
+
+TEST_CASE("a horizontal list's separator sits right of its row") {
+  ListLayoutConfig config = separated();
+  config.horizontal = true;
+  ListLayout layout = measured(4, 50, config);
+  CHECK(*layout.separatorRect(0, 400) == ItemRect{50, 0, 2, 400});
+}
+
+TEST_CASE("an inverted horizontal list's separator sits left of its row") {
+  ListLayoutConfig config = separated();
+  config.horizontal = true;
+  config.inverted = true;
+  ListLayout layout = measured(4, 50, config);
+  CHECK(*layout.separatorRect(0, 400) == ItemRect{-2, 0, 2, 400});
+}
+
+TEST_CASE("the insets keep the line inside the padded cross range") {
+  ListLayoutConfig config = separated();
+  config.paddingCrossStart = 10;
+  config.paddingCrossEnd = 10;
+  config.separatorInsetStart = 16;
+  config.separatorInsetEnd = 8;
+  ListLayout layout = measured(4, 50, config);
+  CHECK(*layout.separatorRect(0, 400) == ItemRect{16, 50, 356, 2});
+}
+
+TEST_CASE("every cell of a grid row carries the row's separator") {
+  ListLayoutConfig config = separated();
+  config.lanes = 2;
+  ListLayout layout = list(4, config);
+  layout.setLength(0, 50, 0);
+  layout.setLength(1, 80, 0);
+  layout.setLength(2, 50, 0);
+  layout.setLength(3, 50, 0);
+  CHECK(*layout.separatorRect(0, 400) == ItemRect{0, 80, 200, 2});
+  CHECK(*layout.separatorRect(1, 400) == ItemRect{0, 80, 200, 2});
+}
+
+TEST_CASE("a partial last grid row has no separator") {
+  ListLayoutConfig config = separated();
+  config.lanes = 2;
+  ListLayout layout = measured(3, 50, config);
+  CHECK_FALSE(layout.separatorRect(2, 400));
+  CHECK(layout.separatorRect(0, 400));
+  CHECK(layout.separatorRect(1, 400));
+}
+
+TEST_CASE("a zero separator reserves nothing") {
+  ListLayout layout = measured(4, 50);
+  CHECK(y(layout, 1) == 50);
+  CHECK_FALSE(layout.separatorRect(0, 400));
+}
