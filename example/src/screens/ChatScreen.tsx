@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Button, Platform, ToastAndroid, View } from 'react-native';
 import { Flume, type FlumeRef, type PressInfo } from 'react-native-flume';
-import { type Chat, dayIndices, makeChats, makeRenderCell } from '../chat';
+import { accentColor, type Chat, dayIndices, makeChats, makeRenderCell } from '../chat';
 
 function blockJs(ms: number) {
   const end = Date.now() + ms;
@@ -120,6 +120,7 @@ export default function ChatScreen() {
           separator={{ size: 1, color: '#dddddd', insetStart: 64 }}
           maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0.2 }}
           refreshing={refreshing}
+          refreshControl={{ tintColor: accentColor(dark) }}
           onRefresh={onRefresh}
           onEndReached={onEndReached}
           onPress={onPress}

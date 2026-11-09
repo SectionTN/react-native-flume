@@ -66,10 +66,12 @@ export function dayIndices(chats: readonly Chat[]): number[] {
   return out;
 }
 
+export const accentColor = (dark: boolean) => (dark ? '#6ea8ff' : '#0066ff');
+
 export function makeRenderCell(dark: boolean) {
   const textColor = dark ? '#eeeeee' : '#111111';
   const timeColor = dark ? '#aaaaaa' : '#666666';
-  const accent = dark ? '#6ea8ff' : '#0066ff';
+  const accent = accentColor(dark);
   const track = dark ? '#3a3a3a' : '#dddddd';
   const bar = dark ? '#1c1c1c' : '#f2f2f2';
   const chip = dark ? '#444444' : '#dddddd';

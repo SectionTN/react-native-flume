@@ -55,12 +55,17 @@ const toast = (message: string) => {
 };
 
 const TAPS = ['never', 'handled', 'always'] as const;
+const DISMISS = ['none', 'on-drag', 'interactive'] as const;
+// iOS only: a bar's worth at the top, and room for a tab bar and more at the bottom.
+const INSETS = { top: 40, bottom: 120 };
 
 export default function ScrollScreen() {
   const rows = useMemo(() => makeRows(), []);
   const [status, setStatus] = useState({ offset: 0, first: -1 });
   const [taps, setTaps] = useState(0);
-  const [onDrag, setOnDrag] = useState(false);
+  const [dismiss, setDismiss] = useState(0);
+  const [insets, setInsets] = useState(false);
+  const [bounce, setBounce] = useState(true);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [fast, setFast] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -97,9 +102,11 @@ export default function ScrollScreen() {
       >
         <Button title={`Taps: ${TAPS[taps]}`} onPress={() => setTaps((t) => (t + 1) % 3)} />
         <Button
-          title={`Dismiss: ${onDrag ? 'on-drag' : 'none'}`}
-          onPress={() => setOnDrag((v) => !v)}
+          title={`Dismiss: ${DISMISS[dismiss]}`}
+          onPress={() => setDismiss((d) => (d + 1) % DISMISS.length)}
         />
+        <Button title={`Insets: ${insets ? 'on' : 'off'}`} onPress={() => setInsets((v) => !v)} />
+        <Button title={`Bounce: ${bounce ? 'on' : 'off'}`} onPress={() => setBounce((v) => !v)} />
         <Button
           title={`Scroll: ${scrollEnabled ? 'on' : 'off'}`}
           onPress={() => setScrollEnabled((v) => !v)}
@@ -147,7 +154,10 @@ export default function ScrollScreen() {
             toast(message);
           }}
           keyboardShouldPersistTaps={TAPS[taps]}
-          keyboardDismissMode={onDrag ? 'on-drag' : 'none'}
+          keyboardDismissMode={DISMISS[dismiss]}
+          contentInset={insets ? INSETS : undefined}
+          scrollIndicatorInsets={insets ? INSETS : undefined}
+          bounces={bounce}
           scrollEnabled={scrollEnabled}
           decelerationRate={fast ? 'fast' : 'normal'}
           refreshing={refreshing}
@@ -159,7 +169,7 @@ export default function ScrollScreen() {
           onScrollEndDrag={() => toast('end drag')}
           onMomentumScrollBegin={() => toast('momentum begin')}
           onMomentumScrollEnd={() => toast('momentum end')}
-          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 250 }}
           onViewableItemsChanged={({ viewableItems }) =>
             setStatus((s) => ({ ...s, first: viewableItems[0]?.index ?? -1 }))
           }
