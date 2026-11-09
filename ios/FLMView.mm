@@ -32,6 +32,41 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   return paths;
 }
 
+// The two inset props are distinct codegen structs with the same fields.
+template <typename Insets>
+UIEdgeInsets FLMEdgeInsets(const Insets &insets)
+{
+  return UIEdgeInsetsMake(insets.top, insets.left, insets.bottom, insets.right);
+}
+
+UIScrollViewContentInsetAdjustmentBehavior FLMInsetAdjustment(FlumeViewContentInsetAdjustmentBehavior behavior)
+{
+  switch (behavior) {
+    case FlumeViewContentInsetAdjustmentBehavior::Automatic:
+      return UIScrollViewContentInsetAdjustmentAutomatic;
+    case FlumeViewContentInsetAdjustmentBehavior::ScrollableAxes:
+      return UIScrollViewContentInsetAdjustmentScrollableAxes;
+    case FlumeViewContentInsetAdjustmentBehavior::Always:
+      return UIScrollViewContentInsetAdjustmentAlways;
+    case FlumeViewContentInsetAdjustmentBehavior::Never:
+      return UIScrollViewContentInsetAdjustmentNever;
+  }
+  return UIScrollViewContentInsetAdjustmentNever;
+}
+
+UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissMode mode)
+{
+  switch (mode) {
+    case FlumeViewKeyboardDismissMode::OnDrag:
+      return UIScrollViewKeyboardDismissModeOnDrag;
+    case FlumeViewKeyboardDismissMode::Interactive:
+      return UIScrollViewKeyboardDismissModeInteractive;
+    case FlumeViewKeyboardDismissMode::None:
+      return UIScrollViewKeyboardDismissModeNone;
+  }
+  return UIScrollViewKeyboardDismissModeNone;
+}
+
 }  // namespace
 
 @interface FLMView () <RCTFlumeViewViewProtocol,
@@ -141,7 +176,53 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   _rowsPressable = next.rowsPressable;
   _collectionView.allowsSelection = _rowsPressable;
   _rowLongPress.enabled = _rowsPressable;
+  [self updateScrollProps:next old:old];
   [super updateProps:props oldProps:oldProps];
+}
+
+// React Native's ScrollView props, straight onto the scroll view.
+- (void)updateScrollProps:(const FlumeViewProps &)next old:(const FlumeViewProps &)old
+{
+  UICollectionView *view = _collectionView;
+  if (next.scrollEnabled != old.scrollEnabled) {
+    view.scrollEnabled = next.scrollEnabled;
+  }
+  if (next.decelerationRate != old.decelerationRate) {
+    view.decelerationRate = static_cast<UIScrollViewDecelerationRate>(next.decelerationRate);
+  }
+  if (next.showsVerticalScrollIndicator != old.showsVerticalScrollIndicator) {
+    view.showsVerticalScrollIndicator = next.showsVerticalScrollIndicator;
+  }
+  if (next.showsHorizontalScrollIndicator != old.showsHorizontalScrollIndicator) {
+    view.showsHorizontalScrollIndicator = next.showsHorizontalScrollIndicator;
+  }
+  if (next.bounces != old.bounces) {
+    view.bounces = next.bounces;
+  }
+  if (next.alwaysBounceVertical != old.alwaysBounceVertical) {
+    view.alwaysBounceVertical = next.alwaysBounceVertical;
+  }
+  if (next.contentInsetAdjustmentBehavior != old.contentInsetAdjustmentBehavior) {
+    view.contentInsetAdjustmentBehavior = FLMInsetAdjustment(next.contentInsetAdjustmentBehavior);
+  }
+  if (next.keyboardDismissMode != old.keyboardDismissMode) {
+    view.keyboardDismissMode = FLMKeyboardDismissMode(next.keyboardDismissMode);
+  }
+  const UIEdgeInsets inset = FLMEdgeInsets(next.contentInset);
+  const UIEdgeInsets oldInset = FLMEdgeInsets(old.contentInset);
+  if (!UIEdgeInsetsEqualToEdgeInsets(inset, oldInset)) {
+    // UIRefreshControl adds its height to the top inset while refreshing, so the prop moves the inset by its change.
+    const UIEdgeInsets current = view.contentInset;
+    view.contentInset = UIEdgeInsetsMake(current.top + inset.top - oldInset.top,
+                                         current.left + inset.left - oldInset.left,
+                                         current.bottom + inset.bottom - oldInset.bottom,
+                                         current.right + inset.right - oldInset.right);
+  }
+  const UIEdgeInsets indicator = FLMEdgeInsets(next.scrollIndicatorInsets);
+  if (!UIEdgeInsetsEqualToEdgeInsets(indicator, FLMEdgeInsets(old.scrollIndicatorInsets))) {
+    view.verticalScrollIndicatorInsets = indicator;
+    view.horizontalScrollIndicatorInsets = indicator;
+  }
 }
 
 - (std::pair<double, double>)crossPadding:(const FlumeViewProps &)props
@@ -169,8 +250,9 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   [_layout configure:config fullSpan:fullSpan sticky:sticky];
   _horizontal = props.horizontal;
   _inverted = props.inverted;
-  _collectionView.alwaysBounceVertical = !_horizontal;
   _collectionView.alwaysBounceHorizontal = _horizontal;
+  // A horizontal strip never takes the status bar tap from the vertical list beside it.
+  _collectionView.scrollsToTop = !_horizontal;
 }
 
 // A new cell size across the scroll axis or a new text size: every row binds and measures again.

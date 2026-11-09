@@ -162,17 +162,40 @@ describe('nativeProps scroll props', () => {
       rowsPressable: false,
     });
   });
+
+  it('keeps a horizontal list from bouncing vertically unless asked', () => {
+    const warn = vi.fn();
+    expect(nativeProps({ data: [], horizontal: true }, warn).alwaysBounceVertical).toBe(false);
+    expect(nativeProps({ data: [] }, warn).alwaysBounceVertical).toBe(true);
+    expect(nativeProps({ data: [], alwaysBounceVertical: false }, warn).alwaysBounceVertical).toBe(
+      false,
+    );
+  });
+
+  it('passes the interactive keyboard dismiss mode through', () => {
+    const warn = vi.fn();
+    expect(
+      nativeProps({ data: [], keyboardDismissMode: 'interactive' }, warn).keyboardDismissMode,
+    ).toBe('interactive');
+  });
 });
 
 describe('nativeProps anchoring', () => {
-  it('passes maintainVisibleContentPosition through', () => {
+  it('sends the anchoring config complete, so an unset threshold never reads as 0', () => {
     const warn = vi.fn();
+    expect(nativeProps({ data: [] }, warn).maintainVisibleContentPosition).toEqual({
+      disabled: false,
+      autoscrollToTopThreshold: -1,
+      autoscrollToBottomThreshold: -1,
+      animateAutoScrollToBottom: true,
+      startRenderingFromBottom: false,
+    });
     expect(
       nativeProps(
-        { data: [], maintainVisibleContentPosition: { autoscrollToBottomThreshold: 0.2 } },
+        { data: [], maintainVisibleContentPosition: { autoscrollToBottomThreshold: 0 } },
         warn,
-      ).maintainVisibleContentPosition,
-    ).toEqual({ autoscrollToBottomThreshold: 0.2 });
+      ).maintainVisibleContentPosition?.autoscrollToBottomThreshold,
+    ).toBe(0);
   });
 });
 

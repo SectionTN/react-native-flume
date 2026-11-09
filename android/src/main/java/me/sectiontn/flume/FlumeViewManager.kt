@@ -229,6 +229,19 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
     view.recycler.isHorizontalScrollBarEnabled = value
   }
 
+  // iOS only.
+  override fun setContentInset(view: FlumeView, value: ReadableMap?) = Unit
+
+  override fun setScrollIndicatorInsets(view: FlumeView, value: ReadableMap?) = Unit
+
+  override fun setContentInsetAdjustmentBehavior(view: FlumeView, value: String?) = Unit
+
+  override fun setBounces(view: FlumeView, value: Boolean) = Unit
+
+  override fun setAlwaysBounceVertical(view: FlumeView, value: Boolean) = Unit
+
+  override fun setRefreshTintColor(view: FlumeView, value: Int?) = Unit
+
   @ReactProp(name = "keyboardDismissMode")
   override fun setKeyboardDismissMode(view: FlumeView, value: String?) {
     view.keyboardDismissOnDrag = value == "on-drag"

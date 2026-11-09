@@ -1,5 +1,6 @@
 import type { ComponentType, ReactElement } from 'react';
 import type {
+  Insets,
   LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -248,7 +249,7 @@ export type FlumeProps<T> = {
   onStartReachedThreshold?: number;
   refreshing?: boolean;
   onRefresh?: () => void;
-  // tintColor is iOS; colors and progressViewOffset drive the Android spinner.
+  // tintColor is iOS, colors are Android; progressViewOffset moves the spinner on both.
   refreshControl?: { tintColor?: string; colors?: string[]; progressViewOffset?: number };
   scrollEnabled?: boolean;
   nestedScrollEnabled?: boolean;
@@ -256,7 +257,14 @@ export type FlumeProps<T> = {
   decelerationRate?: 'normal' | 'fast' | number;
   showsVerticalScrollIndicator?: boolean;
   showsHorizontalScrollIndicator?: boolean;
-  keyboardDismissMode?: 'none' | 'on-drag';
+  // iOS only, as on ScrollView.
+  contentInset?: Insets;
+  scrollIndicatorInsets?: Insets;
+  contentInsetAdjustmentBehavior?: 'automatic' | 'scrollableAxes' | 'never' | 'always';
+  bounces?: boolean;
+  alwaysBounceVertical?: boolean;
+  // interactive is iOS only.
+  keyboardDismissMode?: 'none' | 'on-drag' | 'interactive';
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
   maintainVisibleContentPosition?: MaintainVisibleContentPosition;
   onLayout?: (event: LayoutChangeEvent) => void;

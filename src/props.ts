@@ -49,6 +49,12 @@ export type FlatProps = Pick<
   | 'decelerationRate'
   | 'showsVerticalScrollIndicator'
   | 'showsHorizontalScrollIndicator'
+  | 'contentInset'
+  | 'scrollIndicatorInsets'
+  | 'contentInsetAdjustmentBehavior'
+  | 'bounces'
+  | 'alwaysBounceVertical'
+  | 'refreshTintColor'
   | 'keyboardDismissMode'
   | 'keyboardShouldPersistTaps'
   | 'rowsPressable'
@@ -121,6 +127,19 @@ function viewability(
   return rest;
 }
 
+// Codegen structs read an unset member as 0 on iOS, so every field goes out; -1 is no threshold.
+function anchoring(
+  config: FlumeProps<unknown>['maintainVisibleContentPosition'],
+): NonNullable<FlatProps['maintainVisibleContentPosition']> {
+  return {
+    disabled: config?.disabled === true,
+    autoscrollToTopThreshold: config?.autoscrollToTopThreshold ?? -1,
+    autoscrollToBottomThreshold: config?.autoscrollToBottomThreshold ?? -1,
+    animateAutoScrollToBottom: config?.animateAutoScrollToBottom !== false,
+    startRenderingFromBottom: config?.startRenderingFromBottom === true,
+  };
+}
+
 // React Native's constants: normal is 0.998 and fast 0.99.
 function decelerationRate(rate: 'normal' | 'fast' | number | undefined): number {
   if (rate === 'fast') return 0.99;
@@ -187,9 +206,15 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     decelerationRate: decelerationRate(props.decelerationRate),
     showsVerticalScrollIndicator: props.showsVerticalScrollIndicator !== false,
     showsHorizontalScrollIndicator: props.showsHorizontalScrollIndicator !== false,
-    keyboardDismissMode: props.keyboardDismissMode === 'on-drag' ? 'on-drag' : 'none',
+    contentInset: props.contentInset,
+    scrollIndicatorInsets: props.scrollIndicatorInsets,
+    contentInsetAdjustmentBehavior: props.contentInsetAdjustmentBehavior ?? 'never',
+    bounces: props.bounces !== false,
+    alwaysBounceVertical: props.alwaysBounceVertical ?? !horizontal,
+    refreshTintColor: props.refreshControl?.tintColor,
+    keyboardDismissMode: props.keyboardDismissMode ?? 'none',
     keyboardShouldPersistTaps: props.keyboardShouldPersistTaps ?? 'never',
     rowsPressable: props.onPress !== undefined || props.onLongPress !== undefined,
-    maintainVisibleContentPosition: props.maintainVisibleContentPosition,
+    maintainVisibleContentPosition: anchoring(props.maintainVisibleContentPosition),
   };
 }

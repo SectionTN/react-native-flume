@@ -82,7 +82,27 @@ export interface NativeProps extends ViewProps {
   decelerationRate?: CodegenTypes.WithDefault<CodegenTypes.Double, 0.998>;
   showsVerticalScrollIndicator?: CodegenTypes.WithDefault<boolean, true>;
   showsHorizontalScrollIndicator?: CodegenTypes.WithDefault<boolean, true>;
-  keyboardDismissMode?: CodegenTypes.WithDefault<'none' | 'on-drag', 'none'>;
+  // iOS only: the UIScrollView props of React Native's ScrollView, with its defaults.
+  contentInset?: Readonly<{
+    top?: CodegenTypes.Double;
+    left?: CodegenTypes.Double;
+    bottom?: CodegenTypes.Double;
+    right?: CodegenTypes.Double;
+  }>;
+  scrollIndicatorInsets?: Readonly<{
+    top?: CodegenTypes.Double;
+    left?: CodegenTypes.Double;
+    bottom?: CodegenTypes.Double;
+    right?: CodegenTypes.Double;
+  }>;
+  contentInsetAdjustmentBehavior?: CodegenTypes.WithDefault<
+    'automatic' | 'scrollableAxes' | 'never' | 'always',
+    'never'
+  >;
+  bounces?: CodegenTypes.WithDefault<boolean, true>;
+  alwaysBounceVertical?: CodegenTypes.WithDefault<boolean, true>;
+  refreshTintColor?: ColorValue;
+  keyboardDismissMode?: CodegenTypes.WithDefault<'none' | 'on-drag' | 'interactive', 'none'>;
   keyboardShouldPersistTaps?: CodegenTypes.WithDefault<'always' | 'never' | 'handled', 'never'>;
   // Rows are clickable only when the list has a press handler.
   rowsPressable?: CodegenTypes.WithDefault<boolean, false>;
