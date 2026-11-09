@@ -123,7 +123,9 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   BOOL _rowsPressable;
   BOOL _inverted;
   BOOL _everAttached;
-  BOOL _pinToEnd;  // an inverted list opens at its newest row once it has a size
+  BOOL _openingArmed;  // the opening position waits for rows
+  BOOL _stackFromEnd;
+  int _initialScrollIndex;
   CGFloat _lastCross;
   CGFloat _fontScale;  // the font size multiplier the store's text was measured at
   UILongPressGestureRecognizer *_rowLongPress;
@@ -155,6 +157,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   if (self = [super initWithFrame:frame]) {
     static const auto defaultProps = std::make_shared<const FlumeViewProps>();
     _props = defaultProps;
+    _initialScrollIndex = -1;
     _itemAnimations = YES;
     _registered = [NSMutableSet set];
     _layout = [FLMLayout new];
@@ -215,16 +218,23 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
       next.contentPaddingLeft != old.contentPaddingLeft || next.contentPaddingBottom != old.contentPaddingBottom ||
       next.contentPaddingRight != old.contentPaddingRight || next.estimatedItemSize != old.estimatedItemSize ||
       next.stickyHeaderIndices != old.stickyHeaderIndices || next.separatorSize != old.separatorSize ||
-      next.separatorInsetStart != old.separatorInsetStart || next.separatorInsetEnd != old.separatorInsetEnd;
+      next.separatorInsetStart != old.separatorInsetStart || next.separatorInsetEnd != old.separatorInsetEnd ||
+      next.maintainVisibleContentPosition.startRenderingFromBottom !=
+          old.maintainVisibleContentPosition.startRenderingFromBottom;
   if (next.separatorColor != old.separatorColor) {
     _layout.separatorColor = RCTUIColorFromSharedColor(next.separatorColor);
   }
   if (layout) {
     [self configureLayout:next];
   }
-  if (next.inverted && !old.inverted) {
-    _pinToEnd = YES;
-    [self setNeedsLayout];
+  // Turning inverted on or off keeps item 0 in view.
+  if (next.inverted != old.inverted) {
+    [_layout scheduleOffset:FLMPendingOffset{FLMPendingOffset::Kind::Edge, 0, 0,
+                                             next.inverted ? flume::VisualEdge::Bottom : flume::VisualEdge::Top}];
+  }
+  if (next.initialScrollIndex != old.initialScrollIndex) {
+    _initialScrollIndex = next.initialScrollIndex;
+    _openingArmed = YES;
   }
   if (next.storeId != _storeId) {
     [self detach];
@@ -339,6 +349,8 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   config.separator = std::max(0.0, props.separatorSize);
   config.separatorInsetStart = props.separatorInsetStart;
   config.separatorInsetEnd = props.separatorInsetEnd;
+  config.stackFromEnd =
+      !props.inverted && config.lanes == 1 && props.maintainVisibleContentPosition.startRenderingFromBottom;
   std::vector<int> sticky = props.stickyHeaderIndices;
   std::sort(sticky.begin(), sticky.end());
   // A sticky header spans every column of a grid, as on Android.
@@ -346,6 +358,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   [_layout configure:config fullSpan:fullSpan sticky:sticky];
   _horizontal = props.horizontal;
   _inverted = props.inverted;
+  _stackFromEnd = config.stackFromEnd;
   _collectionView.alwaysBounceHorizontal = _horizontal;
   // A horizontal strip never takes the status bar tap from the vertical list beside it.
   _collectionView.scrollsToTop = !_horizontal;
@@ -379,13 +392,6 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
     if (resized) {
       [self rebind];
     }
-  }
-  if (_pinToEnd && _attached && size.width > 0 && size.height > 0) {
-    _pinToEnd = NO;
-    [_collectionView layoutIfNeeded];
-    const CGSize content = _collectionView.collectionViewLayout.collectionViewContentSize;
-    _collectionView.contentOffset = _horizontal ? CGPointMake(std::max<CGFloat>(0, content.width - size.width), 0)
-                                                : CGPointMake(0, std::max<CGFloat>(0, content.height - size.height));
   }
   [_refresh layoutSubviews];
 }
@@ -435,9 +441,8 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   }
   _fontScale = fontScale;
   _attached = YES;
-  if (_inverted && !_everAttached) {
-    _pinToEnd = YES;
-    [self setNeedsLayout];
+  if (!_everAttached) {
+    _openingArmed = YES;
   }
   // A return to the same rows keeps their lengths, so the offset still shows them; new data starts over.
   if (_everAttached && count == _count) {
@@ -449,6 +454,28 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   _count = count;
   _viewability.invalidate();
   [_collectionView reloadData];
+  [self scheduleOpening];
+}
+
+// FlatList's initialScrollIndex, or the bottom of a list anchored there; an upright list opens at its top as it is.
+- (void)scheduleOpening
+{
+  if (!_openingArmed || _count == 0) {
+    return;
+  }
+  _openingArmed = NO;
+  const std::optional<flume::Landing> landing = flume::openingLanding(_initialScrollIndex, static_cast<int>(_count));
+  FLMPendingOffset pending{FLMPendingOffset::Kind::Edge};
+  if (landing && !landing->contentEnd) {
+    pending = FLMPendingOffset{FLMPendingOffset::Kind::Landing, landing->index, landing->viewPosition};
+  } else if (landing) {
+    pending.edge = _inverted ? flume::VisualEdge::Top : flume::VisualEdge::Bottom;
+  } else if (_inverted || _stackFromEnd) {
+    pending.edge = flume::VisualEdge::Bottom;
+  } else {
+    return;
+  }
+  [_layout scheduleOffset:pending];
 }
 
 - (void)detach
@@ -474,10 +501,12 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   // Keys moved between indices, so the next viewable set counts as changed, as FlatList resets its cache.
   _viewability.invalidate();
   flume::BatchUpdates batch = flume::toBatchUpdates(ops, static_cast<int>(_count));
-  if (batch.reload) {
+  // The first rows reset and reload, so an armed opening lands before any of them binds.
+  if (batch.reload || _count == 0) {
     _count = count;
     [_layout resetWithCount:count typeOf:[self typeOf]];
     [_collectionView reloadData];
+    [self scheduleOpening];
     return;
   }
   __block std::vector<int> retyped;

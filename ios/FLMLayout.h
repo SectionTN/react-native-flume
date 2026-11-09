@@ -11,6 +11,13 @@ struct FLMViewport {
   CGFloat length;
 };
 
+struct FLMPendingOffset {
+  enum class Kind { Landing, Edge } kind;
+  int index = 0;           // Landing
+  float viewPosition = 0;  // Landing
+  flume::VisualEdge edge = flume::VisualEdge::Top;  // Edge
+};
+
 // The collection view layout over the shared ListLayout model: estimates, self-sizing with offset compensation, sticky headers.
 @interface FLMLayout : UICollectionViewLayout
 
@@ -32,5 +39,8 @@ struct FLMViewport {
 - (CGFloat)offsetForVisualEdge:(flume::VisualEdge)edge;
 // Measures the rows between the viewport and the item's landing, capped at the rows nearest the landing.
 - (void)measureGlideToIndex:(NSInteger)index viewPosition:(CGFloat)viewPosition;
+// Applied at the end of the next prepareLayout with rows and a size, so the rows at the wrong end never bind.
+- (void)scheduleOffset:(const FLMPendingOffset &)pending;
+@property (nonatomic, readonly) BOOL hasPendingOffset;
 
 @end

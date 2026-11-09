@@ -19,6 +19,8 @@ struct ListLayoutConfig {
   float estimateFloor = 50;
   float separator = 0;  // the gap after every row but the last, along the scroll axis
   float separatorInsetStart = 0, separatorInsetEnd = 0;  // across the scroll axis, from the padded edges
+  // startRenderingFromBottom on an upright list; short content sits at the end, sizes keep the last row in view.
+  bool stackFromEnd = false;
 };
 
 struct ItemRect {
@@ -67,6 +69,8 @@ class ListLayout {
   int indexAt(float offset, float viewportLength) const;
   // The item whose edge stays put while rows measure, for setLength.
   int anchorAt(float viewportStart, float viewportLength) const;
+  // The edge that stays in place, its bottom when inverted or stacking from the end, in content coordinates.
+  float anchorEdgeOf(int index, float viewportLength) const;
   std::vector<int> itemsIn(float start, float end, float viewportLength) const;
   std::optional<Pinned> pinned(const std::vector<int>& sticky, float viewportStart, float viewportLength) const;
   // Relative to the item's origin: the gap after its row in content order, none after the last row.
@@ -94,6 +98,8 @@ class ListLayout {
   void updateRow(int row);
   float stride(int row) const;  // the row's length and the separator after it
   float rowStart(int row) const;  // from the start of item 0, inside the padding
+  bool bottomAnchored() const { return config_.inverted || config_.stackFromEnd; }
+  float slack(float viewportLength) const;  // the space a short list that stacks from the end leaves above its rows
   float startOf(int row, float viewportLength) const;  // in content coordinates
   float anchorEdge(int row, float viewportLength) const;
   int rowAt(float offset, float viewportLength) const;  // offset in content coordinates

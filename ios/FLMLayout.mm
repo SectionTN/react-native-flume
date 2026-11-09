@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 
 @implementation FLMLayout {
   flume::ListLayout _model;
@@ -17,6 +18,7 @@
   int _measureAnchor;
   float _measureMoved;
   BOOL _measuredAny;
+  std::optional<FLMPendingOffset> _pendingOffset;
 }
 
 - (instancetype)init
@@ -268,12 +270,37 @@
   return FLMLayoutAttributes.class;
 }
 
+- (void)scheduleOffset:(const FLMPendingOffset &)pending
+{
+  _pendingOffset = pending;
+  [self invalidateLayout];
+}
+
+- (BOOL)hasPendingOffset
+{
+  return _pendingOffset.has_value();
+}
+
 - (void)prepareLayout
 {
   [super prepareLayout];
   _preparing = YES;
   _bounds = self.collectionView.bounds.size;
   _viewportLength = [self viewportFor:self.collectionView.bounds].length;
+  if (_pendingOffset && _model.count() > 0 && _viewportLength > 0) {
+    const FLMPendingOffset pending = *_pendingOffset;
+    _pendingOffset.reset();
+    const CGFloat offset = pending.kind == FLMPendingOffset::Kind::Landing
+        ? [self targetOffsetForIndex:pending.index viewPosition:pending.viewPosition viewOffset:0]
+        : [self offsetForVisualEdge:pending.edge];
+    CGPoint point = self.collectionView.contentOffset;
+    if (_config.horizontal) {
+      point.x = offset;
+    } else {
+      point.y = offset;
+    }
+    self.collectionView.contentOffset = point;
+  }
   _preparing = NO;
 }
 

@@ -54,3 +54,10 @@ TEST_CASE("a far target jumps to one viewport before it first") {
   CHECK(*preJumpOffset(9930, 5000, 1000) == 6000);
   CHECK_FALSE(preJumpOffset(3500, 5000, 1000));
 }
+
+TEST_CASE("an initial index past the data opens at the content end") {
+  CHECK(*openingLanding(3, 10) == Landing{3, 0, false});
+  CHECK(openingLanding(40, 10)->contentEnd);
+  CHECK_FALSE(openingLanding(-1, 10));
+  CHECK_FALSE(openingLanding(3, 0));
+}

@@ -379,3 +379,40 @@ TEST_CASE("a grid target past the first column lands on its whole row") {
   CHECK(layout.itemsOfRows(1, 1) == IndexRange{3, 5});
   CHECK(layout.itemsOfRows(2, 2) == IndexRange{6, 6});
 }
+
+TEST_CASE("a short list that stacks from the end sits at the end") {
+  ListLayoutConfig config;
+  config.stackFromEnd = true;
+  ListLayout layout = measured(2, 50, config);
+  CHECK(layout.rectOf(0, 400, 500).y == 400);
+  CHECK(layout.rectOf(1, 400, 500).y == 450);
+  CHECK(layout.contentLength(500) == 500);
+}
+
+TEST_CASE("a long list that stacks from the end starts at the top") {
+  ListLayoutConfig config;
+  config.stackFromEnd = true;
+  ListLayout layout = measured(20, 50, config);
+  CHECK(layout.rectOf(0, 400, 500).y == 0);
+  CHECK(layout.contentLength(500) == 1000);
+}
+
+TEST_CASE("a list that stacks from the end keeps its last row in view") {
+  ListLayoutConfig config;
+  config.stackFromEnd = true;
+  ListLayout layout = measured(20, 50, config);
+  CHECK(layout.anchorAt(100, 300) == 7);
+  CHECK(layout.setLength(3, 70, 7, 300).anchorMoved == 20);
+  ListLayout fresh = measured(20, 50, config);
+  CHECK(fresh.setLength(7, 70, 7, 300).anchorMoved == 20);
+}
+
+TEST_CASE("the anchor edge is the bottom when inverted or stacking from the end") {
+  CHECK(measured(4, 50).anchorEdgeOf(1, 1000) == 50);
+  ListLayoutConfig inverted;
+  inverted.inverted = true;
+  CHECK(measured(4, 50, inverted).anchorEdgeOf(1, 1000) == 950);
+  ListLayoutConfig stacked;
+  stacked.stackFromEnd = true;
+  CHECK(measured(4, 50, stacked).anchorEdgeOf(1, 1000) == 900);
+}

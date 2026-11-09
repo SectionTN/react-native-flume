@@ -116,7 +116,7 @@ float ListLayout::estimate(int type) const {
 
 float ListLayout::contentLength(float viewportLength) const {
   const float length = config_.paddingStart + rowStart(static_cast<int>(rows_.size())) + config_.paddingEnd;
-  return config_.inverted ? std::max(viewportLength, length) : length;
+  return bottomAnchored() ? std::max(viewportLength, length) : length;
 }
 
 float ListLayout::crossLength(int index, float listCrossLength) const {
@@ -140,21 +140,25 @@ int ListLayout::indexAt(float offset, float viewportLength) const {
   return rows_[rowAt(offset, viewportLength)].first;
 }
 
-// The first row that starts in the viewport (ends in it, inverted): a row cut by that edge grows out of sight.
+// The first row that starts in the viewport, or the last that ends in it when bottom-anchored; a cut row grows unseen.
 int ListLayout::anchorAt(float viewportStart, float viewportLength) const {
   if (rows_.empty()) return -1;
   const int last = static_cast<int>(rows_.size()) - 1;
-  int row;
-  bool cut;
-  if (config_.inverted) {
+  if (bottomAnchored()) {
     const float end = viewportStart + viewportLength;
-    row = rowAt(end - kEdgeSlop, viewportLength);
-    cut = anchorEdge(row, viewportLength) > end + kEdgeSlop;
-  } else {
-    row = rowAt(viewportStart, viewportLength);
-    cut = startOf(row, viewportLength) < viewportStart - kEdgeSlop;
+    const int row = rowAt(end - kEdgeSlop, viewportLength);
+    if (anchorEdge(row, viewportLength) <= end + kEdgeSlop) return rows_[row].first;
+    // The row above it: the next one inverted, the previous one upright.
+    return rows_[config_.inverted ? std::min(row + 1, last) : std::max(row - 1, 0)].first;
   }
+  const int row = rowAt(viewportStart, viewportLength);
+  const bool cut = startOf(row, viewportLength) < viewportStart - kEdgeSlop;
   return rows_[cut && row < last ? row + 1 : row].first;
+}
+
+float ListLayout::anchorEdgeOf(int index, float viewportLength) const {
+  if (index < 0 || index >= count()) return 0;
+  return anchorEdge(rowOf_[index], viewportLength);
 }
 
 std::vector<int> ListLayout::itemsIn(float start, float end, float viewportLength) const {
@@ -246,21 +250,28 @@ float ListLayout::rowStart(int row) const {
   return starts_[row];
 }
 
+float ListLayout::slack(float viewportLength) const {
+  if (!config_.stackFromEnd) return 0;
+  const float length = config_.paddingStart + rowStart(static_cast<int>(rows_.size())) + config_.paddingEnd;
+  return std::max(0.f, viewportLength - length);
+}
+
 float ListLayout::startOf(int row, float viewportLength) const {
-  if (!config_.inverted) return config_.paddingStart + rowStart(row);
+  if (!config_.inverted) return config_.paddingStart + slack(viewportLength) + rowStart(row);
   return contentLength(viewportLength) - config_.paddingEnd - rowStart(row) - rows_[row].length;
 }
 
 float ListLayout::anchorEdge(int row, float viewportLength) const {
   const float start = startOf(row, viewportLength);
-  return config_.inverted ? start + rows_[row].length : start;
+  return bottomAnchored() ? start + rows_[row].length : start;
 }
 
 int ListLayout::rowAt(float offset, float viewportLength) const {
   const int rows = static_cast<int>(rows_.size());
   rowStart(rows);
   if (!config_.inverted) {
-    auto it = std::upper_bound(starts_.begin(), starts_.begin() + rows, offset - config_.paddingStart);
+    auto it = std::upper_bound(starts_.begin(), starts_.begin() + rows,
+                               offset - config_.paddingStart - slack(viewportLength));
     return std::max(0, static_cast<int>(it - starts_.begin()) - 1);
   }
   // Inverted rows run up from the bottom: the row whose end, measured from item 0's bottom, reaches past the offset.

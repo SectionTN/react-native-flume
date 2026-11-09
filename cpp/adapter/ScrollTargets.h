@@ -26,4 +26,14 @@ IndexRange glideWindow(IndexRange from, IndexRange landing);
 // Past two viewports an animated scroll first jumps to one viewport before its target.
 std::optional<float> preJumpOffset(float current, float target, float viewportLength);
 
+struct Landing {
+  int index;
+  float viewPosition;
+  bool contentEnd;
+  bool operator==(const Landing&) const = default;
+};
+
+// FlatList's initialScrollIndex: none while negative or empty; past the data, the content end.
+std::optional<Landing> openingLanding(int initialIndex, int count);
+
 }  // namespace flume

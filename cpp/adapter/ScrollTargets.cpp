@@ -48,4 +48,10 @@ std::optional<float> preJumpOffset(float current, float target, float viewportLe
   return current < target ? target - viewportLength : target + viewportLength;
 }
 
+std::optional<Landing> openingLanding(int initialIndex, int count) {
+  if (initialIndex < 0 || count <= 0) return std::nullopt;
+  if (initialIndex >= count) return Landing{count - 1, 1, true};
+  return Landing{initialIndex, 0, false};
+}
+
 }  // namespace flume
