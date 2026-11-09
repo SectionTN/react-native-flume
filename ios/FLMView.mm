@@ -20,6 +20,7 @@
 #include <unordered_set>
 
 #include "adapter/BatchUpdates.h"
+#include "adapter/EdgeTracker.h"
 #include "adapter/Viewability.h"
 #include "bindings/Engine.h"
 
@@ -103,6 +104,7 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   BOOL _emitScrollEvents;
   flume::ViewabilityTracker _viewability;
   BOOL _emitViewability;
+  flume::EdgeTracker _edges;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -535,6 +537,32 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
 - (void)listDidLayout
 {
   [self evaluateViewability];
+  [self evaluateEdges];
+}
+
+- (void)evaluateEdges
+{
+  auto emitter = std::static_pointer_cast<const FlumeViewEventEmitter>(_eventEmitter);
+  const CGSize size = _collectionView.bounds.size;
+  if (!_attached || emitter == nullptr || size.width <= 0 || size.height <= 0) {
+    return;
+  }
+  const UIEdgeInsets insets = _collectionView.adjustedContentInset;
+  const CGPoint offset = _collectionView.contentOffset;
+  const CGSize content = _collectionView.contentSize;
+  const flume::EdgeDistances distances = _horizontal
+      ? flume::edgeDistances(offset.x, content.width, size.width, insets.left, insets.right, _inverted)
+      : flume::edgeDistances(offset.y, content.height, size.height, insets.top, insets.bottom, _inverted);
+  const auto &props = static_cast<const FlumeViewProps &>(*_props);
+  const FLMViewport viewport = [_layout viewportFor:_collectionView.bounds];
+  const flume::EdgeHits hits = _edges.update(distances, static_cast<int>(_count), static_cast<float>(viewport.length),
+                                             props.startReachedThreshold, props.endReachedThreshold);
+  if (hits.end) {
+    emitter->onEndReached({hits.distances.fromEnd});
+  }
+  if (hits.start) {
+    emitter->onStartReached({hits.distances.fromStart});
+  }
 }
 
 - (void)evaluateViewability
