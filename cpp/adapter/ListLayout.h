@@ -31,6 +31,12 @@ struct Pinned {
   float start;  // along the scroll axis, in content coordinates
 };
 
+struct IndexRange {
+  int first;
+  int last;  // inclusive; empty when first > last
+  bool operator==(const IndexRange&) const = default;
+};
+
 struct LengthChange {
   float anchorMoved;   // how far the anchor's edge moved along the scroll axis
   float contentMoved;  // how far the content length moved
@@ -49,6 +55,10 @@ class ListLayout {
   LengthChange setLength(int index, float length, int anchor, float viewportLength = 0);
   void invalidateLengths();
   int count() const { return static_cast<int>(items_.size()); }
+  int rowCount() const { return static_cast<int>(rows_.size()); }
+  int rowOf(int index) const { return rowOf_[index]; }
+  float rowLength(int row) const { return rows_[row].length; }
+  IndexRange itemsOfRows(int firstRow, int lastRow) const;
   bool measured(int index) const;
   float estimate(int type) const;
   float contentLength(float viewportLength) const;

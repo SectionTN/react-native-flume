@@ -53,7 +53,7 @@ class FLMRing {
 };
 
 struct FLMStatsState {
-  FLMRing total, worklet, reconcile, layout, apply, measureCalls, measureHits, first;
+  FLMRing total, worklet, reconcile, layout, apply, measureCalls, measureHits, first, measure;
   size_t recycled = 0;
   bool enabled = false;
 };
@@ -98,8 +98,8 @@ int64_t FLMBindStatsPercentile(const std::vector<int64_t> &sorted, double p)
 {
   FLMStatsState &s = FLMState();
   if (enabled) {
-    for (FLMRing *ring :
-         {&s.total, &s.worklet, &s.reconcile, &s.layout, &s.apply, &s.measureCalls, &s.measureHits, &s.first}) {
+    for (FLMRing *ring : {&s.total, &s.worklet, &s.reconcile, &s.layout, &s.apply, &s.measureCalls, &s.measureHits,
+                          &s.first, &s.measure}) {
       ring->clear();
     }
     s.recycled = 0;
@@ -130,9 +130,20 @@ int64_t FLMBindStatsPercentile(const std::vector<int64_t> &sorted, double p)
   }
 }
 
++ (void)recordMeasure:(int64_t)totalNs
+{
+  FLMStatsState &s = FLMState();
+  if (s.enabled) {
+    s.measure.add(totalNs);
+  }
+}
+
 + (void)log
 {
   os_log(OS_LOG_DEFAULT, "%{public}@", self.summary);
+  std::vector<int64_t> measure = FLMState().measure.sorted();
+  os_log(OS_LOG_DEFAULT, "FlumeStats measure n=%zu total p50=%{public}@ p95=%{public}@", measure.size(),
+         FLMMs(FLMBindStatsPercentile(measure, 0.5)), FLMMs(FLMBindStatsPercentile(measure, 0.95)));
 }
 
 + (NSString *)summary

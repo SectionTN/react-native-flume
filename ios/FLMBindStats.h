@@ -13,6 +13,8 @@
 
 // stats: worklet, reconcile and layout ns, measure calls, measure hits, and 1 for a first bind.
 + (void)record:(int64_t)totalNs stats:(const std::array<int64_t, 6> &)stats;
+// A bind that measures a row no cell shows, for a scroll target.
++ (void)recordMeasure:(int64_t)totalNs;
 + (void)log;
 
 @end

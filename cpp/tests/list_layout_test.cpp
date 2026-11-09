@@ -369,3 +369,13 @@ TEST_CASE("a zero separator reserves nothing") {
   CHECK(y(layout, 1) == 50);
   CHECK_FALSE(layout.separatorRect(0, 400));
 }
+
+TEST_CASE("a grid target past the first column lands on its whole row") {
+  ListLayoutConfig config;
+  config.lanes = 3;
+  ListLayout layout = list(7, config);
+  CHECK(layout.rowCount() == 3);
+  CHECK(layout.rowOf(4) == 1);
+  CHECK(layout.itemsOfRows(1, 1) == IndexRange{3, 5});
+  CHECK(layout.itemsOfRows(2, 2) == IndexRange{6, 6});
+}

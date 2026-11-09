@@ -102,6 +102,11 @@ void ListLayout::invalidateLengths() {
 
 bool ListLayout::measured(int index) const { return index >= 0 && index < count() && items_[index].measured; }
 
+IndexRange ListLayout::itemsOfRows(int firstRow, int lastRow) const {
+  if (firstRow > lastRow) return {0, -1};
+  return {rows_[firstRow].first, rows_[lastRow].first + rows_[lastRow].count - 1};
+}
+
 float ListLayout::estimate(int type) const {
   if (config_.estimatedItemLength >= 0) return config_.estimatedItemLength;
   auto it = means_.find(type);

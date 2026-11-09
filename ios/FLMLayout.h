@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "adapter/ListLayout.h"
+#include "adapter/ScrollTargets.h"
 #include "adapter/Viewability.h"
 
 struct FLMViewport {
@@ -23,5 +24,13 @@ struct FLMViewport {
 - (std::vector<int>)applyOps:(const flume::ListOps &)ops count:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf;
 - (void)invalidateLengths;
 - (CGFloat)bindCrossLengthForItem:(NSInteger)index;
+
+@property (nonatomic, copy, nullable) CGFloat (^measureItem)(NSInteger index);  // a worklet row's length, negative for a React row
+// The clamped content offset that lands the item per viewPosition, after measuring the rows the landing shows.
+- (CGFloat)targetOffsetForIndex:(NSInteger)index viewPosition:(CGFloat)viewPosition viewOffset:(CGFloat)viewOffset;
+// The content offset of a visual edge, after measuring the rows it shows; the content end includes the padding.
+- (CGFloat)offsetForVisualEdge:(flume::VisualEdge)edge;
+// Measures the rows between the viewport and the item's landing, capped at the rows nearest the landing.
+- (void)measureGlideToIndex:(NSInteger)index viewPosition:(CGFloat)viewPosition;
 
 @end

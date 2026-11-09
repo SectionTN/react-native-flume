@@ -2,6 +2,7 @@
 
 #import "FLMLayoutAttributes.h"
 
+#include <algorithm>
 #include <cmath>
 
 @implementation FLMLayout {
@@ -11,6 +12,11 @@
   CGSize _bounds;
   CGFloat _viewportLength;  // inside the adjusted insets, as of the last prepareLayout
   int _pinnedIndex;  // the header pinned by the last layout pass, -1 for none
+  BOOL _preparing;  // inside prepareLayout, where measuring leaves the offset to the caller
+  float _measureViewport;  // the measuring session's viewport length
+  int _measureAnchor;
+  float _measureMoved;
+  BOOL _measuredAny;
 }
 
 - (instancetype)init
@@ -133,6 +139,128 @@
   attributes.zIndex = 1;
 }
 
+#pragma mark - Measuring
+
+// A measuring session keeps what is on screen in place: the anchor's summed move shifts the offset once at its end.
+- (void)beginMeasuring
+{
+  const FLMViewport viewport = [self viewportFor:self.collectionView.bounds];
+  _measureViewport = static_cast<float>(viewport.length);
+  _measureAnchor = _model.anchorAt(static_cast<float>(viewport.start), _measureViewport);
+  _measureMoved = 0;
+  _measuredAny = NO;
+}
+
+- (void)measureRows:(flume::IndexRange)rows
+{
+  if (self.measureItem == nil) {
+    return;
+  }
+  for (int row = rows.first; row <= rows.last; row++) {
+    const flume::IndexRange items = _model.itemsOfRows(row, row);
+    for (int index = items.first; index <= items.last; index++) {
+      if (_model.measured(index)) {
+        continue;
+      }
+      const CGFloat length = self.measureItem(index);
+      if (length < 0) {
+        continue;
+      }
+      _measureMoved += _model.setLength(index, static_cast<float>(length), _measureAnchor, _measureViewport).anchorMoved;
+      _measuredAny = YES;
+    }
+  }
+}
+
+- (void)endMeasuring
+{
+  if (!_measuredAny || _preparing) {
+    return;
+  }
+  if (_measureMoved != 0) {
+    CGPoint offset = self.collectionView.contentOffset;
+    if (_config.horizontal) {
+      offset.x += _measureMoved;
+    } else {
+      offset.y += _measureMoved;
+    }
+    self.collectionView.contentOffset = offset;
+  }
+  [self invalidateLayout];
+}
+
+// The walk counts each row with the separator after it.
+- (flume::IndexRange)measureLandingOfRow:(int)row viewPosition:(CGFloat)viewPosition
+{
+  const float separator = _config.separator;
+  const flume::IndexRange rows =
+      flume::landingRows(row, static_cast<float>(viewPosition), _measureViewport, _model.rowCount(), [&](int at) {
+        [self measureRows:flume::IndexRange{at, at}];
+        return _model.rowLength(at) + separator;
+      });
+  [self measureRows:rows];
+  return rows;
+}
+
+// UIScrollView's range on the scroll axis, with the adjusted insets.
+- (CGFloat)clampedOffset:(float)offset
+{
+  const UIEdgeInsets insets = self.collectionView.adjustedContentInset;
+  const CGSize size = self.collectionView.bounds.size;
+  const float content = _model.contentLength(static_cast<float>([self viewportFor:self.collectionView.bounds].length));
+  return flume::clampOffset(offset, content, static_cast<float>([self mainLength:size]),
+                            static_cast<float>(_config.horizontal ? insets.left : insets.top),
+                            static_cast<float>(_config.horizontal ? insets.right : insets.bottom));
+}
+
+- (CGFloat)targetOffsetForIndex:(NSInteger)index viewPosition:(CGFloat)viewPosition viewOffset:(CGFloat)viewOffset
+{
+  const std::optional<int> target = flume::clampIndex(static_cast<int>(index), _model.count());
+  if (!target) {
+    return NAN;
+  }
+  [self beginMeasuring];
+  [self measureLandingOfRow:_model.rowOf(*target) viewPosition:viewPosition];
+  [self endMeasuring];
+  const flume::ItemRect rect = _model.rectOf(*target, [self crossLength:self.collectionView.bounds.size], _measureViewport);
+  const float viewportStart = flume::alignedViewportStart(
+      _config.horizontal ? rect.x : rect.y, _config.horizontal ? rect.width : rect.height, _measureViewport,
+      static_cast<float>(viewPosition), static_cast<float>(viewOffset), _config.inverted);
+  const UIEdgeInsets insets = self.collectionView.adjustedContentInset;
+  return [self clampedOffset:viewportStart - static_cast<float>(_config.horizontal ? insets.left : insets.top)];
+}
+
+- (CGFloat)offsetForVisualEdge:(flume::VisualEdge)edge
+{
+  const bool top = edge == flume::VisualEdge::Top;
+  if (_model.count() > 0) {
+    // Upright, the top shows item 0 at the content start; inverted, the last item at the content end.
+    const bool contentStart = top != _config.inverted;
+    [self beginMeasuring];
+    [self measureLandingOfRow:contentStart ? 0 : _model.rowCount() - 1 viewPosition:contentStart ? 0 : 1];
+    [self endMeasuring];
+  }
+  return [self clampedOffset:top ? -INFINITY : INFINITY];
+}
+
+- (void)measureGlideToIndex:(NSInteger)index viewPosition:(CGFloat)viewPosition
+{
+  const std::optional<int> target = flume::clampIndex(static_cast<int>(index), _model.count());
+  if (!target) {
+    return;
+  }
+  [self beginMeasuring];
+  const FLMViewport viewport = [self viewportFor:self.collectionView.bounds];
+  const float start = static_cast<float>(viewport.start);
+  const std::vector<int> visible = _model.itemsIn(start, start + _measureViewport, _measureViewport);
+  const flume::IndexRange landing = [self measureLandingOfRow:_model.rowOf(*target) viewPosition:viewPosition];
+  if (!visible.empty()) {
+    const auto [low, high] = std::minmax_element(visible.begin(), visible.end());
+    [self measureRows:flume::glideWindow({_model.rowOf(*low), _model.rowOf(*high)}, landing)];
+  }
+  [self endMeasuring];
+}
+
 #pragma mark - UICollectionViewLayout
 
 + (Class)layoutAttributesClass
@@ -143,8 +271,10 @@
 - (void)prepareLayout
 {
   [super prepareLayout];
+  _preparing = YES;
   _bounds = self.collectionView.bounds.size;
   _viewportLength = [self viewportFor:self.collectionView.bounds].length;
+  _preparing = NO;
 }
 
 - (CGSize)collectionViewContentSize

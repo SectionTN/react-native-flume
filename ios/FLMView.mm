@@ -6,6 +6,7 @@
 #import <React/RCTConversions.h>
 #import <React/RCTUtils.h>
 
+#import "FLMBindStats.h"
 #import "FLMCell.h"
 #import "FLMLayout.h"
 #import "FLMCollectionView.h"
@@ -19,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <time.h>
 #include <unordered_set>
 
 #include "adapter/BatchUpdates.h"
@@ -122,6 +124,8 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   flume::EdgeTracker _edges;
   FLMRefresh *_refresh;
   FLMKeyboardTaps *_keyboardTaps;
+  int _measureHolder;  // binds rows no cell shows, for their lengths; 0 until the first measure
+  flume::OpBatch _measureBatch;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -157,6 +161,10 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
                                                     pressableAt:^BOOL(UITouch *touch) {
                                                       return [weakSelf pressableAt:touch];
                                                     }];
+    _layout.measureItem = ^CGFloat(NSInteger index) {
+      FLMView *view = weakSelf;
+      return view != nil ? [view measureItem:index] : -1;
+    };
     _collectionView.backgroundColor = UIColor.clearColor;
     _collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     _collectionView.alwaysBounceVertical = YES;
@@ -539,6 +547,29 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
     }
   }
   return cell;
+}
+
+// A row's length before any cell shows it, bound into a holder of its own; -1 for a React row.
+- (CGFloat)measureItem:(NSInteger)index
+{
+  auto &engine = flume::Engine::instance();
+  if (!_attached || engine.viewType(_storeId, static_cast<int>(index)) % 2 != 0) {
+    return -1;
+  }
+  if (_measureHolder == 0) {
+    _measureHolder = ++_nextHolderId;
+  }
+  const CGFloat cross = [_layout bindCrossLengthForItem:index];
+  const uint64_t start = FLMBindStats.enabled ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
+  if (!engine.bind(_storeId, _measureHolder, static_cast<int>(index), _horizontal ? NAN : cross,
+                   _horizontal ? cross : NAN, _measureBatch)) {
+    return -1;
+  }
+  _holders.insert(_measureHolder);
+  if (start != 0) {
+    [FLMBindStats recordMeasure:static_cast<int64_t>(clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - start)];
+  }
+  return _horizontal ? _measureBatch.rootWidth : _measureBatch.rootHeight;
 }
 
 #pragma mark - UIScrollViewDelegate
