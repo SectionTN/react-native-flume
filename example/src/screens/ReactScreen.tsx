@@ -1,5 +1,14 @@
 import { useMemo, useRef, useState } from 'react';
-import { Button, Pressable, StyleSheet, Text, TextInput, ToastAndroid, View } from 'react-native';
+import {
+  Button,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  ToastAndroid,
+  View,
+} from 'react-native';
 import { type CellInfo, type CellNode, cell, Flume, type FlumeRef } from 'react-native-flume';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { CHIPS, type Chip, makeReactRows, type ReactRow, sectionIndices } from '../reactData';
@@ -16,7 +25,9 @@ function blockJs(ms: number) {
   }
 }
 
-const toast = (message: string) => ToastAndroid.show(message, ToastAndroid.SHORT);
+const toast = (message: string) => {
+  if (Platform.OS === 'android') ToastAndroid.show(message, ToastAndroid.SHORT);
+};
 
 function RowCell({ row, tinted }: { row: ReactRow; tinted: boolean }) {
   return (

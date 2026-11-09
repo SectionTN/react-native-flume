@@ -9,6 +9,7 @@
 #import "FLMCell.h"
 #import "FLMLayout.h"
 #import "FLMCollectionView.h"
+#import "FLMKeyboardTaps.h"
 #import "FLMPressableView.h"
 #import "FLMRefresh.h"
 #import "FLMScrollEvents.h"
@@ -73,6 +74,19 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   return UIScrollViewKeyboardDismissModeNone;
 }
 
+flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
+{
+  switch (mode) {
+    case FlumeViewKeyboardShouldPersistTaps::Always:
+      return flume::KeyboardTaps::Always;
+    case FlumeViewKeyboardShouldPersistTaps::Handled:
+      return flume::KeyboardTaps::Handled;
+    case FlumeViewKeyboardShouldPersistTaps::Never:
+      return flume::KeyboardTaps::Never;
+  }
+  return flume::KeyboardTaps::Never;
+}
+
 }  // namespace
 
 @interface FLMView () <RCTFlumeViewViewProtocol,
@@ -107,6 +121,7 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   BOOL _emitViewability;
   flume::EdgeTracker _edges;
   FLMRefresh *_refresh;
+  FLMKeyboardTaps *_keyboardTaps;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -138,6 +153,10 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
                                             onRefresh:^{
                                               [weakSelf emitRefresh];
                                             }];
+    _keyboardTaps = [[FLMKeyboardTaps alloc] initWithScrollView:_collectionView
+                                                    pressableAt:^BOOL(UITouch *touch) {
+                                                      return [weakSelf pressableAt:touch];
+                                                    }];
     _collectionView.backgroundColor = UIColor.clearColor;
     _collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     _collectionView.alwaysBounceVertical = YES;
@@ -259,6 +278,9 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   }
   if (next.keyboardDismissMode != old.keyboardDismissMode) {
     view.keyboardDismissMode = FLMKeyboardDismissMode(next.keyboardDismissMode);
+  }
+  if (next.keyboardShouldPersistTaps != old.keyboardShouldPersistTaps) {
+    _keyboardTaps.mode = FLMKeyboardTapsMode(next.keyboardShouldPersistTaps);
   }
   const UIEdgeInsets inset = FLMEdgeInsets(next.contentInset);
   const UIEdgeInsets oldInset = FLMEdgeInsets(old.contentInset);
@@ -679,6 +701,33 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   } else {
     emitter->onCellPress({row, key, id});
   }
+}
+
+// A pressable keeps the keyboard in handled mode; a row is one while the list has a press handler.
+- (BOOL)pressableAt:(UITouch *)touch
+{
+  for (UIView *view = touch.view; view != nil && view != _collectionView; view = view.superview) {
+    if ([view isKindOfClass:FLMPressableView.class] || (_rowsPressable && [view isKindOfClass:FLMCell.class])) {
+      return YES;
+    }
+  }
+  return NO;
+}
+
+// In never mode the first tap with the keyboard up only closes it.
+- (BOOL)swallowsTaps
+{
+  return flume::decideTap(_keyboardTaps.mode, _keyboardTaps.keyboardUp, true).swallow;
+}
+
+- (BOOL)collectionView:(UICollectionView *)collectionView shouldHighlightItemAtIndexPath:(NSIndexPath *)indexPath
+{
+  return ![self swallowsTaps];
+}
+
+- (BOOL)collectionView:(UICollectionView *)collectionView shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
+{
+  return ![self swallowsTaps];
 }
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath

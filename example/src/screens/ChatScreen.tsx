@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Button, ToastAndroid, View } from 'react-native';
+import { Button, Platform, ToastAndroid, View } from 'react-native';
 import { Flume, type FlumeRef, type PressInfo } from 'react-native-flume';
 import { type Chat, dayIndices, makeChats, makeRenderCell } from '../chat';
 
@@ -37,7 +37,9 @@ function newChat(n: number): Chat {
 // The counters live with the list so queued presses never reuse an id, a seed or an older batch.
 type ListState = { chats: Chat[]; seed: number; added: number; older: number };
 
-const toast = (message: string) => ToastAndroid.show(message, ToastAndroid.SHORT);
+const toast = (message: string) => {
+  if (Platform.OS === 'android') ToastAndroid.show(message, ToastAndroid.SHORT);
+};
 
 export default function ChatScreen() {
   const ref = useRef<FlumeRef>(null);

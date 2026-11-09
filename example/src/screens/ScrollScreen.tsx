@@ -1,5 +1,5 @@
 import { type FunctionComponent, useCallback, useMemo, useState } from 'react';
-import { Button, Text, TextInput, ToastAndroid, View } from 'react-native';
+import { Button, Platform, Text, TextInput, ToastAndroid, View } from 'react-native';
 import { type CellNode, cell, Flume, type FlumeProps } from 'react-native-flume';
 import Animated, {
   useAnimatedScrollHandler,
@@ -50,7 +50,9 @@ const renderRow = (item: Row): CellNode => {
   ]);
 };
 
-const toast = (message: string) => ToastAndroid.show(message, ToastAndroid.SHORT);
+const toast = (message: string) => {
+  if (Platform.OS === 'android') ToastAndroid.show(message, ToastAndroid.SHORT);
+};
 
 const TAPS = ['never', 'handled', 'always'] as const;
 
@@ -64,6 +66,8 @@ export default function ScrollScreen() {
   const [refreshing, setRefreshing] = useState(false);
   // A pull only counts here: the list must stop its spinner although refreshing never turns on.
   const [pulls, setPulls] = useState(0);
+  // ToastAndroid shows nothing on iOS, so the last press is in the status line too.
+  const [pressed, setPressed] = useState('none');
   const refreshForASecond = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
@@ -109,7 +113,7 @@ export default function ScrollScreen() {
         style={{ marginHorizontal: 8, padding: 8, borderWidth: 1, borderColor: '#cccccc' }}
       />
       <Text style={{ padding: 8 }} testID="scroll-status">
-        offset {status.offset} first viewable {status.first} pulls {pulls}
+        offset {status.offset} first viewable {status.first} pulls {pulls} pressed {pressed}
       </Text>
       <View style={{ flex: 1, overflow: 'hidden' }}>
         <Animated.View
@@ -137,7 +141,11 @@ export default function ScrollScreen() {
           keyExtractor={(r) => r.id}
           renderCell={renderRow}
           contentContainerStyle={{ paddingTop: HEADER_HEIGHT }}
-          onPress={({ item, id }) => toast(id === 'like' ? `like ${item.title}` : item.title)}
+          onPress={({ item, id }) => {
+            const message = id === 'like' ? `like ${item.title}` : item.title;
+            setPressed(message);
+            toast(message);
+          }}
           keyboardShouldPersistTaps={TAPS[taps]}
           keyboardDismissMode={onDrag ? 'on-drag' : 'none'}
           scrollEnabled={scrollEnabled}

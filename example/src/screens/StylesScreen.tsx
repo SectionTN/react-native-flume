@@ -1,4 +1,4 @@
-import { ToastAndroid } from 'react-native';
+import { Platform, ToastAndroid } from 'react-native';
 import { type CellNode, cell, Flume } from 'react-native-flume';
 
 type Showcase = {
@@ -178,7 +178,10 @@ export default function StylesScreen() {
     <Flume
       data={ROWS}
       renderCell={renderCell}
-      onPress={({ item, id }) => ToastAndroid.show(`pressed ${id ?? item.id}`, ToastAndroid.LONG)}
+      onPress={({ item, id }) => {
+        if (Platform.OS === 'android')
+          ToastAndroid.show(`pressed ${id ?? item.id}`, ToastAndroid.LONG);
+      }}
       style={{ flex: 1, backgroundColor: '#fafafa' }}
     />
   );
