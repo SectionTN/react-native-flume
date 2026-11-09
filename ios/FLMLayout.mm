@@ -44,18 +44,46 @@ struct FLMAnchorUpdate {
   return self;
 }
 
+// A new column count or axis keeps the row in view where it was.
 - (void)configure:(const flume::ListLayoutConfig &)config fullSpan:(std::vector<int>)fullSpan sticky:(std::vector<int>)sticky
 {
+  const bool reshaped = config.lanes != _config.lanes || config.horizontal != _config.horizontal;
+  const std::optional<FLMPendingOffset> kept = reshaped ? [self anchorOffset] : std::nullopt;
   _config = config;
   _sticky = std::move(sticky);
   _model.configure(config, std::move(fullSpan));
-  [self invalidateLayout];
+  if (kept) {
+    [self scheduleOffset:*kept];
+  } else {
+    [self invalidateLayout];
+  }
 }
 
+// New rows keep the position in view, as RecyclerView keeps its anchor across notifyDataSetChanged.
 - (void)resetWithCount:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf
 {
+  const std::optional<FLMPendingOffset> kept = [self anchorOffset];
   _model.reset(static_cast<int>(count), typeOf);
-  [self invalidateLayout];
+  if (kept && count > 0) {
+    [self scheduleOffset:*kept];
+  } else {
+    [self invalidateLayout];
+  }
+}
+
+// The anchored row and its edge's distance from the viewport start; none without rows or a viewport.
+- (std::optional<FLMPendingOffset>)anchorOffset
+{
+  const FLMViewport viewport = [self viewportFor:self.collectionView.bounds];
+  const float start = static_cast<float>(viewport.start);
+  const float length = static_cast<float>(viewport.length);
+  const int anchor = length > 0 ? _model.anchorAt(start, length) : -1;
+  if (anchor < 0) {
+    return std::nullopt;
+  }
+  FLMPendingOffset pending{FLMPendingOffset::Kind::Anchor, anchor};
+  pending.anchorDelta = _model.anchorEdgeOf(anchor, length) - start;
+  return pending;
 }
 
 - (std::vector<int>)applyOps:(const flume::ListOps &)ops count:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf
@@ -342,9 +370,23 @@ struct FLMAnchorUpdate {
   if (_pendingOffset && _model.count() > 0 && _viewportLength > 0) {
     const FLMPendingOffset pending = *_pendingOffset;
     _pendingOffset.reset();
-    const CGFloat offset = pending.kind == FLMPendingOffset::Kind::Landing
-        ? [self targetOffsetForIndex:pending.index viewPosition:pending.viewPosition viewOffset:0]
-        : [self offsetForVisualEdge:pending.edge];
+    CGFloat offset = 0;
+    switch (pending.kind) {
+      case FLMPendingOffset::Kind::Landing:
+        offset = [self targetOffsetForIndex:pending.index viewPosition:pending.viewPosition viewOffset:0];
+        break;
+      case FLMPendingOffset::Kind::Edge:
+        offset = [self offsetForVisualEdge:pending.edge];
+        break;
+      case FLMPendingOffset::Kind::Anchor: {
+        const int index = std::min(pending.index, _model.count() - 1);
+        const UIEdgeInsets insets = self.collectionView.adjustedContentInset;
+        const float edge = _model.anchorEdgeOf(index, static_cast<float>(_viewportLength));
+        offset = [self clampedOffset:edge - pending.anchorDelta -
+                                     static_cast<float>(_config.horizontal ? insets.left : insets.top)];
+        break;
+      }
+    }
     CGPoint point = self.collectionView.contentOffset;
     if (_config.horizontal) {
       point.x = offset;

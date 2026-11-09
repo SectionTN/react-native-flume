@@ -13,10 +13,11 @@ struct FLMViewport {
 };
 
 struct FLMPendingOffset {
-  enum class Kind { Landing, Edge } kind;
-  int index = 0;           // Landing
+  enum class Kind { Landing, Edge, Anchor } kind;
+  int index = 0;           // Landing and Anchor
   float viewPosition = 0;  // Landing
   flume::VisualEdge edge = flume::VisualEdge::Top;  // Edge
+  float anchorDelta = 0;  // Anchor: the anchor edge's distance from the viewport start
 };
 
 // The collection view layout over the shared ListLayout model: estimates, self-sizing with offset compensation, sticky headers.

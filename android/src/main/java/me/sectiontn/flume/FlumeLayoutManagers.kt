@@ -113,5 +113,9 @@ data class LayoutShape(val horizontal: Boolean, val numColumns: Int, val inverte
   companion object {
     fun of(horizontal: Boolean, numColumns: Int, inverted: Boolean, startRenderingFromBottom: Boolean) =
       LayoutShape(horizontal, numColumns, inverted, numColumns == 1 && LayoutFlags.stackFromEnd(inverted, startRenderingFromBottom))
+
+    // A column or axis change keeps the first visible item; a new direction or stacking opens at its edge instead.
+    fun keepsPosition(previous: LayoutShape?, next: LayoutShape): Boolean =
+      previous != null && previous.inverted == next.inverted && previous.stackFromEnd == next.stackFromEnd
   }
 }

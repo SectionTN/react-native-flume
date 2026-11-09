@@ -1,7 +1,9 @@
 package me.sectiontn.flume
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LayoutShapeTest {
@@ -23,5 +25,14 @@ class LayoutShapeTest {
     assertNotEquals(LayoutShape.of(false, 1, false, true), LayoutShape.of(false, 1, false, false))
     assertEquals(LayoutShape.of(false, 1, true, true), LayoutShape.of(false, 1, true, false))
     assertEquals(LayoutShape.of(false, 2, false, true), LayoutShape.of(false, 2, false, false))
+  }
+
+  @Test
+  fun aColumnOrAxisChangeKeepsThePositionAndAFlipDoesNot() {
+    val list = LayoutShape.of(horizontal = false, numColumns = 1, inverted = false, startRenderingFromBottom = false)
+    assertTrue(LayoutShape.keepsPosition(list, LayoutShape.of(false, 3, false, false)))
+    assertTrue(LayoutShape.keepsPosition(list, LayoutShape.of(true, 1, false, false)))
+    assertFalse(LayoutShape.keepsPosition(list, LayoutShape.of(false, 1, true, false)))
+    assertFalse(LayoutShape.keepsPosition(null, list))
   }
 }

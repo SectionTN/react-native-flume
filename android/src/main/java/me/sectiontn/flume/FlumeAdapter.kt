@@ -125,7 +125,7 @@ class FlumeAdapter(
   }
 
   // The visually topmost row still in view, with its offset the way the layout manager restores it.
-  private fun anchorState(): AnchorState? {
+  fun anchorState(): AnchorState? {
     val lm = recycler.layoutManager as? LinearLayoutManager ?: return null
     val horizontal = geometry.horizontal
     val padStart = if (horizontal) recycler.paddingLeft else recycler.paddingTop

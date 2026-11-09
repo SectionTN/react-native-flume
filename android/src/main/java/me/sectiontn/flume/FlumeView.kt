@@ -599,6 +599,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private fun rebuildLayoutManager() {
     val next = LayoutShape.of(horizontal, numColumns, inverted, anchorConfig.startRenderingFromBottom)
     if (next == shape) return
+    val kept = if (LayoutShape.keepsPosition(shape, next)) adapter.anchorState() else null
     shape = next
     val orientation = if (horizontal) RecyclerView.HORIZONTAL else RecyclerView.VERTICAL
     layoutManager = if (numColumns > 1) {
@@ -609,6 +610,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     applyDrawDistance()
     hookLayoutManager()
     recycler.layoutManager = layoutManager
+    kept?.let { layoutManager.scrollToPositionWithOffset(it.firstVisiblePosition, it.firstVisibleOffsetPx) }
     adapter.configure(horizontal, numColumns, inverted, paddingPx)
     sticky.refresh(force = true)
   }
