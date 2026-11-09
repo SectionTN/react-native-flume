@@ -232,9 +232,9 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
     [_layout scheduleOffset:FLMPendingOffset{FLMPendingOffset::Kind::Edge, 0, 0,
                                              next.inverted ? flume::VisualEdge::Bottom : flume::VisualEdge::Top}];
   }
+  // Read when rows first arrive, as Android opens on each empty-to-filled change; a later change moves nothing.
   if (next.initialScrollIndex != old.initialScrollIndex) {
     _initialScrollIndex = next.initialScrollIndex;
-    _openingArmed = YES;
   }
   if (next.storeId != _storeId) {
     [self detach];
@@ -504,6 +504,9 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   }
   // Keys moved between indices, so the next viewable set counts as changed, as FlatList resets its cache.
   _viewability.invalidate();
+  if (count == 0) {
+    _openingArmed = YES;
+  }
   flume::BatchUpdates batch = flume::toBatchUpdates(ops, static_cast<int>(_count));
   // The first rows reset and reload, so an armed opening lands before any of them binds.
   if (batch.reload || _count == 0) {
