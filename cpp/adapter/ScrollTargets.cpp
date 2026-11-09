@@ -40,6 +40,16 @@ IndexRange landingRows(int targetRow, float viewPosition, float viewportLength, 
   return {std::max(0, first - kJumpMarginRows), std::min(rowCount - 1, last + kJumpMarginRows)};
 }
 
+IndexRange batchRows(IndexRange visible, float viewportLength, int rowCount,
+                     const std::function<float(int row)>& rowLength) {
+  if (rowCount <= 0) return {0, -1};
+  int first = std::clamp(visible.first, 0, rowCount - 1);
+  for (float covered = 0; first > 0 && covered < viewportLength;) covered += rowLength(--first);
+  int last = std::clamp(visible.last, first, rowCount - 1);
+  for (float covered = 0; last < rowCount - 1 && covered < viewportLength;) covered += rowLength(++last);
+  return {first, last};
+}
+
 IndexRange glideWindow(IndexRange from, IndexRange landing) {
   const IndexRange span{std::min(from.first, landing.first), std::max(from.last, landing.last)};
   if (span.last - span.first + 1 <= kMaxJumpRows) return span;

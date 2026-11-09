@@ -49,6 +49,19 @@ TEST_CASE("a glide keeps the rows nearest the landing") {
   CHECK(glideWindow({0, 11}, {19, 30}) == IndexRange{0, 30});
 }
 
+TEST_CASE("a removal at a chat's newest end finds the row it reveals measured") {
+  CHECK(batchRows({50, 59}, 1000, 100, kRows100) == IndexRange{40, 69});
+}
+
+TEST_CASE("the rows past each edge count their measured lengths") {
+  const std::function<float(int)> rows50 = [](int) { return 50.0f; };
+  CHECK(batchRows({50, 59}, 1000, 100, rows50) == IndexRange{30, 79});
+}
+
+TEST_CASE("the rows a batch can reveal stay inside the list") {
+  CHECK(batchRows({0, 9}, 1000, 15, kRows100) == IndexRange{0, 14});
+}
+
 TEST_CASE("a far target jumps to one viewport before it first") {
   CHECK(*preJumpOffset(0, 5000, 1000) == 4000);
   CHECK(*preJumpOffset(9930, 5000, 1000) == 6000);

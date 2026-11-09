@@ -202,6 +202,12 @@ struct FLMAnchorUpdate {
 
 - (void)measureRows:(flume::IndexRange)rows
 {
+  [self measureRows:rows through:nullptr];
+}
+
+// Before a batch the store already holds the data after its ops, so each item measures the data it will show.
+- (void)measureRows:(flume::IndexRange)rows through:(const flume::ListOps *)ops
+{
   if (self.measureItem == nil) {
     return;
   }
@@ -211,7 +217,11 @@ struct FLMAnchorUpdate {
       if (_model.measured(index)) {
         continue;
       }
-      const CGFloat length = self.measureItem(index);
+      const std::optional<int> data = ops ? flume::mapIndex(*ops, index) : std::optional<int>(index);
+      if (!data) {
+        continue;
+      }
+      const CGFloat length = self.measureItem(*data);
       if (length < 0) {
         continue;
       }
@@ -312,8 +322,29 @@ struct FLMAnchorUpdate {
 
 #pragma mark - Anchoring
 
+// A row that self-sizes inside performBatchUpdates loses its offset adjustment, so the rows a batch can show measure first.
+- (void)measureBatchRowsThrough:(const flume::ListOps &)ops
+{
+  [self beginMeasuring];
+  const FLMViewport viewport = [self viewportFor:self.collectionView.bounds];
+  const float start = static_cast<float>(viewport.start);
+  const std::vector<int> visible = _model.itemsIn(start, start + _measureViewport, _measureViewport);
+  if (!visible.empty()) {
+    const auto [low, high] = std::minmax_element(visible.begin(), visible.end());
+    const flume::IndexRange rows{_model.rowOf(*low), _model.rowOf(*high)};
+    [self measureRows:rows through:&ops];
+    const float separator = _config.separator;
+    flume::batchRows(rows, _measureViewport, _model.rowCount(), [&](int row) {
+      [self measureRows:flume::IndexRange{row, row} through:&ops];
+      return _model.rowLength(row) + separator;
+    });
+  }
+  [self endMeasuring];
+}
+
 - (flume::AnchorDecision)prepareForOps:(const flume::ListOps &)ops count:(NSInteger)count
 {
+  [self measureBatchRowsThrough:ops];
   const FLMViewport viewport = [self viewportFor:self.collectionView.bounds];
   const float start = static_cast<float>(viewport.start);
   const float length = static_cast<float>(viewport.length);

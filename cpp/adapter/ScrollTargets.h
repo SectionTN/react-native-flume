@@ -23,6 +23,9 @@ float offsetAfterViewportChange(bool keepsEnd, float offset, float oldEnd, float
 // The rows a landing shows, two past each side; rowLength may measure the row it is asked for.
 IndexRange landingRows(int targetRow, float viewPosition, float viewportLength, int rowCount,
                        const std::function<float(int row)>& rowLength);
+// The rows a batch can bring into view, one viewport past each edge of the visible rows; rowLength may measure the row.
+IndexRange batchRows(IndexRange visible, float viewportLength, int rowCount,
+                     const std::function<float(int row)>& rowLength);
 // An animated scroll's rows from where it starts to its landing; past the cap, the rows nearest the landing.
 IndexRange glideWindow(IndexRange from, IndexRange landing);
 // Past two viewports an animated scroll first jumps to one viewport before its target.
