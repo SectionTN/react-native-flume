@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "adapter/ContentAnchor.h"
 #include "adapter/ListLayout.h"
 #include "adapter/ScrollTargets.h"
 #include "adapter/Viewability.h"
@@ -42,5 +43,9 @@ struct FLMPendingOffset {
 // Applied at the end of the next prepareLayout with rows and a size, so the rows at the wrong end never bind.
 - (void)scheduleOffset:(const FLMPendingOffset &)pending;
 @property (nonatomic, readonly) BOOL hasPendingOffset;
+
+@property (nonatomic) flume::AnchorConfig anchorConfig;
+// Before performBatchUpdates: records the rows in view and their edges, and decides what the batch keeps.
+- (flume::AnchorDecision)prepareForOps:(const flume::ListOps &)ops count:(NSInteger)count;
 
 @end

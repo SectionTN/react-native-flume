@@ -5,6 +5,19 @@
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include <utility>
+
+namespace {
+
+// A batch update's anchor: the offset before it and the rows in view with their edges, the anchored row first.
+struct FLMAnchorUpdate {
+  flume::ListOps ops;
+  flume::AnchorOutcome outcome;
+  CGFloat offset;
+  std::vector<std::pair<int, float>> items;
+};
+
+}  // namespace
 
 @implementation FLMLayout {
   flume::ListLayout _model;
@@ -19,6 +32,8 @@
   float _measureMoved;
   BOOL _measuredAny;
   std::optional<FLMPendingOffset> _pendingOffset;
+  std::optional<FLMAnchorUpdate> _update;
+  CGFloat _appearShift;  // the anchored offset minus the one UIKit proposed, during an update
 }
 
 - (instancetype)init
@@ -263,6 +278,43 @@
   [self endMeasuring];
 }
 
+#pragma mark - Anchoring
+
+- (flume::AnchorDecision)prepareForOps:(const flume::ListOps &)ops count:(NSInteger)count
+{
+  const FLMViewport viewport = [self viewportFor:self.collectionView.bounds];
+  const float start = static_cast<float>(viewport.start);
+  const float length = static_cast<float>(viewport.length);
+  const CGPoint offset = self.collectionView.contentOffset;
+  FLMAnchorUpdate update{ops, flume::AnchorOutcome::KeepAnchor, _config.horizontal ? offset.x : offset.y, {}};
+  const int anchor = _model.anchorAt(start, length);
+  if (anchor >= 0) {
+    std::vector<int> visible = _model.itemsIn(start, start + length, length);
+    // From the anchored edge: item order for upright and inverted lists, reversed for one stacked from its end.
+    std::sort(visible.begin(), visible.end());
+    if (_config.stackFromEnd) {
+      std::reverse(visible.begin(), visible.end());
+    }
+    update.items.emplace_back(anchor, _model.anchorEdgeOf(anchor, length));
+    for (int index : visible) {
+      if (index != anchor) {
+        update.items.emplace_back(index, _model.anchorEdgeOf(index, length));
+      }
+    }
+  }
+  const UIEdgeInsets insets = self.collectionView.adjustedContentInset;
+  const float low = -static_cast<float>(_config.horizontal ? insets.left : insets.top);
+  const float high = [self clampedOffset:INFINITY];
+  const float current = static_cast<float>(update.offset);
+  const flume::AnchorState state{std::max(0.f, current - low), std::max(0.f, high - current), length};
+  const flume::EdgeInserts edges = flume::insertedAtEdges(ops, static_cast<int>(count), _config.inverted);
+  const flume::AnchorDecision decision = flume::decideAnchor(_anchorConfig, state, edges.visualTop, edges.visualBottom);
+  update.outcome = decision.outcome;
+  _update = std::move(update);
+  _appearShift = 0;
+  return decision;
+}
+
 #pragma mark - UICollectionViewLayout
 
 + (Class)layoutAttributesClass
@@ -405,6 +457,50 @@
   context.contentOffsetAdjustment = _config.horizontal ? CGPointMake(moved, 0) : CGPointMake(0, moved);
   context.contentSizeAdjustment = _config.horizontal ? CGSizeMake(grown, 0) : CGSizeMake(0, grown);
   return context;
+}
+
+// A batch keeps the first recorded row that survives it where it was.
+- (CGPoint)targetContentOffsetForProposedContentOffset:(CGPoint)proposed
+{
+  if (!_update || _update->outcome == flume::AnchorOutcome::KeepOffset) {
+    return proposed;
+  }
+  const float length = static_cast<float>([self viewportFor:self.collectionView.bounds].length);
+  for (const auto &[index, edge] : _update->items) {
+    const std::optional<int> now = flume::mapIndex(_update->ops, index);
+    if (!now || *now >= _model.count()) {
+      continue;
+    }
+    const CGFloat target =
+        [self clampedOffset:static_cast<float>(_update->offset) + _model.anchorEdgeOf(*now, length) - edge];
+    _appearShift = target - (_config.horizontal ? proposed.x : proposed.y);
+    return _config.horizontal ? CGPointMake(target, proposed.y) : CGPointMake(proposed.x, target);
+  }
+  return proposed;
+}
+
+// Rows that come into view because the offset moved start where the old offset showed them.
+- (UICollectionViewLayoutAttributes *)initialLayoutAttributesForAppearingItemAtIndexPath:(NSIndexPath *)indexPath
+{
+  if (_appearShift == 0) {
+    return nil;
+  }
+  UICollectionViewLayoutAttributes *attributes = [[self layoutAttributesForItemAtIndexPath:indexPath] copy];
+  CGRect frame = attributes.frame;
+  if (_config.horizontal) {
+    frame.origin.x -= _appearShift;
+  } else {
+    frame.origin.y -= _appearShift;
+  }
+  attributes.frame = frame;
+  return attributes;
+}
+
+- (void)finalizeCollectionViewUpdates
+{
+  [super finalizeCollectionViewUpdates];
+  _update.reset();
+  _appearShift = 0;
 }
 
 @end

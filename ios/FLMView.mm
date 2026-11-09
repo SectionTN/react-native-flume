@@ -253,6 +253,10 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   if (next.scrollEventThrottle != old.scrollEventThrottle) {
     _scrollEvents.setThrottleMs(next.scrollEventThrottle);
   }
+  const auto &anchoring = next.maintainVisibleContentPosition;
+  _layout.anchorConfig = flume::AnchorConfig{anchoring.disabled, anchoring.autoscrollToTopThreshold,
+                                             anchoring.autoscrollToBottomThreshold,
+                                             anchoring.animateAutoScrollToBottom};
   _itemAnimations = next.itemAnimations;
   _rowsPressable = next.rowsPressable;
   _collectionView.allowsSelection = _rowsPressable;
@@ -509,6 +513,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
     [self scheduleOpening];
     return;
   }
+  const flume::AnchorDecision anchor = [_layout prepareForOps:ops count:count];
   __block std::vector<int> retyped;
   void (^update)(void) = ^{
     [self->_collectionView performBatchUpdates:^{
@@ -541,6 +546,9 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
     update();
   } else {
     [UIView performWithoutAnimation:update];
+  }
+  if (anchor.outcome == flume::AnchorOutcome::ScrollToEdge) {
+    [self scrollTo:[_layout offsetForVisualEdge:anchor.edge] animated:anchor.animated];
   }
 }
 
