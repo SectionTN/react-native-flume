@@ -8,6 +8,7 @@
 
 #import "FLMCell.h"
 #import "FLMLayout.h"
+#import "FLMCollectionView.h"
 #import "FLMPressableView.h"
 #import "FLMScrollEvents.h"
 #import "FLMStoreListener.h"
@@ -19,6 +20,7 @@
 #include <unordered_set>
 
 #include "adapter/BatchUpdates.h"
+#include "adapter/Viewability.h"
 #include "bindings/Engine.h"
 
 using namespace facebook::react;
@@ -78,7 +80,7 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
 @end
 
 @implementation FLMView {
-  UICollectionView *_collectionView;
+  FLMCollectionView *_collectionView;
   FLMLayout *_layout;
   UIView *_children;  // Fabric children, kept out of sight
   std::unique_ptr<FLMStoreListener> _listener;
@@ -99,6 +101,8 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   UILongPressGestureRecognizer *_rowLongPress;
   flume::ScrollEvents _scrollEvents;
   BOOL _emitScrollEvents;
+  flume::ViewabilityTracker _viewability;
+  BOOL _emitViewability;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -121,7 +125,11 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
     _registered = [NSMutableSet set];
     _layout = [FLMLayout new];
     [_layout configure:flume::ListLayoutConfig() fullSpan:std::vector<int>() sticky:std::vector<int>()];
-    _collectionView = [[UICollectionView alloc] initWithFrame:self.bounds collectionViewLayout:_layout];
+    _collectionView = [[FLMCollectionView alloc] initWithFrame:self.bounds collectionViewLayout:_layout];
+    __weak FLMView *weakSelf = self;
+    _collectionView.didLayout = ^{
+      [weakSelf listDidLayout];
+    };
     _collectionView.backgroundColor = UIColor.clearColor;
     _collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     _collectionView.alwaysBounceVertical = YES;
@@ -181,6 +189,11 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
     [self rebind];
   }
   _emitScrollEvents = next.emitScrollEvents;
+  _emitViewability = next.emitViewabilityEvents;
+  const auto &viewability = next.viewabilityConfig;
+  _viewability.config = flume::ViewabilityConfig{viewability.itemVisiblePercentThreshold,
+                                                 viewability.viewAreaCoveragePercentThreshold,
+                                                 viewability.minimumViewTime, viewability.waitForInteraction};
   if (next.scrollEventThrottle != old.scrollEventThrottle) {
     _scrollEvents.setThrottleMs(next.scrollEventThrottle);
   }
@@ -365,6 +378,7 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   }
   _everAttached = YES;
   _count = count;
+  _viewability.invalidate();
   [_collectionView reloadData];
 }
 
@@ -388,6 +402,8 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   if (!_attached) {
     return;
   }
+  // Keys moved between indices, so the next viewable set counts as changed, as FlatList resets its cache.
+  _viewability.invalidate();
   flume::BatchUpdates batch = flume::toBatchUpdates(ops, static_cast<int>(_count));
   if (batch.reload) {
     _count = count;
@@ -509,6 +525,61 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
   [self emitScrollEvents:_scrollEvents.willBeginDragging() velocity:CGPointZero];
+  _viewability.interacted = true;
+  [self evaluateViewability];
+}
+
+#pragma mark - List events
+
+// After every layout pass, scroll frames included.
+- (void)listDidLayout
+{
+  [self evaluateViewability];
+}
+
+- (void)evaluateViewability
+{
+  if (!_emitViewability || !_attached) {
+    return;
+  }
+  const FLMViewport viewport = [_layout viewportFor:_collectionView.bounds];
+  const std::vector<int> viewable = _viewability.compute(static_cast<float>(viewport.length), [_layout spansIn:viewport]);
+  const int storeId = _storeId;
+  auto keyed =
+      _viewability.keyed(viewable, [storeId](int index) { return flume::Engine::instance().keyAt(storeId, index); });
+  if (!keyed) {
+    return;
+  }
+  const double delayMs = _viewability.config.minimumViewTimeMs;
+  if (delayMs <= 0) {
+    [self emitViewability:_viewability.report(*keyed)];
+    return;
+  }
+  __weak FLMView *weakSelf = self;
+  const std::vector<flume::ViewToken> scheduled = *keyed;
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, static_cast<int64_t>(delayMs * NSEC_PER_MSEC)),
+                 dispatch_get_main_queue(), ^{
+                   FLMView *view = weakSelf;
+                   if (view != nil && view->_attached) {
+                     [view emitViewability:view->_viewability.reportDelayed(scheduled)];
+                   }
+                 });
+}
+
+- (void)emitViewability:(const std::optional<flume::ViewabilityReport> &)report
+{
+  auto emitter = std::static_pointer_cast<const FlumeViewEventEmitter>(_eventEmitter);
+  if (!report || emitter == nullptr) {
+    return;
+  }
+  FlumeViewEventEmitter::OnViewableItemsChanged event;
+  for (const flume::ViewToken &token : report->viewable) {
+    event.viewable.push_back({token.index, token.key, true});
+  }
+  for (const flume::ViewableChange &change : report->changed) {
+    event.changed.push_back({change.token.index, change.token.key, change.isViewable});
+  }
+  emitter->onViewableItemsChanged(event);
 }
 
 - (void)scrollViewWillEndDragging:(UIScrollView *)scrollView

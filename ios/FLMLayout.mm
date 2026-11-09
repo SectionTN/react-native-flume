@@ -72,6 +72,19 @@
   return FLMViewport{origin + start, std::max<CGFloat>(0, [self mainLength:bounds.size] - start - end)};
 }
 
+- (std::vector<flume::ItemSpan>)spansIn:(FLMViewport)viewport
+{
+  std::vector<flume::ItemSpan> spans;
+  const float start = static_cast<float>(viewport.start);
+  for (int index : _model.itemsIn(start, start + static_cast<float>(viewport.length), _viewportLength)) {
+    const CGRect frame = [self frameOf:index];
+    const CGFloat from = _config.horizontal ? CGRectGetMinX(frame) : CGRectGetMinY(frame);
+    const CGFloat to = _config.horizontal ? CGRectGetMaxX(frame) : CGRectGetMaxY(frame);
+    spans.push_back(flume::ItemSpan{index, static_cast<float>(from) - start, static_cast<float>(to) - start});
+  }
+  return spans;
+}
+
 - (CGRect)frameOf:(int)index
 {
   flume::ItemRect rect = _model.rectOf(index, [self crossLength:_bounds], _viewportLength);
