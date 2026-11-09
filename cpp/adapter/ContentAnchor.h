@@ -19,6 +19,7 @@ struct AnchorState {
   float distanceToVisualTop;
   float distanceToVisualBottom;
   float viewportLength;
+  bool positionPending = false;  // an opening or kept position still waits for the next layout pass
 };
 
 enum class AnchorOutcome { KeepOffset, KeepAnchor, ScrollToEdge };
@@ -29,7 +30,7 @@ struct AnchorDecision {
   bool animated = false;
 };
 
-// disabled keeps the offset; an insert at a near visual edge scrolls there, the bottom first; otherwise the anchor stays.
+// disabled or a pending position keeps the offset; a near visual edge insert scrolls there, the bottom first; else the anchor stays.
 AnchorDecision decideAnchor(const AnchorConfig& config, const AnchorState& before, bool insertedAtVisualTop,
                             bool insertedAtVisualBottom);
 // Where an old index is after the ops, replayed as ListLayout::apply replays them; nullopt when removed.

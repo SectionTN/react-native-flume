@@ -33,6 +33,7 @@ struct FLMAnchorUpdate {
   BOOL _measuredAny;
   std::optional<FLMPendingOffset> _pendingOffset;
   std::optional<FLMAnchorUpdate> _update;
+  BOOL _updating;  // between prepareForCollectionViewUpdates: and finalizeCollectionViewUpdates
   CGFloat _appearShift;  // the anchored offset minus the one UIKit proposed, during an update
 }
 
@@ -62,7 +63,8 @@ struct FLMAnchorUpdate {
 // New rows keep the position in view, as RecyclerView keeps its anchor across notifyDataSetChanged.
 - (void)resetWithCount:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf
 {
-  const std::optional<FLMPendingOffset> kept = [self anchorOffset];
+  // A position still waiting for layout wins: the offset it would anchor on is the one before it lands.
+  const std::optional<FLMPendingOffset> kept = _pendingOffset ? _pendingOffset : [self anchorOffset];
   _model.reset(static_cast<int>(count), typeOf);
   if (kept && count > 0) {
     [self scheduleOffset:*kept];
@@ -334,7 +336,12 @@ struct FLMAnchorUpdate {
   const float low = -static_cast<float>(_config.horizontal ? insets.left : insets.top);
   const float high = [self clampedOffset:INFINITY];
   const float current = static_cast<float>(update.offset);
-  const flume::AnchorState state{std::max(0.f, current - low), std::max(0.f, high - current), length};
+  const flume::AnchorState state{std::max(0.f, current - low), std::max(0.f, high - current), length,
+                                 _pendingOffset.has_value()};
+  // A kept position follows its row through the ops.
+  if (_pendingOffset && _pendingOffset->kind == FLMPendingOffset::Kind::Anchor) {
+    _pendingOffset->index = flume::mapIndex(ops, _pendingOffset->index).value_or(_pendingOffset->index);
+  }
   const flume::EdgeInserts edges = flume::insertedAtEdges(ops, static_cast<int>(count), _config.inverted);
   const flume::AnchorDecision decision = flume::decideAnchor(_anchorConfig, state, edges.visualTop, edges.visualBottom);
   update.outcome = decision.outcome;
@@ -504,7 +511,7 @@ struct FLMAnchorUpdate {
 // A batch keeps the first recorded row that survives it where it was.
 - (CGPoint)targetContentOffsetForProposedContentOffset:(CGPoint)proposed
 {
-  if (!_update || _update->outcome == flume::AnchorOutcome::KeepOffset) {
+  if (!_updating || !_update || _update->outcome == flume::AnchorOutcome::KeepOffset) {
     return proposed;
   }
   const float length = static_cast<float>([self viewportFor:self.collectionView.bounds].length);
@@ -538,9 +545,16 @@ struct FLMAnchorUpdate {
   return attributes;
 }
 
+- (void)prepareForCollectionViewUpdates:(NSArray<UICollectionViewUpdateItem *> *)updateItems
+{
+  [super prepareForCollectionViewUpdates:updateItems];
+  _updating = YES;
+}
+
 - (void)finalizeCollectionViewUpdates
 {
   [super finalizeCollectionViewUpdates];
+  _updating = NO;
   _update.reset();
   _appearShift = 0;
 }

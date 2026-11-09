@@ -21,6 +21,13 @@ TEST_CASE("disabled keeps the offset") {
   CHECK(decideAnchor(config, at(500, 0), false, true).outcome == AnchorOutcome::KeepOffset);
 }
 
+TEST_CASE("a batch before the opening lands keeps the offset the opening will set") {
+  AnchorConfig config;
+  config.autoscrollToBottomThreshold = 0.2;
+  const AnchorState pending{0, 50000, 1000, true};
+  CHECK(decideAnchor(config, pending, true, true).outcome == AnchorOutcome::KeepOffset);
+}
+
 TEST_CASE("an insert at the bottom within the threshold scrolls there") {
   AnchorConfig config;
   config.autoscrollToBottomThreshold = 0.2;

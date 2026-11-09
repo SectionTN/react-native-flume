@@ -4,7 +4,7 @@ namespace flume {
 
 AnchorDecision decideAnchor(const AnchorConfig& config, const AnchorState& before, bool insertedAtVisualTop,
                             bool insertedAtVisualBottom) {
-  if (config.disabled) return {AnchorOutcome::KeepOffset};
+  if (config.disabled || before.positionPending) return {AnchorOutcome::KeepOffset};
   const double bottom = config.autoscrollToBottomThreshold;
   if (bottom >= 0 && insertedAtVisualBottom && before.distanceToVisualBottom <= bottom * before.viewportLength) {
     return {AnchorOutcome::ScrollToEdge, VisualEdge::Bottom, config.animateAutoScrollToBottom};
