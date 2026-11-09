@@ -90,6 +90,8 @@ struct FLMAnchorUpdate {
 
 - (std::vector<int>)applyOps:(const flume::ListOps &)ops count:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf
 {
+  // The data lands before the props, so until they catch up the sticky indices follow their rows.
+  _sticky = flume::mapIndices(ops, _sticky);
   return _model.apply(ops, static_cast<int>(count), typeOf);
 }
 

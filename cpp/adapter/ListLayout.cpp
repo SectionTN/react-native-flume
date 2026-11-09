@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "adapter/ContentAnchor.h"
+
 namespace flume {
 
 namespace {
@@ -35,6 +37,8 @@ std::vector<int> ListLayout::apply(const ListOps& ops, int count, const TypeOf& 
     reset(count, typeOf);
     return {};
   }
+  // The data lands before the props, so until they catch up the full-span indices follow their items.
+  fullSpan_ = mapIndices(ops, fullSpan_);
   for (const auto& range : ops.removed) {
     if (range.index < 0 || range.index + range.count > this->count()) continue;
     items_.erase(items_.begin() + range.index, items_.begin() + range.index + range.count);

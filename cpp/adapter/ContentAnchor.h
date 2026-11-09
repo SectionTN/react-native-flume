@@ -35,6 +35,8 @@ AnchorDecision decideAnchor(const AnchorConfig& config, const AnchorState& befor
                             bool insertedAtVisualBottom);
 // Where an old index is after the ops, replayed as ListLayout::apply replays them; nullopt when removed.
 std::optional<int> mapIndex(const ListOps& ops, int oldIndex);
+// Ascending indices after the ops, without the removed ones.
+std::vector<int> mapIndices(const ListOps& ops, const std::vector<int>& oldIndices);
 
 struct EdgeInserts {
   bool visualTop;

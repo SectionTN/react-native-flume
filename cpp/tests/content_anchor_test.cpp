@@ -77,6 +77,19 @@ TEST_CASE("an old index follows removes, inserts and moves as the model applies 
   CHECK_FALSE(mapIndex(ops, 3));
 }
 
+TEST_CASE("sticky headers keep their rows through a removal before their props catch up") {
+  ListOps removeFirst;
+  removeFirst.removed = {{0, 1}};
+  CHECK(mapIndices(removeFirst, {17, 35}) == std::vector<int>{16, 34});
+}
+
+TEST_CASE("mapped indices drop removed rows and stay ascending") {
+  ListOps ops;
+  ops.removed = {{2, 1}};
+  ops.moved = {{5, 0}};
+  CHECK(mapIndices(ops, {1, 2, 6}) == std::vector<int>{0, 2});
+}
+
 TEST_CASE("edge inserts follow content order") {
   ListOps atStart;
   atStart.inserted = {{0, 1}};

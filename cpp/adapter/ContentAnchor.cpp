@@ -1,5 +1,7 @@
 #include "ContentAnchor.h"
 
+#include <algorithm>
+
 namespace flume {
 
 AnchorDecision decideAnchor(const AnchorConfig& config, const AnchorState& before, bool insertedAtVisualTop,
@@ -38,6 +40,15 @@ std::optional<int> mapIndex(const ListOps& ops, int oldIndex) {
     if (index >= to) index++;
   }
   return index;
+}
+
+std::vector<int> mapIndices(const ListOps& ops, const std::vector<int>& oldIndices) {
+  std::vector<int> indices;
+  for (int old : oldIndices) {
+    if (const std::optional<int> now = mapIndex(ops, old)) indices.push_back(*now);
+  }
+  std::sort(indices.begin(), indices.end());
+  return indices;
 }
 
 EdgeInserts insertedAtEdges(const ListOps& ops, int newCount, bool inverted) {

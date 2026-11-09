@@ -124,6 +124,17 @@ TEST_CASE("a grid row takes its longest cell and a full-span item a row of its o
   CHECK(layout.contentLength(1000) == 220);
 }
 
+TEST_CASE("a full-span header keeps its own row through a removal before its props catch up") {
+  ListLayoutConfig config;
+  config.lanes = 2;
+  ListLayout layout = list(6, config, {2});
+  ListOps removeFirst;
+  removeFirst.removed = {{0, 1}};
+  layout.apply(removeFirst, 5, kOneType);
+  CHECK(layout.itemsOfRows(1, 1) == IndexRange{1, 1});
+  CHECK(layout.crossLength(1, 400) == 400);
+}
+
 TEST_CASE("lanes split the cross axis inside the cross padding") {
   ListLayoutConfig config;
   config.lanes = 2;
