@@ -5,6 +5,8 @@
   void (^_onRefresh)(void);
   UIRefreshControl *_control;
   BOOL _wantsRefreshing;  // the refreshing the list asked for last
+  BOOL _movedOffset;  // a begin moved the offset, which endRefreshing leaves in place
+  CGFloat _controlInset;  // what beginRefreshing added to the top inset
 }
 
 - (instancetype)initWithScrollView:(UIScrollView *)scrollView onRefresh:(void (^)(void))onRefresh
@@ -68,7 +70,7 @@
   if (refreshing) {
     [self begin];
   } else {
-    [_control endRefreshing];
+    [self end];
   }
 }
 
@@ -87,10 +89,36 @@
     return;
   }
   const CGPoint offset = scrollView.contentOffset;
-  if (offset.y <= -scrollView.adjustedContentInset.top + 0.5) {
+  const CGFloat inset = scrollView.adjustedContentInset.top;
+  _movedOffset = offset.y <= -inset + 0.5;
+  if (_movedOffset) {
     [scrollView setContentOffset:CGPointMake(offset.x, offset.y - _control.frame.size.height) animated:NO];
   }
   [_control beginRefreshing];
+  _controlInset = scrollView.adjustedContentInset.top - inset;
+}
+
+// As RCTRefreshControl does, a refresh begun here goes back to the top before it ends, or the list stays pulled down.
+- (void)end
+{
+  UIScrollView *scrollView = _scrollView;
+  const CGFloat top = -(scrollView.adjustedContentInset.top - _controlInset);
+  const BOOL back = _movedOffset && _control.isRefreshing && scrollView.contentOffset.y < top - 0.5;
+  _movedOffset = NO;
+  if (!back) {
+    [_control endRefreshing];
+    return;
+  }
+  UIRefreshControl *control = _control;
+  [UIView animateWithDuration:0.25
+      animations:^{
+        scrollView.contentOffset = CGPointMake(scrollView.contentOffset.x, top);
+      }
+      completion:^(BOOL finished) {
+        if (!self->_wantsRefreshing) {
+          [control endRefreshing];
+        }
+      }];
 }
 
 - (void)valueChanged
