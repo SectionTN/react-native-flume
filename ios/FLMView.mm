@@ -729,4 +729,9 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
 {
 }
 
+- (void)setNativeRefreshing:(BOOL)refreshing
+{
+  [_refresh setRefreshing:refreshing];
+}
+
 @end

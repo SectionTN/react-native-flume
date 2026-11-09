@@ -11,6 +11,7 @@ import {
   useImperativeHandle,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from 'react';
@@ -86,6 +87,20 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const prev = useRef<{ storeId: number; signature?: string; state?: DataState<T> }>({ storeId });
   const warned = useRef({ duplicates: false, messages: new Set<string>() });
   const nativeRef = useRef<ComponentRef<typeof FlumeViewNativeComponent>>(null);
+  // React Native's RefreshControl rule: a pull starts native refreshing, so an unchanged prop is sent back.
+  const wantsRefreshing = props.refreshing === true;
+  const nativeRefreshing = useRef(wantsRefreshing);
+  const lastRefreshing = useRef(wantsRefreshing);
+  const [, afterRefresh] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    if (wantsRefreshing !== lastRefreshing.current) {
+      lastRefreshing.current = wantsRefreshing;
+      nativeRefreshing.current = wantsRefreshing;
+    } else if (wantsRefreshing !== nativeRefreshing.current && nativeRef.current !== null) {
+      Commands.setNativeRefreshing(nativeRef.current, wantsRefreshing);
+      nativeRefreshing.current = wantsRefreshing;
+    }
+  });
   const lastViewable = useRef(new Map<string, T>());
   const count = useRef(data.length);
   count.current = data.length;
@@ -373,7 +388,15 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
           ? undefined
           : (event) => onStartReached({ distanceFromStart: event.nativeEvent.distanceFromStart })
       }
-      onRefresh={onRefresh === undefined ? undefined : () => onRefresh()}
+      onRefresh={
+        onRefresh === undefined
+          ? undefined
+          : () => {
+              nativeRefreshing.current = true;
+              onRefresh();
+              afterRefresh();
+            }
+      }
       onSlotsChanged={onSlotsChanged}
     >
       {cells}

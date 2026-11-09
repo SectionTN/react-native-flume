@@ -154,6 +154,11 @@ class FlumeView(context: Context) : FrameLayout(context) {
       if (didLayout) refreshLayout.isRefreshing = value
     }
 
+  // A pull starts the circle without a prop change; the wrapper sends the controlled value back.
+  fun setNativeRefreshing(value: Boolean) {
+    refreshLayout.isRefreshing = value
+  }
+
   // The same value arriving again must not re-arm the scroll for the next empty-to-filled change.
   var initialScrollIndex = -1
     set(value) {

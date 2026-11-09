@@ -62,6 +62,8 @@ export default function ScrollScreen() {
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [fast, setFast] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // A pull only counts here: the list must stop its spinner although refreshing never turns on.
+  const [pulls, setPulls] = useState(0);
   const refreshForASecond = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
@@ -107,7 +109,7 @@ export default function ScrollScreen() {
         style={{ marginHorizontal: 8, padding: 8, borderWidth: 1, borderColor: '#cccccc' }}
       />
       <Text style={{ padding: 8 }} testID="scroll-status">
-        offset {status.offset} first viewable {status.first}
+        offset {status.offset} first viewable {status.first} pulls {pulls}
       </Text>
       <View style={{ flex: 1, overflow: 'hidden' }}>
         <Animated.View
@@ -141,7 +143,7 @@ export default function ScrollScreen() {
           scrollEnabled={scrollEnabled}
           decelerationRate={fast ? 'fast' : 'normal'}
           refreshing={refreshing}
-          onRefresh={refreshForASecond}
+          onRefresh={() => setPulls((n) => n + 1)}
           refreshControl={{ progressViewOffset: HEADER_HEIGHT }}
           scrollEventThrottle={16}
           onScroll={onScroll}

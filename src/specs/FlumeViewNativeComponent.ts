@@ -154,10 +154,12 @@ interface NativeCommands {
     animated: boolean,
   ) => void;
   scrollToEnd: (viewRef: React.ElementRef<FlumeViewType>, animated: boolean) => void;
+  // A pull starts refreshing natively; the wrapper sends the controlled prop back when it did not change.
+  setNativeRefreshing: (viewRef: React.ElementRef<FlumeViewType>, refreshing: boolean) => void;
 }
 
 export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
-  supportedCommands: ['scrollToIndex', 'scrollToOffset', 'scrollToEnd'],
+  supportedCommands: ['scrollToIndex', 'scrollToOffset', 'scrollToEnd', 'setNativeRefreshing'],
 });
 
 export default codegenNativeComponent<NativeProps>('FlumeView') as FlumeViewType;

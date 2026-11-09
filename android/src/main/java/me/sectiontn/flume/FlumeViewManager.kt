@@ -262,6 +262,8 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
 
   override fun scrollToEnd(view: FlumeView, animated: Boolean) = view.scrollToEnd(animated)
 
+  override fun setNativeRefreshing(view: FlumeView, refreshing: Boolean) = view.setNativeRefreshing(refreshing)
+
   companion object {
     const val NAME = "FlumeView"
   }

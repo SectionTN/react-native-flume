@@ -1,4 +1,4 @@
-import { createElement, createRef, StrictMode } from 'react';
+import { createElement, createRef, StrictMode, useState } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FlumeHost } from '../store';
@@ -15,7 +15,12 @@ vi.mock('react-native-worklets', () => ({
 vi.mock('../specs/NativeFlume', () => ({ default: { setStats: vi.fn(), logStats: vi.fn() } }));
 vi.mock('../specs/FlumeViewNativeComponent', () => ({
   default: 'FlumeView',
-  Commands: { scrollToIndex: vi.fn(), scrollToOffset: vi.fn(), scrollToEnd: vi.fn() },
+  Commands: {
+    scrollToIndex: vi.fn(),
+    scrollToOffset: vi.fn(),
+    scrollToEnd: vi.fn(),
+    setNativeRefreshing: vi.fn(),
+  },
 }));
 vi.mock('../specs/FlumeSlotViewNativeComponent', () => ({ default: 'FlumeSlotView' }));
 vi.mock('react-native', () => ({ Keyboard: { isVisible: vi.fn(() => true), dismiss: vi.fn() } }));
@@ -660,5 +665,46 @@ describe('Flume types for native', () => {
     await mount(createElement(Flume, { data: list, renderItem, getItemType }));
     expect(data[0]?.typeTable).toEqual(['text', 'voice']);
     expect(data[0]?.typeIds).toEqual([0, 1, 0]);
+  });
+});
+
+describe('Flume refresh', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('stops the native spinner when onRefresh leaves refreshing false', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const tree = await mount(
+      createElement(Flume, { data: [item], renderCell, refreshing: false, onRefresh: () => {} }),
+    );
+    const native = tree.root.find((node) => String(node.type) === 'FlumeView');
+    await act(async () => {
+      native.props.onRefresh();
+    });
+    expect(Commands.setNativeRefreshing).toHaveBeenCalledWith(expect.anything(), false);
+  });
+
+  it('sends nothing when onRefresh sets refreshing', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    function Refreshing() {
+      const [refreshing, setRefreshing] = useState(false);
+      return createElement(Flume, {
+        data: [item],
+        renderCell,
+        refreshing,
+        onRefresh: () => setRefreshing(true),
+      });
+    }
+    const tree = await mount(createElement(Refreshing));
+    const native = tree.root.find((node) => String(node.type) === 'FlumeView');
+    await act(async () => {
+      native.props.onRefresh();
+    });
+    expect(Commands.setNativeRefreshing).not.toHaveBeenCalled();
   });
 });
