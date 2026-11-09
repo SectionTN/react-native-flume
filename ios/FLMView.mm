@@ -10,6 +10,7 @@
 #import "FLMLayout.h"
 #import "FLMCollectionView.h"
 #import "FLMPressableView.h"
+#import "FLMRefresh.h"
 #import "FLMScrollEvents.h"
 #import "FLMStoreListener.h"
 #import "FLMText.h"
@@ -105,6 +106,7 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   flume::ViewabilityTracker _viewability;
   BOOL _emitViewability;
   flume::EdgeTracker _edges;
+  FLMRefresh *_refresh;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -132,6 +134,10 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
     _collectionView.didLayout = ^{
       [weakSelf listDidLayout];
     };
+    _refresh = [[FLMRefresh alloc] initWithScrollView:_collectionView
+                                            onRefresh:^{
+                                              [weakSelf emitRefresh];
+                                            }];
     _collectionView.backgroundColor = UIColor.clearColor;
     _collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     _collectionView.alwaysBounceVertical = YES;
@@ -204,7 +210,26 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   _collectionView.allowsSelection = _rowsPressable;
   _rowLongPress.enabled = _rowsPressable;
   [self updateScrollProps:next old:old];
+  // React Native applies the control's look before it begins refreshing.
+  if (next.refreshTintColor != old.refreshTintColor) {
+    _refresh.tintColor = RCTUIColorFromSharedColor(next.refreshTintColor);
+  }
+  if (next.refreshProgressViewOffset != old.refreshProgressViewOffset) {
+    _refresh.progressViewOffset = next.refreshProgressViewOffset;
+  }
+  _refresh.enabled = next.refreshEnabled && !next.horizontal;
+  if (next.refreshing != old.refreshing) {
+    [_refresh setRefreshing:next.refreshing];
+  }
   [super updateProps:props oldProps:oldProps];
+}
+
+- (void)emitRefresh
+{
+  auto emitter = std::static_pointer_cast<const FlumeViewEventEmitter>(_eventEmitter);
+  if (emitter != nullptr) {
+    emitter->onRefresh({});
+  }
 }
 
 // React Native's ScrollView props, straight onto the scroll view.
@@ -321,6 +346,7 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
     _collectionView.contentOffset = _horizontal ? CGPointMake(std::max<CGFloat>(0, content.width - size.width), 0)
                                                 : CGPointMake(0, std::max<CGFloat>(0, content.height - size.height));
   }
+  [_refresh layoutSubviews];
 }
 
 - (void)didMoveToWindow

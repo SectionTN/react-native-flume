@@ -61,6 +61,11 @@ export default function ScrollScreen() {
   const [onDrag, setOnDrag] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [fast, setFast] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshForASecond = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
   const offset = useSharedValue(0);
   const reportOffset = useCallback(
     (value: number) => setStatus((s) => ({ ...s, offset: value })),
@@ -95,6 +100,7 @@ export default function ScrollScreen() {
         />
         <Button title={`Rate: ${fast ? 'fast' : 'normal'}`} onPress={() => setFast((v) => !v)} />
         <Button title="Block JS 3 s" onPress={() => blockJs(3000)} />
+        <Button title="Refresh 1 s" onPress={refreshForASecond} />
       </View>
       <TextInput
         placeholder="Search"
@@ -134,6 +140,9 @@ export default function ScrollScreen() {
           keyboardDismissMode={onDrag ? 'on-drag' : 'none'}
           scrollEnabled={scrollEnabled}
           decelerationRate={fast ? 'fast' : 'normal'}
+          refreshing={refreshing}
+          onRefresh={refreshForASecond}
+          refreshControl={{ progressViewOffset: HEADER_HEIGHT }}
           scrollEventThrottle={16}
           onScroll={onScroll}
           onScrollBeginDrag={() => toast('begin drag')}
