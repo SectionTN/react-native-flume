@@ -377,6 +377,14 @@ NSArray<NSIndexPath *> *FLMIndexPaths(const std::vector<int> &indices)
   return cell;
 }
 
+#pragma mark - UIScrollViewDelegate
+
+// The insets bound the viewport the layout measures inside.
+- (void)scrollViewDidChangeAdjustedContentInset:(UIScrollView *)scrollView
+{
+  [_layout invalidateLayout];
+}
+
 #pragma mark - Presses
 
 - (void)emitPress:(NSInteger)index pressId:(NSString *)pressId longPress:(BOOL)longPress

@@ -28,6 +28,11 @@ struct Pinned {
   float start;  // along the scroll axis, in content coordinates
 };
 
+struct LengthChange {
+  float anchorMoved;   // how far the anchor's edge moved along the scroll axis
+  float contentMoved;  // how far the content length moved
+};
+
 // Item positions along the scroll axis from measured lengths and per-type estimates; units are points.
 class ListLayout {
  public:
@@ -37,8 +42,8 @@ class ListLayout {
   void reset(int count, const TypeOf& typeOf);
   // Returns the changed items whose type changed: their cells need a reload, not a reconfigure.
   std::vector<int> apply(const ListOps& ops, int count, const TypeOf& typeOf);
-  // How far the anchor moved along the scroll axis: its top edge, or its bottom edge when inverted.
-  float setLength(int index, float length, int anchor, float viewportLength = 0);
+  // The anchor's move is its top edge's, or its bottom edge's when inverted.
+  LengthChange setLength(int index, float length, int anchor, float viewportLength = 0);
   void invalidateLengths();
   int count() const { return static_cast<int>(items_.size()); }
   bool measured(int index) const;

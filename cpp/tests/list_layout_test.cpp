@@ -64,14 +64,14 @@ TEST_CASE("an item keeps its estimate until it is measured") {
 
 TEST_CASE("a length change above the anchor moves the anchor by the change") {
   ListLayout layout = measured(10, 100);
-  CHECK(layout.setLength(2, 150, 5) == 50);
+  CHECK(layout.setLength(2, 150, 5).anchorMoved == 50);
   CHECK(y(layout, 5) == 550);
 }
 
 TEST_CASE("a length change at or below the anchor does not move it") {
   ListLayout layout = measured(10, 100);
-  CHECK(layout.setLength(5, 150, 5) == 0);
-  CHECK(layout.setLength(7, 150, 5) == 0);
+  CHECK(layout.setLength(5, 150, 5).anchorMoved == 0);
+  CHECK(layout.setLength(7, 150, 5).anchorMoved == 0);
 }
 
 TEST_CASE("removes, inserts and moves keep measured lengths with their items") {
@@ -186,8 +186,8 @@ TEST_CASE("short inverted content sits at the bottom of the viewport") {
 
 TEST_CASE("inverted: a change above the bottom anchor moves it and one below does not") {
   ListLayout layout = inverted(20, 100);
-  CHECK(layout.setLength(10, 150, 3) == 50);
-  CHECK(layout.setLength(1, 150, 3) == 0);
+  CHECK(layout.setLength(10, 150, 3).anchorMoved == 50);
+  CHECK(layout.setLength(1, 150, 3).anchorMoved == 0);
 }
 
 TEST_CASE("the sticky header at or above the viewport start pins there") {
@@ -225,26 +225,26 @@ TEST_CASE("an inverted list pins the first header at or above the top row") {
 
 TEST_CASE("inverted: the bottom anchor's own growth keeps its bottom edge") {
   ListLayout layout = inverted(20, 100);
-  CHECK(layout.setLength(3, 150, 3, 1000) == 50);
+  CHECK(layout.setLength(3, 150, 3, 1000).anchorMoved == 50);
 }
 
 TEST_CASE("short inverted content does not move the anchor") {
   ListLayout layout = inverted(3, 100);
-  CHECK(layout.setLength(0, 150, 0, 1000) == 0);
-  CHECK(layout.setLength(2, 150, 0, 1000) == 0);
+  CHECK(layout.setLength(0, 150, 0, 1000).anchorMoved == 0);
+  CHECK(layout.setLength(2, 150, 0, 1000).anchorMoved == 0);
 }
 
 TEST_CASE("a row cut by the top edge is not the anchor, so it grows out of sight") {
   ListLayout layout = measured(10, 100);
   CHECK(layout.anchorAt(300, 1000) == 3);
   CHECK(layout.anchorAt(250, 1000) == 3);
-  CHECK(layout.setLength(2, 150, layout.anchorAt(250, 1000), 1000) == 50);
+  CHECK(layout.setLength(2, 150, layout.anchorAt(250, 1000), 1000).anchorMoved == 50);
 }
 
 TEST_CASE("inverted: a row cut by the bottom edge is not the anchor, so it grows out of sight") {
   ListLayout layout = inverted(20, 100);
   CHECK(layout.anchorAt(950, 1000) == 1);
-  CHECK(layout.setLength(0, 150, layout.anchorAt(950, 1000), 1000) == 0);
+  CHECK(layout.setLength(0, 150, layout.anchorAt(950, 1000), 1000).anchorMoved == 0);
 }
 
 TEST_CASE("inverted: the newest row ending at the viewport's end stays the anchor") {
@@ -265,4 +265,21 @@ TEST_CASE("apply reports the changed items whose type changed, to be measured ag
   CHECK(layout.apply(ops, 3, typeOf) == std::vector<int>{1});
   CHECK(layout.measured(0));
   CHECK_FALSE(layout.measured(1));
+}
+
+TEST_CASE("in a grid an item shorter than its row leaves the content length") {
+  ListLayoutConfig config;
+  config.lanes = 2;
+  ListLayout layout = list(4, config);
+  CHECK(layout.setLength(0, 100, 0, 1000).contentMoved == 50);
+  CHECK(layout.setLength(1, 80, 0, 1000).contentMoved == 0);
+}
+
+TEST_CASE("an inverted list shorter than its viewport keeps its content length") {
+  ListLayoutConfig config;
+  config.inverted = true;
+  ListLayout layout = list(2, config);
+  LengthChange change = layout.setLength(0, 100, 0, 500);
+  CHECK(change.contentMoved == 0);
+  CHECK(change.anchorMoved == 0);
 }

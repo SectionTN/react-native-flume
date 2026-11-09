@@ -7,6 +7,7 @@
   flume::ListLayoutConfig _config;
   std::vector<int> _sticky;
   CGSize _bounds;
+  CGFloat _viewportLength;  // inside the adjusted insets, as of the last prepareLayout
   int _pinnedIndex;  // the header pinned by the last layout pass, -1 for none
 }
 
@@ -60,16 +61,18 @@
   return _config.horizontal ? size.height : size.width;
 }
 
-- (CGFloat)viewportStart
+- (FLMViewport)viewportFor:(CGRect)bounds
 {
-  UICollectionView *view = self.collectionView;
-  return _config.horizontal ? view.contentOffset.x + view.adjustedContentInset.left
-                            : view.contentOffset.y + view.adjustedContentInset.top;
+  const UIEdgeInsets insets = self.collectionView.adjustedContentInset;
+  const CGFloat start = _config.horizontal ? insets.left : insets.top;
+  const CGFloat end = _config.horizontal ? insets.right : insets.bottom;
+  const CGFloat origin = _config.horizontal ? bounds.origin.x : bounds.origin.y;
+  return FLMViewport{origin + start, std::max<CGFloat>(0, [self mainLength:bounds.size] - start - end)};
 }
 
 - (CGRect)frameOf:(int)index
 {
-  flume::ItemRect rect = _model.rectOf(index, [self crossLength:_bounds], [self mainLength:_bounds]);
+  flume::ItemRect rect = _model.rectOf(index, [self crossLength:_bounds], _viewportLength);
   return CGRectMake(rect.x, rect.y, rect.width, rect.height);
 }
 
@@ -86,7 +89,7 @@
   if (_sticky.empty()) {
     return std::nullopt;
   }
-  return _model.pinned(_sticky, [self viewportStart], [self mainLength:_bounds]);
+  return _model.pinned(_sticky, [self viewportFor:self.collectionView.bounds].start, _viewportLength);
 }
 
 - (void)pin:(UICollectionViewLayoutAttributes *)attributes at:(CGFloat)start
@@ -107,11 +110,12 @@
 {
   [super prepareLayout];
   _bounds = self.collectionView.bounds.size;
+  _viewportLength = [self viewportFor:self.collectionView.bounds].length;
 }
 
 - (CGSize)collectionViewContentSize
 {
-  CGFloat content = _model.contentLength([self mainLength:_bounds]);
+  CGFloat content = _model.contentLength(_viewportLength);
   return _config.horizontal ? CGSizeMake(content, _bounds.height) : CGSizeMake(_bounds.width, content);
 }
 
@@ -119,7 +123,7 @@
 {
   const float start = _config.horizontal ? CGRectGetMinX(rect) : CGRectGetMinY(rect);
   const float end = _config.horizontal ? CGRectGetMaxX(rect) : CGRectGetMaxY(rect);
-  std::vector<int> items = _model.itemsIn(start, end, [self mainLength:_bounds]);
+  std::vector<int> items = _model.itemsIn(start, end, _viewportLength);
   auto pinned = [self pinned];
   NSMutableArray<UICollectionViewLayoutAttributes *> *out = [NSMutableArray arrayWithCapacity:items.size() + 1];
   bool pinnedListed = false;
@@ -171,8 +175,8 @@
   if (_pinnedIndex >= 0 && _pinnedIndex < _model.count()) {
     [paths addObject:[NSIndexPath indexPathForItem:_pinnedIndex inSection:0]];
   }
-  const CGFloat start = _config.horizontal ? newBounds.origin.x : newBounds.origin.y;
-  auto after = _model.pinned(_sticky, start, [self mainLength:newBounds.size]);
+  const FLMViewport viewport = [self viewportFor:newBounds];
+  auto after = _model.pinned(_sticky, viewport.start, viewport.length);
   if (after && after->index != _pinnedIndex) {
     [paths addObject:[NSIndexPath indexPathForItem:after->index inSection:0]];
   }
@@ -202,13 +206,13 @@
   UICollectionViewLayoutInvalidationContext *context =
       [super invalidationContextForPreferredLayoutAttributes:preferred withOriginalAttributes:original];
   const int index = static_cast<int>(original.indexPath.item);
-  const CGFloat viewport = [self mainLength:_bounds];
-  const int anchor = _model.anchorAt([self viewportStart], viewport);
-  const CGFloat before = [self mainLength:[self frameOf:index].size];
-  const CGFloat length = [self mainLength:preferred.size];
-  const CGFloat moved = _model.setLength(index, length, anchor, viewport);
+  const int anchor = _model.anchorAt([self viewportFor:self.collectionView.bounds].start, _viewportLength);
+  const flume::LengthChange change =
+      _model.setLength(index, [self mainLength:preferred.size], anchor, _viewportLength);
+  const CGFloat moved = change.anchorMoved;
+  const CGFloat grown = change.contentMoved;
   context.contentOffsetAdjustment = _config.horizontal ? CGPointMake(moved, 0) : CGPointMake(0, moved);
-  context.contentSizeAdjustment = _config.horizontal ? CGSizeMake(length - before, 0) : CGSizeMake(0, length - before);
+  context.contentSizeAdjustment = _config.horizontal ? CGSizeMake(grown, 0) : CGSizeMake(0, grown);
   return context;
 }
 

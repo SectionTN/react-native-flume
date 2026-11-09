@@ -75,10 +75,11 @@ std::vector<int> ListLayout::apply(const ListOps& ops, int count, const TypeOf& 
   return retyped;
 }
 
-float ListLayout::setLength(int index, float length, int anchor, float viewportLength) {
-  if (index < 0 || index >= count()) return 0;
+LengthChange ListLayout::setLength(int index, float length, int anchor, float viewportLength) {
+  if (index < 0 || index >= count()) return LengthChange{0, 0};
   const bool hasAnchor = anchor >= 0 && anchor < count();
   const float before = hasAnchor ? anchorEdge(rowOf_[anchor], viewportLength) : 0;
+  const float contentBefore = contentLength(viewportLength);
   Item& item = items_[index];
   Mean& mean = means_[item.type];
   if (item.measured) {
@@ -90,7 +91,8 @@ float ListLayout::setLength(int index, float length, int anchor, float viewportL
   item.length = length;
   item.measured = true;
   updateRow(rowOf_[index]);
-  return hasAnchor ? anchorEdge(rowOf_[anchor], viewportLength) - before : 0;
+  const float moved = hasAnchor ? anchorEdge(rowOf_[anchor], viewportLength) - before : 0;
+  return LengthChange{moved, contentLength(viewportLength) - contentBefore};
 }
 
 void ListLayout::invalidateLengths() {
