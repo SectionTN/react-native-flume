@@ -9,6 +9,7 @@
 #import "FLMCell.h"
 #import "FLMLayout.h"
 #import "FLMPressableView.h"
+#import "FLMScrollEvents.h"
 #import "FLMStoreListener.h"
 #import "FLMText.h"
 
@@ -96,6 +97,8 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   CGFloat _lastCross;
   CGFloat _fontScale;  // the font size multiplier the store's text was measured at
   UILongPressGestureRecognizer *_rowLongPress;
+  flume::ScrollEvents _scrollEvents;
+  BOOL _emitScrollEvents;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -176,6 +179,10 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
     [self attach];
   } else if (shape) {
     [self rebind];
+  }
+  _emitScrollEvents = next.emitScrollEvents;
+  if (next.scrollEventThrottle != old.scrollEventThrottle) {
+    _scrollEvents.setThrottleMs(next.scrollEventThrottle);
   }
   _itemAnimations = next.itemAnimations;
   _rowsPressable = next.rowsPressable;
@@ -307,6 +314,7 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   if (self.window != nil) {
     [self attach];
   } else {
+    [self emitScrollEvents:_scrollEvents.leftWindow() velocity:CGPointZero];
     [self detach];
   }
 }
@@ -473,6 +481,61 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
 - (void)scrollViewDidChangeAdjustedContentInset:(UIScrollView *)scrollView
 {
   [_layout invalidateLayout];
+}
+
+// The scroll event goes out only with a handler; drag and momentum events once per gesture.
+- (void)emitScrollEvents:(const std::vector<flume::ScrollEventKind> &)kinds velocity:(CGPoint)velocity
+{
+  auto emitter = std::static_pointer_cast<const FlumeViewEventEmitter>(_eventEmitter);
+  if (emitter == nullptr) {
+    return;
+  }
+  for (flume::ScrollEventKind kind : kinds) {
+    if (kind == flume::ScrollEventKind::Scroll && !_emitScrollEvents) {
+      continue;
+    }
+    const CGPoint released = kind == flume::ScrollEventKind::EndDrag ? velocity : CGPointZero;
+    FLMEmitScrollEvent(*emitter, kind, _collectionView, _horizontal, _inverted, released);
+  }
+}
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+  if (_emitScrollEvents && _scrollEvents.scrolled(CACurrentMediaTime() * 1000)) {
+    [self emitScrollEvents:std::vector<flume::ScrollEventKind>{flume::ScrollEventKind::Scroll} velocity:CGPointZero];
+  }
+}
+
+- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
+{
+  [self emitScrollEvents:_scrollEvents.willBeginDragging() velocity:CGPointZero];
+}
+
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView
+                     withVelocity:(CGPoint)velocity
+              targetContentOffset:(inout CGPoint *)targetContentOffset
+{
+  [self emitScrollEvents:_scrollEvents.willEndDragging() velocity:velocity];
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
+{
+  _scrollEvents.didEndDragging(decelerate);
+}
+
+- (void)scrollViewWillBeginDecelerating:(UIScrollView *)scrollView
+{
+  [self emitScrollEvents:_scrollEvents.willBeginDecelerating() velocity:CGPointZero];
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+{
+  [self emitScrollEvents:_scrollEvents.didEndDecelerating() velocity:CGPointZero];
+}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
+{
+  [self emitScrollEvents:_scrollEvents.didEndScrollingAnimation() velocity:CGPointZero];
 }
 
 #pragma mark - Presses
