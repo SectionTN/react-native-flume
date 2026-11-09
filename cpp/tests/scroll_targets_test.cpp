@@ -55,6 +55,20 @@ TEST_CASE("a far target jumps to one viewport before it first") {
   CHECK_FALSE(preJumpOffset(3500, 5000, 1000));
 }
 
+TEST_CASE("a chat keeps its newest rows in view when a keyboard shrinks the list") {
+  CHECK(offsetAfterViewportChange(true, 1000, 800, 500, 0, 5000) == doctest::Approx(1300));
+  CHECK(offsetAfterViewportChange(true, 1000, 500, 800, 0, 5000) == doctest::Approx(700));
+}
+
+TEST_CASE("an upright list keeps its offset when the viewport shrinks") {
+  CHECK(offsetAfterViewportChange(false, 1000, 800, 500, 0, 5000) == doctest::Approx(1000));
+}
+
+TEST_CASE("the kept end stays inside the scroll range") {
+  CHECK(offsetAfterViewportChange(true, 4900, 800, 500, 0, 5000) == doctest::Approx(5000));
+  CHECK(offsetAfterViewportChange(true, 100, 500, 800, -40, 5000) == doctest::Approx(-40));
+}
+
 TEST_CASE("an initial index past the data opens at the content end") {
   CHECK(*openingLanding(3, 10) == Landing{3, 0, false});
   CHECK(openingLanding(40, 10)->contentEnd);

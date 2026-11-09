@@ -43,6 +43,8 @@ struct FLMPendingOffset {
 - (void)measureGlideToIndex:(NSInteger)index viewPosition:(CGFloat)viewPosition;
 // Applied at the end of the next prepareLayout with rows and a size, so the rows at the wrong end never bind.
 - (void)scheduleOffset:(const FLMPendingOffset &)pending;
+// A list anchored at its end keeps the viewport's end where it was when the end inset moves, as a keyboard inset does.
+- (void)keepVisibleEnd:(CGFloat)visibleEnd;
 @property (nonatomic, readonly) BOOL hasPendingOffset;
 
 @property (nonatomic) flume::AnchorConfig anchorConfig;

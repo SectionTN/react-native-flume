@@ -75,6 +75,8 @@ class ListLayout {
   std::optional<Pinned> pinned(const std::vector<int>& sticky, float viewportStart, float viewportLength) const;
   // Relative to the item's origin: the gap after its row in content order, none after the last row.
   std::optional<ItemRect> separatorRect(int index, float listCrossLength) const;
+  // Inverted or stacked from the end: the list keeps its end where it was.
+  bool bottomAnchored() const { return config_.inverted || config_.stackFromEnd; }
 
  private:
   struct Item {
@@ -98,7 +100,6 @@ class ListLayout {
   void updateRow(int row);
   float stride(int row) const;  // the row's length and the separator after it
   float rowStart(int row) const;  // from the start of item 0, inside the padding
-  bool bottomAnchored() const { return config_.inverted || config_.stackFromEnd; }
   float slack(float viewportLength) const;  // the space a short list that stacks from the end leaves above its rows
   float startOf(int row, float viewportLength) const;  // in content coordinates
   float anchorEdge(int row, float viewportLength) const;

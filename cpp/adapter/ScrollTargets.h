@@ -18,6 +18,8 @@ float alignedViewportStart(float itemStart, float itemLength, float viewportLeng
                            bool inverted);
 // UIScrollView's range, from the start inset to the content end past the end inset.
 float clampOffset(float offset, float contentLength, float boundsLength, float insetStart, float insetEnd);
+// After the viewport's end moves (a resize or an end inset), a list anchored at its end keeps that end in place.
+float offsetAfterViewportChange(bool keepsEnd, float offset, float oldEnd, float newEnd, float low, float high);
 // The rows a landing shows, two past each side; rowLength may measure the row it is asked for.
 IndexRange landingRows(int targetRow, float viewPosition, float viewportLength, int rowCount,
                        const std::function<float(int row)>& rowLength);

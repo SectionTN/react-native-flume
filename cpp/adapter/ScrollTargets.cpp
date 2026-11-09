@@ -22,6 +22,10 @@ float clampOffset(float offset, float contentLength, float boundsLength, float i
   return std::clamp(offset, low, std::max(low, contentLength - boundsLength + insetEnd));
 }
 
+float offsetAfterViewportChange(bool keepsEnd, float offset, float oldEnd, float newEnd, float low, float high) {
+  return std::clamp(keepsEnd ? offset + oldEnd - newEnd : offset, low, std::max(low, high));
+}
+
 IndexRange landingRows(int targetRow, float viewPosition, float viewportLength, int rowCount,
                        const std::function<float(int row)>& rowLength) {
   if (rowCount <= 0) return {0, -1};

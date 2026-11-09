@@ -451,6 +451,47 @@ struct FLMAnchorUpdate {
 }
 
 // Any new size lays out again: an inverted list shorter than its viewport sits at the viewport's end.
+// How far a list anchored at its end moves to keep that end in view, inside the scroll range at these bounds.
+- (CGFloat)endKeepingShiftFrom:(CGFloat)oldEnd to:(CGFloat)newEnd bounds:(CGRect)bounds
+{
+  if (!_model.bottomAnchored() || _pendingOffset || _model.count() == 0) {
+    return 0;
+  }
+  const UIEdgeInsets insets = self.collectionView.adjustedContentInset;
+  const float start = static_cast<float>(_config.horizontal ? insets.left : insets.top);
+  const float end = static_cast<float>(_config.horizontal ? insets.right : insets.bottom);
+  const float length = static_cast<float>([self mainLength:bounds.size]);
+  const float content = _model.contentLength(static_cast<float>([self viewportFor:bounds].length));
+  const float offset = static_cast<float>(_config.horizontal ? bounds.origin.x : bounds.origin.y);
+  const float kept = flume::offsetAfterViewportChange(true, offset, static_cast<float>(oldEnd), static_cast<float>(newEnd),
+                                                      flume::clampOffset(-INFINITY, content, length, start, end),
+                                                      flume::clampOffset(INFINITY, content, length, start, end));
+  return kept - offset;
+}
+
+// UIKit may already have clamped the offset into a shrunk range, which keeps the end, so this restores the end itself.
+- (void)keepVisibleEnd:(CGFloat)visibleEnd
+{
+  if (std::isnan(visibleEnd)) {
+    return;
+  }
+  const CGRect bounds = self.collectionView.bounds;
+  const UIEdgeInsets insets = self.collectionView.adjustedContentInset;
+  const CGFloat offset = _config.horizontal ? bounds.origin.x : bounds.origin.y;
+  const CGFloat end = [self mainLength:bounds.size] - (_config.horizontal ? insets.right : insets.bottom);
+  const CGFloat shift = [self endKeepingShiftFrom:visibleEnd - offset to:end bounds:bounds];
+  if (shift == 0) {
+    return;
+  }
+  CGPoint point = self.collectionView.contentOffset;
+  if (_config.horizontal) {
+    point.x += shift;
+  } else {
+    point.y += shift;
+  }
+  self.collectionView.contentOffset = point;
+}
+
 - (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds
 {
   return !CGSizeEqualToSize(newBounds.size, _bounds) || !_sticky.empty();
@@ -461,6 +502,12 @@ struct FLMAnchorUpdate {
 {
   UICollectionViewLayoutInvalidationContext *context = [super invalidationContextForBoundsChange:newBounds];
   if (!CGSizeEqualToSize(newBounds.size, _bounds)) {
+    // A list anchored at its end keeps the end in view, as a reversed RecyclerView lays out from its end.
+    const CGFloat old = [self mainLength:_bounds];
+    if (old > 0) {
+      const CGFloat shift = [self endKeepingShiftFrom:old to:[self mainLength:newBounds.size] bounds:newBounds];
+      context.contentOffsetAdjustment = _config.horizontal ? CGPointMake(shift, 0) : CGPointMake(0, shift);
+    }
     return context;
   }
   NSMutableArray<NSIndexPath *> *paths = [NSMutableArray array];

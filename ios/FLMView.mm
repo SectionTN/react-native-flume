@@ -118,6 +118,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   int _nextHolderId;
   NSInteger _count;
   BOOL _attached;
+  CGFloat _visibleEnd;  // the viewport's end in content coordinates as of the last scroll, NAN before one
   BOOL _itemAnimations;
   BOOL _horizontal;
   BOOL _rowsPressable;
@@ -158,6 +159,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
     static const auto defaultProps = std::make_shared<const FlumeViewProps>();
     _props = defaultProps;
     _initialScrollIndex = -1;
+    _visibleEnd = NAN;
     _itemAnimations = YES;
     _registered = [NSMutableSet set];
     _layout = [FLMLayout new];
@@ -630,6 +632,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 // The insets bound the viewport the layout measures inside.
 - (void)scrollViewDidChangeAdjustedContentInset:(UIScrollView *)scrollView
 {
+  [_layout keepVisibleEnd:_visibleEnd];
   [_layout invalidateLayout];
 }
 
@@ -651,6 +654,9 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
+  const CGRect bounds = scrollView.bounds;
+  const UIEdgeInsets inset = scrollView.adjustedContentInset;
+  _visibleEnd = _horizontal ? CGRectGetMaxX(bounds) - inset.right : CGRectGetMaxY(bounds) - inset.bottom;
   if (_emitScrollEvents && _scrollEvents.scrolled(CACurrentMediaTime() * 1000)) {
     [self emitScrollEvents:std::vector<flume::ScrollEventKind>{flume::ScrollEventKind::Scroll} velocity:CGPointZero];
   }
