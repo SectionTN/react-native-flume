@@ -1048,6 +1048,11 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   BOOL stops = NO;
   if (_collectionView.scrollEnabled) {
     stops = _collectionView.isDecelerating || _gliding;
+    // The touch stops a glide in place, so neither the re-land nor the realign moves the list to the target.
+    if (_gliding) {
+      _pendingTarget.reset();
+      _realign.reset();
+    }
     _gliding = NO;
   }
   if (stops || [self swallowsTaps]) {
