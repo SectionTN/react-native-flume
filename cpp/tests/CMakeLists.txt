@@ -38,10 +38,15 @@ target_link_libraries(flume_tests PRIVATE flume_core flume_adapter)
 if(DEFINED HERMES_DIR)
   set(HERMES_FRAMEWORKS "${HERMES_DIR}/destroot/Library/Frameworks/macosx")
   file(GLOB FLUME_JSI_TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/jsi/*_test.cpp")
+  file(GLOB FLUME_JSI_BINDINGS CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/../bindings/*.cpp")
   add_executable(flume_jsi_tests ${FLUME_JSI_TEST_SOURCES} "${CMAKE_SOURCE_DIR}/jsi/main.cpp"
-                 "${CMAKE_SOURCE_DIR}/../bindings/JsiConverter.cpp" "${CMAKE_SOURCE_DIR}/../bindings/ItemCache.cpp")
+                 "${CMAKE_SOURCE_DIR}/jsi/fake_worklets.cpp" ${FLUME_JSI_BINDINGS})
   target_include_directories(flume_jsi_tests BEFORE PRIVATE "${HERMES_DIR}/destroot/include")
-  target_include_directories(flume_jsi_tests PRIVATE "${CMAKE_SOURCE_DIR}/vendor" "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/jsi")
+  target_include_directories(flume_jsi_tests PRIVATE "${CMAKE_SOURCE_DIR}/vendor" "${CMAKE_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/jsi"
+                             "${REACT_NATIVE_DIR}/ReactCommon/callinvoker" "${WORKLETS_DIR}/Common/cpp")
+  # A JSI value released after its runtime reads freed memory that only ASan reports.
+  target_compile_options(flume_jsi_tests PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+  target_link_options(flume_jsi_tests PRIVATE -fsanitize=address)
   target_link_libraries(flume_jsi_tests PRIVATE flume_core "-F${HERMES_FRAMEWORKS}" "-framework hermesvm")
   set_target_properties(flume_jsi_tests PROPERTIES BUILD_RPATH "${HERMES_FRAMEWORKS}")
 endif()

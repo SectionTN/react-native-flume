@@ -28,15 +28,46 @@ Engine& Engine::instance() {
   return engine;
 }
 
-void Engine::setScheduler(std::shared_ptr<worklets::UIScheduler> scheduler) {
+int Engine::beginSession(std::shared_ptr<facebook::react::CallInvoker> invoker) {
   std::lock_guard<std::mutex> lock(mutex_);
-  scheduler_ = std::move(scheduler);
+  int session = nextSession_++;
+  sessions_[session].invoker = std::move(invoker);
+  return session;
 }
 
-int Engine::createStore() {
+// Moves the session and its stores out under the lock, so they die after it, each store's values before its runtime.
+void Engine::endSession(int session) {
+  std::vector<std::shared_ptr<Store>> stores;
+  Session ended;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = sessions_.find(session);
+    if (it == sessions_.end()) return;
+    ended = std::move(it->second);
+    sessions_.erase(it);
+    for (auto* map : {&stores_, &releasing_}) {
+      for (auto entry = map->begin(); entry != map->end();) {
+        if (entry->second->session != session) {
+          ++entry;
+          continue;
+        }
+        stores.push_back(std::move(entry->second));
+        entry = map->erase(entry);
+      }
+    }
+  }
+}
+
+void Engine::setScheduler(int session, std::shared_ptr<worklets::UIScheduler> scheduler) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = sessions_.find(session);
+  if (it != sessions_.end()) it->second.scheduler = std::move(scheduler);
+}
+
+int Engine::createStore(int session) {
   std::lock_guard<std::mutex> lock(mutex_);
   int id = nextStoreId_++;
-  stores_[id] = std::make_shared<Store>(id);
+  stores_[id] = std::make_shared<Store>(id, session);
   return id;
 }
 
@@ -44,6 +75,18 @@ std::shared_ptr<Store> Engine::find(int storeId) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto it = stores_.find(storeId);
   return it == stores_.end() ? nullptr : it->second;
+}
+
+std::shared_ptr<worklets::UIScheduler> Engine::schedulerOf(int session) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = sessions_.find(session);
+  return it == sessions_.end() ? nullptr : it->second.scheduler;
+}
+
+std::shared_ptr<const FlumeRuntime> Engine::flumeOf(int session) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = sessions_.find(session);
+  return it == sessions_.end() ? nullptr : it->second.flume;
 }
 
 void Engine::setData(int storeId, std::vector<std::string> keys, std::vector<std::string> types,
@@ -79,11 +122,7 @@ void Engine::setCellKinds(int storeId, bool reactByDefault, std::vector<std::str
 // pending, never wakes it.
 void Engine::scheduleRefresh(const std::shared_ptr<Store>& store, bool always) {
   if (!store->list.attached()) return;
-  std::shared_ptr<worklets::UIScheduler> scheduler;
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    scheduler = scheduler_;
-  }
+  std::shared_ptr<worklets::UIScheduler> scheduler = schedulerOf(store->session);
   if (scheduler == nullptr) return;
   std::weak_ptr<Store> weak = store;
   worklets::scheduleOnUI(scheduler, [weak, always] {
@@ -97,18 +136,18 @@ void Engine::scheduleRefresh(const std::shared_ptr<Store>& store, bool always) {
   });
 }
 
-// Native resources die on the UI thread, runtime handles under the runtime lock; the JS thread only unregisters.
+// The JS thread only unregisters. The UI job releases runtime handles under the runtime lock, ~Store the native parts.
 void Engine::releaseStore(int storeId) {
-  std::shared_ptr<Store> store;
   std::shared_ptr<worklets::UIScheduler> scheduler;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = stores_.find(storeId);
     if (it == stores_.end()) return;
-    store = it->second;
+    std::shared_ptr<Store> store = std::move(it->second);
     stores_.erase(it);
-    releasing_[storeId] = store;
-    scheduler = scheduler_;
+    auto session = sessions_.find(store->session);
+    if (session != sessions_.end()) scheduler = session->second.scheduler;
+    releasing_[storeId] = std::move(store);
   }
   if (scheduler == nullptr) return;
   worklets::scheduleOnUI(scheduler, [this, storeId] {
@@ -120,33 +159,31 @@ void Engine::releaseStore(int storeId) {
       s = it->second;
     }
     s->listener = nullptr;
-    if (s->reconciler != nullptr) {
-      for (auto& [id, holder] : s->holders) s->reconciler->release(*holder);
-    }
-    s->holders.clear();
-    s->reconciler.reset();
-    s->layout.reset();
-    s->measurer.reset();
-    if (runtime_ != nullptr && releaseFn_) worklets::runSyncOnRuntime(runtime_, *releaseFn_, jsi::Value(storeId));
+    // Binds write the slot on this thread too, so it is read here without the runtime lock.
+    if (auto flume = s->slot.flume) worklets::runSyncOnRuntime(flume->runtime, flume->release, jsi::Value(storeId));
     std::lock_guard<std::mutex> lock(mutex_);
     releasing_.erase(storeId);
   });
 }
 
-void Engine::onInstall(jsi::Runtime& rt) {
-  runtime_ = worklets::getWeakRuntimeFromJSIRuntime(rt).lock();
-  bindFn_ = jsi::Function::createFromHostFunction(
-      rt, jsi::PropNameID::forAscii(rt, "__flumeBind"), 1,
-      [this](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args, size_t count) {
-        bindOnRuntime(rt, count > 0 && args[0].isNumber() ? static_cast<int>(args[0].asNumber()) : -1);
-        return jsi::Value::undefined();
-      });
-  releaseFn_ = jsi::Function::createFromHostFunction(
-      rt, jsi::PropNameID::forAscii(rt, "__flumeRelease"), 1,
-      [this](jsi::Runtime&, const jsi::Value&, const jsi::Value* args, size_t count) {
-        if (count > 0 && args[0].isNumber()) releaseOnRuntime(static_cast<int>(args[0].asNumber()));
-        return jsi::Value::undefined();
-      });
+void Engine::onInstall(int session, jsi::Runtime& rt) {
+  auto flume = std::make_shared<const FlumeRuntime>(
+      worklets::getWeakRuntimeFromJSIRuntime(rt).lock(),
+      jsi::Function::createFromHostFunction(
+          rt, jsi::PropNameID::forAscii(rt, "__flumeBind"), 1,
+          [this](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args, size_t count) {
+            bindOnRuntime(rt, count > 0 && args[0].isNumber() ? static_cast<int>(args[0].asNumber()) : -1);
+            return jsi::Value::undefined();
+          }),
+      jsi::Function::createFromHostFunction(
+          rt, jsi::PropNameID::forAscii(rt, "__flumeRelease"), 1,
+          [this](jsi::Runtime&, const jsi::Value&, const jsi::Value* args, size_t count) {
+            if (count > 0 && args[0].isNumber()) releaseOnRuntime(static_cast<int>(args[0].asNumber()));
+            return jsi::Value::undefined();
+          }));
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto it = sessions_.find(session);
+  if (it != sessions_.end()) std::swap(it->second.flume, flume);
 }
 
 void Engine::releaseOnRuntime(int storeId) {
@@ -208,8 +245,10 @@ void Engine::invalidateMeasures(int storeId) {
 
 bool Engine::bind(int storeId, int holderId, int index, float widthDp, float heightDp, OpBatch& out) {
   auto store = find(storeId);
-  if (store == nullptr || runtime_ == nullptr || !bindFn_ || store->layout == nullptr) return false;
+  if (store == nullptr || store->layout == nullptr) return false;
   if (index >= 0 && index < store->list.count() && store->list.isReactAt(index)) return false;
+  std::shared_ptr<const FlumeRuntime> flume = flumeOf(store->session);
+  if (flume == nullptr) return false;
   auto& slot = store->holders[holderId];
   if (slot == nullptr) {
     slot = std::make_unique<Holder>();
@@ -223,9 +262,9 @@ bool Engine::bind(int storeId, int holderId, int index, float widthDp, float hei
 
   bool timed = statsEnabled_.load(std::memory_order_relaxed);
   int64_t t0 = timed ? nowNs() : 0;
-  current_ = Current{store, nullptr, ""};
+  current_ = Current{store, flume, nullptr, ""};
   try {
-    worklets::runSyncOnRuntime(runtime_, *bindFn_, jsi::Value(index));
+    worklets::runSyncOnRuntime(flume->runtime, flume->bind, jsi::Value(index));
   } catch (const std::exception& e) {
     current_.error = e.what();
   }
@@ -256,6 +295,11 @@ void Engine::bindOnRuntime(jsi::Runtime& rt, int index) {
   std::shared_ptr<Store> store = current_.store;
   if (store == nullptr) return;
   Store::RuntimeSlot& slot = store->slot;
+  if (slot.flume != current_.flume) {
+    Store::RuntimeSlot stale;  // dies whole at the end of this block, its values before the runtime it holds
+    std::swap(stale, slot);
+    slot.flume = current_.flume;
+  }
   try {
     if (!slot.renderCellFn || slot.renderCellVersion != store->renderCellVersion()) {
       auto serializable = store->renderCell();
@@ -315,31 +359,32 @@ std::string Engine::keyAt(int storeId, int position) {
   return store->list.keyAt(position);
 }
 
-void Engine::setCallInvoker(std::shared_ptr<facebook::react::CallInvoker> invoker) {
+void Engine::setReporter(int session, jsi::Function reporter) {
+  auto next = std::make_shared<jsi::Function>(std::move(reporter));
   std::lock_guard<std::mutex> lock(mutex_);
-  callInvoker_ = std::move(invoker);
+  auto it = sessions_.find(session);
+  if (it != sessions_.end()) std::swap(it->second.reporter, next);
 }
 
-void Engine::setReporter(jsi::Function reporter) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  reporter_ = std::make_shared<jsi::Function>(std::move(reporter));
-}
-
+// The newest session's reporter and invoker, with only a weak reference leaving the lock (the session owns the function).
 void Engine::report(int level, const std::string& message) {
   if (!logged_.first(message)) return;
-  std::shared_ptr<jsi::Function> reporter;
+  std::weak_ptr<jsi::Function> reporter;
   std::shared_ptr<facebook::react::CallInvoker> invoker;
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    reporter = reporter_;
-    invoker = callInvoker_;
+    if (!sessions_.empty()) {
+      const Session& newest = sessions_.rbegin()->second;
+      reporter = newest.reporter;
+      invoker = newest.invoker;
+    }
   }
-  if (reporter == nullptr || invoker == nullptr) {
+  if (reporter.expired() || invoker == nullptr) {
     logLine(message);
     return;
   }
   invoker->invokeAsync([reporter, level, message](jsi::Runtime& rt) {
-    reporter->call(rt, jsi::Value(level), jsi::String::createFromUtf8(rt, message));
+    if (auto fn = reporter.lock()) fn->call(rt, jsi::Value(level), jsi::String::createFromUtf8(rt, message));
   });
 }
 

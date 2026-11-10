@@ -27,11 +27,23 @@ struct StoreListener {
   virtual void onListChanged(const ListOps& ops, int count) = 0;  // UI thread
 };
 
+// The flume runtime and its two entry points, never changed once built: the functions die before the runtime.
+struct FlumeRuntime {
+  FlumeRuntime(std::shared_ptr<worklets::WorkletRuntime> runtime, facebook::jsi::Function bind,
+               facebook::jsi::Function release)
+      : runtime(std::move(runtime)), bind(std::move(bind)), release(std::move(release)) {}
+  const std::shared_ptr<worklets::WorkletRuntime> runtime;
+  const facebook::jsi::Function bind;
+  const facebook::jsi::Function release;
+};
+
 // One list: its order and items, the cell worklet, its holders and its runtime handles.
 class Store : public std::enable_shared_from_this<Store> {
  public:
-  explicit Store(int id) : id(id) {}
+  Store(int id, int session) : id(id), session(session) {}
+  ~Store();  // frees the holders' trees before the layout, on whichever thread drops the last reference
   const int id;
+  const int session;  // the React runtime that created it, see Engine::beginSession
 
   ListStore list;
 
@@ -48,8 +60,9 @@ class Store : public std::enable_shared_from_this<Store> {
   std::unique_ptr<Layout> layout;
   std::unique_ptr<Reconciler> reconciler;
 
-  // Flume runtime only, inside host functions run through runSyncOnRuntime.
+  // Flume runtime only, inside host functions run through runSyncOnRuntime. Replace it whole, never member by member.
   struct RuntimeSlot {
+    std::shared_ptr<const FlumeRuntime> flume;  // the runtime of the values below, declared first so it dies last
     std::optional<facebook::jsi::Function> renderCellFn;
     uint64_t renderCellVersion = 0;
     ItemCache items;

@@ -50,10 +50,23 @@ jsi::Function hostFunction(jsi::Runtime& rt, const char* name, unsigned argc, js
   return jsi::Function::createFromHostFunction(rt, jsi::PropNameID::forAscii(rt, name), argc, std::move(body));
 }
 
+// Held by the React runtime only (FlumeHost is shared with the flume runtime), so it dies in that runtime's teardown.
+class SessionEnd : public jsi::HostObject {
+ public:
+  explicit SessionEnd(int session) : session_(session) {}
+  ~SessionEnd() override { Engine::instance().endSession(session_); }
+
+ private:
+  const int session_;
+};
+
 }  // namespace
 
-void FlumeHost::install(jsi::Runtime& rt) {
-  rt.global().setProperty(rt, "__flume", jsi::Object::createFromHostObject(rt, std::make_shared<FlumeHost>()));
+void FlumeHost::install(jsi::Runtime& rt, std::shared_ptr<facebook::react::CallInvoker> invoker) {
+  int session = Engine::instance().beginSession(std::move(invoker));
+  rt.global().setProperty(rt, "__flumeSession",
+                          jsi::Object::createFromHostObject(rt, std::make_shared<SessionEnd>(session)));
+  rt.global().setProperty(rt, "__flume", jsi::Object::createFromHostObject(rt, std::make_shared<FlumeHost>(session)));
 }
 
 std::vector<jsi::PropNameID> FlumeHost::getPropertyNames(jsi::Runtime& rt) {
@@ -66,22 +79,25 @@ jsi::Value FlumeHost::get(jsi::Runtime& rt, const jsi::PropNameID& nameId) {
   std::string name = nameId.utf8(rt);
   Engine& engine = Engine::instance();
   if (name == "install") {
-    return hostFunction(rt, "install", 0, [&engine](jsi::Runtime& rt, const jsi::Value&, const jsi::Value*, size_t) {
-      engine.onInstall(rt);
+    return hostFunction(rt, "install", 0,
+                        [&engine, session = session_](jsi::Runtime& rt, const jsi::Value&, const jsi::Value*, size_t) {
+      engine.onInstall(session, rt);
       return jsi::Value::undefined();
     });
   }
   if (name == "setScheduler") {
     return hostFunction(rt, "setScheduler", 1,
-                        [&engine](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args, size_t count) {
+                        [&engine, session = session_](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args,
+                                                      size_t count) {
                           if (count < 1) throw jsi::JSError(rt, "setScheduler needs the scheduler holder");
-                          engine.setScheduler(worklets::getUISchedulerFromHolder(rt, args[0].asObject(rt)));
+                          engine.setScheduler(session, worklets::getUISchedulerFromHolder(rt, args[0].asObject(rt)));
                           return jsi::Value::undefined();
                         });
   }
   if (name == "createStore") {
-    return hostFunction(rt, "createStore", 0, [&engine](jsi::Runtime&, const jsi::Value&, const jsi::Value*, size_t) {
-      return jsi::Value(engine.createStore());
+    return hostFunction(rt, "createStore", 0,
+                        [&engine, session = session_](jsi::Runtime&, const jsi::Value&, const jsi::Value*, size_t) {
+      return jsi::Value(engine.createStore(session));
     });
   }
   if (name == "releaseStore") {
@@ -123,9 +139,10 @@ jsi::Value FlumeHost::get(jsi::Runtime& rt, const jsi::PropNameID& nameId) {
   }
   if (name == "setReporter") {
     return hostFunction(rt, "setReporter", 1,
-                        [&engine](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args, size_t count) {
+                        [&engine, session = session_](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args,
+                                                      size_t count) {
                           if (count < 1 || !args[0].isObject()) throw jsi::JSError(rt, "setReporter needs a function");
-                          engine.setReporter(args[0].asObject(rt).asFunction(rt));
+                          engine.setReporter(session, args[0].asObject(rt).asFunction(rt));
                           return jsi::Value::undefined();
                         });
   }

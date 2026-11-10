@@ -5,6 +5,7 @@
 #include <worklets/Compat/StableApi.h>
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -20,27 +21,30 @@
 
 namespace flume {
 
-// The process singleton: the store registry, the flume runtime and the bind pipeline with its stage timers.
+// The process singleton: the store registry, one session per React runtime and the bind pipeline with its stage timers.
 class Engine {
  public:
   static Engine& instance();
 
+  // A session holds what one React runtime installed and ends with that runtime (FlumeHost::install).
+  int beginSession(std::shared_ptr<facebook::react::CallInvoker> invoker);
+  void endSession(int session);  // inside the runtime's teardown, which still allows destroying its values
+
   // JS thread (FlumeHost)
-  void setScheduler(std::shared_ptr<worklets::UIScheduler> scheduler);
-  int createStore();
+  void setScheduler(int session, std::shared_ptr<worklets::UIScheduler> scheduler);
+  int createStore(int session);
   void releaseStore(int storeId);
   // Deferred data waits for refresh(), which the platform calls once it has the commit's pre-rendered cells.
   void setData(int storeId, std::vector<std::string> keys, std::vector<std::string> types,
                std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys, bool deferred);
   void setCell(int storeId, std::shared_ptr<worklets::Serializable> renderCell);
   void setCellKinds(int storeId, bool reactByDefault, std::vector<std::string> reactTypes);
-  void setCallInvoker(std::shared_ptr<facebook::react::CallInvoker> invoker);
-  void setReporter(facebook::jsi::Function reporter);  // a function on the React runtime, development only
+  void setReporter(int session, facebook::jsi::Function reporter);  // a function on the React runtime, development only
   void report(int level, const std::string& message);  // once per message: the reporter when set, else logcat
   void warn(const std::string& message) { report(1, message); }
 
   // Flume runtime, inside the install host function
-  void onInstall(facebook::jsi::Runtime& flumeRuntime);
+  void onInstall(int session, facebook::jsi::Runtime& flumeRuntime);
 
   // UI thread (platform bridge)
   int attach(int storeId, StoreListener* listener, std::unique_ptr<TextMeasurer> measurer, float pointScale);
@@ -58,28 +62,35 @@ class Engine {
 
  private:
   Engine() = default;
+
+  struct Session {
+    std::shared_ptr<facebook::react::CallInvoker> invoker;
+    std::shared_ptr<worklets::UIScheduler> scheduler;
+    std::shared_ptr<const FlumeRuntime> flume;
+    std::shared_ptr<facebook::jsi::Function> reporter;  // the only strong reference, so it dies with the session
+  };
+
+  struct Current {
+    std::shared_ptr<Store> store;
+    std::shared_ptr<const FlumeRuntime> flume;
+    std::unique_ptr<Node> fresh;
+    std::string error;
+  };
+
   std::shared_ptr<Store> find(int storeId);
+  std::shared_ptr<worklets::UIScheduler> schedulerOf(int session);
+  std::shared_ptr<const FlumeRuntime> flumeOf(int session);
   void scheduleRefresh(const std::shared_ptr<Store>& store, bool always);
   void bindOnRuntime(facebook::jsi::Runtime& rt, int index);
   void releaseOnRuntime(int storeId);
   void logLine(const std::string& message);
 
-  struct Current {
-    std::shared_ptr<Store> store;
-    std::unique_ptr<Node> fresh;
-    std::string error;
-  };
-
   std::mutex mutex_;
+  std::map<int, Session> sessions_;
+  int nextSession_ = 1;
   std::unordered_map<int, std::shared_ptr<Store>> stores_;
   std::unordered_map<int, std::shared_ptr<Store>> releasing_;
   int nextStoreId_ = 1;
-  std::shared_ptr<worklets::UIScheduler> scheduler_;
-  std::shared_ptr<facebook::react::CallInvoker> callInvoker_;
-  std::shared_ptr<facebook::jsi::Function> reporter_;
-  std::shared_ptr<worklets::WorkletRuntime> runtime_;
-  std::optional<facebook::jsi::Function> bindFn_;
-  std::optional<facebook::jsi::Function> releaseFn_;
   Current current_;
   std::atomic<bool> statsEnabled_{false};
   OnceSet logged_;

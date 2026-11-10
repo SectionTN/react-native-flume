@@ -26,8 +26,7 @@ RCT_EXPORT_MODULE(NativeFlume)
 - (void)installJSIBindingsWithRuntime:(facebook::jsi::Runtime &)runtime
                           callInvoker:(const std::shared_ptr<facebook::react::CallInvoker> &)callInvoker
 {
-  flume::Engine::instance().setCallInvoker(callInvoker);
-  flume::FlumeHost::install(runtime);
+  flume::FlumeHost::install(runtime, callInvoker);
   FLMImages.shared.loader = [self.moduleRegistry moduleForName:"ImageLoader"];
 }
 

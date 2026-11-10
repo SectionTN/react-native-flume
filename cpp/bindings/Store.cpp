@@ -2,6 +2,16 @@
 
 namespace flume {
 
+Store::~Store() {
+  if (reconciler != nullptr) {
+    for (auto& [id, holder] : holders) reconciler->release(*holder);
+  }
+  holders.clear();
+  reconciler.reset();
+  layout.reset();
+  measurer.reset();
+}
+
 void Store::setRenderCell(std::shared_ptr<worklets::Serializable> renderCell) {
   std::lock_guard<std::mutex> lock(mutex_);
   renderCell_ = std::move(renderCell);
