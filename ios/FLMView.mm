@@ -657,6 +657,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   if (!_attached) {
     return;
   }
+  // A waiting jump and a realign belong to the store being left.
+  [self dropJump];
   auto &engine = flume::Engine::instance();
   engine.detach(_storeId);
   for (int holder : _holders) {
@@ -687,6 +689,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   const NSInteger itemCount = _rows.itemCount();
   // The first rows and an empty row change reset and reload, so an armed opening lands before any of them binds.
   if (batch.reload || first || _rows.hasEmptyRow() != hadEmptyRow) {
+    _realign.reset();
     _itemCount = itemCount;
     [self configureLayoutRows];
     [_layout resetWithCount:itemCount typeOf:[self typeOf]];
@@ -1604,18 +1607,18 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     return;
   }
   const CGFloat offset = [self offsetOf:*_realign];
-  if (std::fabs(offset - [self currentOffset]) <= 0.5) {
-    if ([self visibleSlotCellsShow]) {
+  if (std::fabs(offset - [self currentOffset]) > 0.5) {
+    if (_realigns >= kFLMMaxRealigns) {
       _realign.reset();
+    } else {
+      _realigns++;
+      [_collectionView setContentOffset:[self pointAt:offset] animated:NO];
     }
     return;
   }
-  if (_realigns >= kFLMMaxRealigns) {
+  if ([self visibleSlotCellsShow]) {
     _realign.reset();
-    return;
   }
-  _realigns++;
-  [_collectionView setContentOffset:[self pointAt:offset] animated:NO];
 }
 
 - (BOOL)visibleSlotCellsShow
