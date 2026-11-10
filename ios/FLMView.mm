@@ -1383,7 +1383,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)recognizer shouldReceiveTouch:(UITouch *)touch
 {
   for (UIView *view = touch.view; view != nil && view != _collectionView; view = view.superview) {
-    if ([view isKindOfClass:FLMPressableView.class]) {
+    // A React row emits no row press, and a recognized long press would cancel its own controls' touches.
+    if ([view isKindOfClass:FLMPressableView.class] || [view isKindOfClass:FLMSlotCell.class]) {
       return NO;
     }
   }
