@@ -140,6 +140,12 @@ struct FLMAnchorUpdate {
   return _model.itemsIn(static_cast<float>(start), static_cast<float>(end), _viewportLength);
 }
 
+- (int)pinnedIndexAt:(CGFloat)viewportStart
+{
+  const auto pinned = _model.pinned(_sticky, static_cast<float>(viewportStart), _viewportLength);
+  return pinned ? pinned->index : -1;
+}
+
 - (CGFloat)emptyMinLength
 {
   return _model.emptyMinLength(static_cast<float>([self viewportFor:self.collectionView.bounds].length));

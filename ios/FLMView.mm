@@ -1036,6 +1036,14 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
       rows.push_back([self slotRequestAt:position viewType:viewType]);
     }
   }
+  // A sticky row pins from far outside the window, so the rows that pin a drawDistance either way render ahead too.
+  for (const CGFloat edge : {viewport.start - distance, viewport.start + distance}) {
+    const int pinned = [_layout pinnedIndexAt:edge];
+    const int viewType = pinned >= 0 && pinned < count ? FLMViewType(_storeId, _rows, pinned) : 0;
+    if (viewType % 2 != 0) {
+      rows.push_back([self slotRequestAt:pinned viewType:viewType]);
+    }
+  }
   [_slots pool].keepAhead(rows);
   if ([_slots pool].dirty()) {
     [self requestSlotsFlush];
