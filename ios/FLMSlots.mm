@@ -10,6 +10,7 @@ using namespace facebook;
   UIView *_bay;
   NSMutableArray<UIView *> *_children;  // Fabric addresses its children by index here
   NSMutableDictionary<NSNumber *, FLMSlotView *> *_bySlot;
+  NSMapTable<NSNumber *, FLMSlotCell *> *_cells;  // the cell bound to each slot
   flume::SlotPool _pool;
   BOOL _registered;
   CGFloat _sentCellWidth;
@@ -21,6 +22,7 @@ using namespace facebook;
     _bay = bay;
     _children = [NSMutableArray array];
     _bySlot = [NSMutableDictionary dictionary];
+    _cells = [NSMapTable strongToWeakObjectsMapTable];
     _sentCellWidth = NAN;
   }
   return self;
@@ -46,8 +48,36 @@ using namespace facebook;
   if (view.slot < 0) {
     _pool.registerPrerendered(view.slot, view.kind, view.itemKey.UTF8String);
     _registered = YES;
+    [self adoptForWaitingCell:view];
   }
-  [_bay addSubview:view];
+  FLMSlotCell *cell = [_cells objectForKey:@(view.slot)];
+  if (cell != nil) {
+    [cell show:view];
+  } else {
+    [_bay addSubview:view];
+  }
+  if (self.onRendered != nil) {
+    self.onRendered(view.slot);
+  }
+}
+
+// A pre-rendered view takes the place of a slot its key still waits on, so the cell shows it with no blank frame.
+- (void)adoptForWaitingCell:(FLMSlotView *)view
+{
+  const std::string key = view.itemKey.UTF8String;
+  for (FLMSlotCell *cell in _cells.objectEnumerator) {
+    const std::optional<flume::SlotEntry> waiting = _pool.entry(cell.slot);
+    if (cell.slot <= 0 || _bySlot[@(cell.slot)] != nil || !waiting || waiting->kind != view.kind || waiting->key != key) {
+      continue;
+    }
+    const int old = cell.slot;
+    if (_pool.replace(cell.owner, old, view.slot)) {
+      [_cells removeObjectForKey:@(old)];
+      cell.slot = view.slot;
+      [_cells setObject:cell forKey:@(view.slot)];
+    }
+    return;
+  }
 }
 
 - (void)removeChild:(UIView *)child atIndex:(NSInteger)index
@@ -63,6 +93,10 @@ using namespace facebook;
     if (_bySlot[@(view.slot)] == view) {
       [_bySlot removeObjectForKey:@(view.slot)];
     }
+    FLMSlotCell *cell = [_cells objectForKey:@(view.slot)];
+    if (cell.view == view) {
+      [cell show:nil];
+    }
   }
   [child removeFromSuperview];
 }
@@ -77,6 +111,65 @@ using namespace facebook;
   const BOOL registered = _registered;
   _registered = NO;
   return registered;
+}
+
+- (void)bindCell:(FLMSlotCell *)cell group:(flume::SlotGroup)group kind:(int)kind key:(NSString *)key index:(int)index
+{
+  const std::string itemKey = key.UTF8String;
+  const std::optional<flume::SlotEntry> shown = cell.slot != 0 ? _pool.entry(cell.slot) : std::nullopt;
+  if (cell.slot != 0 && (!shown || shown->key != itemKey || shown->kind != kind)) {
+    [self releaseCell:cell];
+  }
+  const int slot = _pool.acquire(cell.owner, group, kind, itemKey, index);
+  cell.slot = slot;
+  [_cells setObject:cell forKey:@(slot)];
+  [cell show:_bySlot[@(slot)]];
+}
+
+- (void)releaseCell:(FLMSlotCell *)cell
+{
+  const int slot = cell.slot;
+  if (slot == 0) {
+    return;
+  }
+  _pool.release(cell.owner, slot);
+  if ([_cells objectForKey:@(slot)] == cell) {
+    [_cells removeObjectForKey:@(slot)];
+  }
+  [self park:cell];
+  cell.slot = 0;
+}
+
+// The view goes back to the bay only from the cell that still holds it, since another cell may have taken it.
+- (void)park:(FLMSlotCell *)cell
+{
+  FLMSlotView *view = cell.view;
+  if (view != nil && view.superview == cell.contentView) {
+    [_bay addSubview:view];
+  }
+  [cell show:nil];
+}
+
+- (void)reindexCell:(FLMSlotCell *)cell index:(int)index
+{
+  if (cell.slot != 0 && index >= 0) {
+    _pool.setIndex(cell.slot, index);
+  }
+}
+
+- (void)detachAll
+{
+  for (FLMSlotCell *cell in [self cells]) {
+    _pool.lend(cell.owner);
+    [self park:cell];
+    cell.slot = 0;
+  }
+  [_cells removeAllObjects];
+}
+
+- (NSArray<FLMSlotCell *> *)cells
+{
+  return _cells.objectEnumerator.allObjects;
 }
 
 - (void)flushTo:(const react::FlumeViewEventEmitter &)emitter cellWidth:(CGFloat)cellWidth

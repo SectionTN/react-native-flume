@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
   Platform,
@@ -25,8 +25,12 @@ function blockJs(ms: number) {
   }
 }
 
+// ToastAndroid shows nothing on iOS, so the last press shows in the screen's status line there.
+let showPressed: (message: string) => void = () => {};
+
 const toast = (message: string) => {
   if (Platform.OS === 'android') ToastAndroid.show(message, ToastAndroid.SHORT);
+  showPressed(message);
 };
 
 function RowCell({ row, tinted }: { row: ReactRow; tinted: boolean }) {
@@ -135,6 +139,13 @@ export default function ReactScreen() {
   const [highlight, setHighlight] = useState(false);
   const [taps, setTaps] = useState<Taps>('never');
   const [refreshing, setRefreshing] = useState(false);
+  const [pressed, setPressed] = useState('none');
+  useEffect(() => {
+    showPressed = setPressed;
+    return () => {
+      showPressed = () => {};
+    };
+  }, []);
   const sticky = useMemo(() => sectionIndices(rows), [rows]);
   const list = useRef<FlumeRef>(null);
   const prepended = useRef(0);
@@ -180,6 +191,11 @@ export default function ReactScreen() {
           <Button key={title} title={title} onPress={onPress} />
         ))}
       </View>
+      {Platform.OS === 'ios' ? (
+        <Text style={styles.status} testID="react-status">
+          pressed {pressed}
+        </Text>
+      ) : null}
       <Flume
         data={CHIPS}
         renderItem={renderChip}
@@ -226,6 +242,7 @@ const styles = StyleSheet.create({
   main: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
   title: { flex: 1, fontSize: 16, color: '#111111' },
   detail: { height: 24, paddingHorizontal: 16, fontSize: 13, color: '#555555' },
+  status: { paddingHorizontal: 16, paddingBottom: 4, fontSize: 13, color: '#555555' },
   button: {
     paddingHorizontal: 12,
     paddingVertical: 8,

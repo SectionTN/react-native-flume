@@ -133,6 +133,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   UIView *_bay;  // the Fabric children no cell shows, out of sight
   FLMSlots *_slots;
   BOOL _slotsFlushPending;
+  BOOL _reclaimSlots;  // slots lent around a reload go back to the pool after the next layout pass
   std::unique_ptr<FLMStoreListener> _listener;
   NSMutableSet<NSString *> *_registered;
   std::unordered_set<int> _holders;
@@ -413,6 +414,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   flume::Engine::instance().invalidateMeasures(_storeId);
   _fontScale = RCTFontSizeMultiplier();
   [_layout invalidateLengths];
+  [self lendSlotCells];
   [_collectionView reloadData];
 }
 
@@ -530,6 +532,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
   _everAttached = YES;
   _viewability.invalidate();
+  [self lendSlotCells];
   [_collectionView reloadData];
   [self scheduleOpening];
 }
@@ -567,6 +570,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
   _holders.clear();
   _listener.reset();
+  [self lendSlotCells];
   _attached = NO;
 }
 
@@ -590,6 +594,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   if (batch.reload || first) {
     _itemCount = itemCount;
     [_layout resetWithCount:itemCount typeOf:[self typeOf]];
+    [self lendSlotCells];
     [_collectionView reloadData];
     [self scheduleOpening];
     return;
@@ -634,6 +639,19 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     _pendingTarget.reset();
     [self scrollTo:[_layout offsetForVisualEdge:anchor.edge] animated:anchor.animated];
   }
+  [self reindexSlotCells];
+}
+
+// Inserts and removes move rows without a rebind, so each slot's index follows its cell.
+- (void)reindexSlotCells
+{
+  for (FLMSlotCell *cell in [_slots cells]) {
+    NSIndexPath *path = [_collectionView indexPathForCell:cell];
+    if (path != nil) {
+      [_slots reindexCell:cell index:_rows.dataIndex(static_cast<int>(path.item))];
+    }
+  }
+  [self requestSlotsFlush];
 }
 
 #pragma mark - UICollectionViewDataSource
@@ -647,10 +665,24 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 {
   const int position = static_cast<int>(indexPath.item);
   const int viewType = FLMViewType(_storeId, _rows, position);
+  // Odd view types are React rows, shown by their slots.
+  const BOOL react = viewType % 2 != 0;
   NSString *identifier = [NSString stringWithFormat:@"t%d", viewType];
   if (![_registered containsObject:identifier]) {
-    [collectionView registerClass:FLMCell.class forCellWithReuseIdentifier:identifier];
+    [collectionView registerClass:react ? FLMSlotCell.class : FLMCell.class forCellWithReuseIdentifier:identifier];
     [_registered addObject:identifier];
+  }
+  if (react) {
+    FLMSlotCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:identifier forIndexPath:indexPath];
+    if (cell.owner == 0) {
+      cell.owner = ++_nextHolderId;
+      __weak FLMView *weakSelf = self;
+      cell.onPrepareForReuse = ^(FLMSlotCell *reused) {
+        [weakSelf releaseSlotCell:reused];
+      };
+    }
+    [self bindSlotCell:cell position:position viewType:viewType];
+    return cell;
   }
   FLMCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:identifier forIndexPath:indexPath];
   if (cell.holderId == 0) {
@@ -668,18 +700,63 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
       }
     };
   }
-  // Odd view types are React rows, which get their slots in a later plan.
-  if (viewType % 2 == 0) {
-    const CGFloat cross = [_layout bindCrossLengthForItem:indexPath.item];
-    if ([cell bindStore:_storeId
-                  index:_rows.dataIndex(position)
-                  width:_horizontal ? NAN : cross
-                 height:_horizontal ? cross : NAN
-             horizontal:_horizontal]) {
-      _holders.insert(cell.holderId);
-    }
+  const CGFloat cross = [_layout bindCrossLengthForItem:indexPath.item];
+  if ([cell bindStore:_storeId
+                index:_rows.dataIndex(position)
+                width:_horizontal ? NAN : cross
+               height:_horizontal ? cross : NAN
+           horizontal:_horizontal]) {
+    _holders.insert(cell.holderId);
   }
   return cell;
+}
+
+// A React row's cell takes its key's slot, and shows its view at once when the slot has mounted.
+- (void)bindSlotCell:(FLMSlotCell *)cell position:(int)position viewType:(int)viewType
+{
+  const int index = _rows.dataIndex(position);
+  if (index < 0) {
+    return;
+  }
+  NSString *key = [NSString stringWithUTF8String:flume::Engine::instance().keyAt(_storeId, index).c_str()];
+  [_slots bindCell:cell group:flume::SlotGroup{viewType} kind:flume::kSlotRow key:key index:index];
+  [self requestSlotsFlush];
+}
+
+- (void)releaseSlotCell:(FLMSlotCell *)cell
+{
+  if (cell.slot != 0) {
+    [_slots releaseCell:cell];
+    [self requestSlotsFlush];
+  }
+}
+
+// UIKit configures a reload's new cells before it lets the old ones go, so the slots wait, lent, for the new cells.
+- (void)lendSlotCells
+{
+  [_slots detachAll];
+  _reclaimSlots = YES;
+  [self requestSlotsFlush];
+}
+
+// A cell UIKit kept after it left the screen can come back without a new cellForItem.
+- (void)collectionView:(UICollectionView *)collectionView
+       willDisplayCell:(UICollectionViewCell *)cell
+    forItemAtIndexPath:(NSIndexPath *)indexPath
+{
+  if ([cell isKindOfClass:FLMSlotCell.class]) {
+    const int position = static_cast<int>(indexPath.item);
+    [self bindSlotCell:(FLMSlotCell *)cell position:position viewType:FLMViewType(_storeId, _rows, position)];
+  }
+}
+
+- (void)collectionView:(UICollectionView *)collectionView
+    didEndDisplayingCell:(UICollectionViewCell *)cell
+      forItemAtIndexPath:(NSIndexPath *)indexPath
+{
+  if ([cell isKindOfClass:FLMSlotCell.class]) {
+    [self releaseSlotCell:(FLMSlotCell *)cell];
+  }
 }
 
 // A row's length before any cell shows it, bound into a holder of its own; -1 for a React row.
@@ -761,6 +838,12 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 // After every layout pass, scroll frames included.
 - (void)listDidLayout
 {
+  // The reload's cells have bound by now, so the lent slots none took become released ones.
+  if (_reclaimSlots && _attached) {
+    _reclaimSlots = NO;
+    [_slots pool].reclaim();
+    [self requestSlotsFlush];
+  }
   [self evaluateViewability];
   [self evaluateEdges];
 }
@@ -925,10 +1008,18 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   return ![self swallowsTaps];
 }
 
+// A React row presses through its own React handlers, so it never emits a row press, as on Android.
+- (BOOL)reactRowAt:(NSIndexPath *)path
+{
+  return FLMViewType(_storeId, _rows, static_cast<int>(path.item)) % 2 != 0;
+}
+
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
 {
   [collectionView deselectItemAtIndexPath:indexPath animated:NO];
-  [self emitPress:indexPath.item pressId:@"" longPress:NO];
+  if (![self reactRowAt:indexPath]) {
+    [self emitPress:indexPath.item pressId:@"" longPress:NO];
+  }
 }
 
 - (void)rowLongPressed:(UILongPressGestureRecognizer *)recognizer
@@ -937,7 +1028,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     return;
   }
   NSIndexPath *path = [_collectionView indexPathForItemAtPoint:[recognizer locationInView:_collectionView]];
-  if (path != nil) {
+  if (path != nil && ![self reactRowAt:path]) {
     [self emitPress:path.item pressId:@"" longPress:YES];
   }
 }
