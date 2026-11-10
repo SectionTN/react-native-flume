@@ -18,7 +18,7 @@ class ListStore {
  public:
   // JS thread; a second snapshot before the first is applied merges into it.
   void setPending(std::vector<std::string> keys, std::vector<std::string> types, std::vector<int> changedIndices,
-                  std::vector<Value> changedItems, bool stableKeys);
+                  std::vector<Value> changedItems, bool stableKeys, bool deferred = false);
 
   // JS thread; the next applyPending applies it, also when no data is pending.
   void setKinds(bool reactByDefault, std::vector<std::string> reactTypes);
@@ -48,6 +48,7 @@ class ListStore {
     std::vector<int> changedIndices;
     std::vector<Value> changedItems;
     bool stableKeys = true;
+    bool deferred = false;
   };
   struct Kinds {
     bool reactByDefault = false;

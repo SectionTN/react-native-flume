@@ -135,6 +135,19 @@ TEST_CASE("a full-span header keeps its own row through a removal before its pro
   CHECK(layout.crossLength(1, 400) == 400);
 }
 
+TEST_CASE("a deferred batch leaves the full-span indices to the props that already landed") {
+  ListLayoutConfig config;
+  config.lanes = 2;
+  ListLayout layout = list(6, config, {2});
+  ListOps prepend;
+  prepend.inserted = {{0, 1}};
+  prepend.deferred = true;
+  layout.configure(config, {3});
+  layout.apply(prepend, 7, kOneType);
+  CHECK(layout.crossLength(3, 400) == 400);
+  CHECK(layout.crossLength(4, 400) == 200);
+}
+
 TEST_CASE("lanes split the cross axis inside the cross padding") {
   ListLayoutConfig config;
   config.lanes = 2;

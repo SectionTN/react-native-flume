@@ -52,7 +52,7 @@ void Engine::setData(int storeId, std::vector<std::string> keys, std::vector<std
   auto store = find(storeId);
   if (store == nullptr) return;
   store->list.setPending(std::move(keys), std::move(types), std::move(changedIndices), std::move(changedItems),
-                         stableKeys);
+                         stableKeys, deferred);
   if (!deferred) scheduleRefresh(store, false);
 }
 

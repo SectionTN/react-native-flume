@@ -5,7 +5,8 @@
 namespace flume {
 
 void ListStore::setPending(std::vector<std::string> keys, std::vector<std::string> types,
-                           std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys) {
+                           std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys,
+                           bool deferred) {
   std::lock_guard<std::mutex> lock(mutex_);
   // A second snapshot before the UI thread applied the first replaces it: items it carries are stale.
   if (pending_) {
@@ -27,7 +28,8 @@ void ListStore::setPending(std::vector<std::string> keys, std::vector<std::strin
     changedItems = std::move(mergedItems);
     stableKeys = stableKeys && old.stableKeys;
   }
-  pending_ = Pending{std::move(keys), std::move(types), std::move(changedIndices), std::move(changedItems), stableKeys};
+  pending_ = Pending{std::move(keys), std::move(types), std::move(changedIndices), std::move(changedItems), stableKeys,
+                     deferred};
 }
 
 void ListStore::setAttached(bool attached) {
@@ -93,6 +95,7 @@ std::optional<ListOps> ListStore::applyPending() {
   std::sort(changed.begin(), changed.end());
   changed.erase(std::unique(changed.begin(), changed.end()), changed.end());
   ListOps ops = diffKeys(keys_, pending->keys, changed, pending->stableKeys);
+  ops.deferred = pending->deferred;
 
   for (size_t i = 0; i < pending->changedIndices.size(); i++) {
     size_t index = static_cast<size_t>(pending->changedIndices[i]);

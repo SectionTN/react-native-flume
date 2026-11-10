@@ -18,6 +18,21 @@ TEST_CASE("a first snapshot inserts everything") {
   CHECK(store.keyAt(2) == "c");
 }
 
+TEST_CASE("deferred data marks its ops as landing after their commit's props") {
+  flume::ListStore store;
+  store.setPending({"a"}, {"t"}, {0}, {V(1)}, true);
+  store.applyPending();
+  store.setPending({"z", "a"}, {"t", "t"}, {0}, {V(0)}, true, true);
+  auto deferred = store.applyPending();
+  REQUIRE(deferred);
+  CHECK(deferred->deferred);
+  store.setPending({"y", "z", "a"}, {"t", "t", "t"}, {0}, {V(0)}, true, true);
+  store.setPending({"x", "y", "z", "a"}, {"t", "t", "t", "t"}, {0}, {V(0)}, true);
+  auto immediate = store.applyPending();
+  REQUIRE(immediate);
+  CHECK_FALSE(immediate->deferred);
+}
+
 TEST_CASE("coalesced snapshots diff against the applied order") {
   flume::ListStore store;
   store.setPending({"a", "b"}, {"t", "t"}, {0, 1}, {V(1), V(2)}, true);

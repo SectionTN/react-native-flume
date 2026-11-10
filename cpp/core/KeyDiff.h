@@ -18,6 +18,7 @@ struct ListOps {
   std::vector<Range> inserted;             // next positions, ascending
   std::vector<std::pair<int, int>> moved;  // from, to; sequential on the order left by removes then inserts
   std::vector<int> changed;                // next positions of changed items that already existed
+  bool deferred = false;  // the data waited for its commit's pre-rendered cells, so that commit's props landed first
 };
 
 // Past this many moves the platform reloads: per-row move animations stop meaning anything, and the work stays bounded.
