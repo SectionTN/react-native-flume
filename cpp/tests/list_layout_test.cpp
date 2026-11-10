@@ -148,6 +148,18 @@ TEST_CASE("a deferred batch leaves the full-span indices to the props that alrea
   CHECK(layout.crossLength(4, 400) == 200);
 }
 
+TEST_CASE("a deferred batch takes the footer's full-span row at the new count") {
+  ListLayoutConfig config;
+  config.lanes = 2;
+  ListLayout layout = list(4, config, {0, 3});
+  ListOps prepend;
+  prepend.inserted = {{1, 1}};
+  prepend.deferred = true;
+  layout.apply(prepend, 5, kOneType, std::vector<int>{0, 4});
+  CHECK(layout.crossLength(3, 400) == 200);
+  CHECK(layout.crossLength(4, 400) == 400);
+}
+
 TEST_CASE("lanes split the cross axis inside the cross padding") {
   ListLayoutConfig config;
   config.lanes = 2;

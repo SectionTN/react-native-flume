@@ -88,13 +88,16 @@ struct FLMAnchorUpdate {
   return pending;
 }
 
-- (std::vector<int>)applyOps:(const flume::ListOps &)ops count:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf
+- (std::vector<int>)applyOps:(const flume::ListOps &)ops
+                       count:(NSInteger)count
+                      typeOf:(flume::ListLayout::TypeOf)typeOf
+            deferredFullSpan:(std::optional<std::vector<int>>)deferredFullSpan
 {
   // Immediate data lands before its props, so until they catch up the sticky indices follow their rows.
   if (!ops.deferred) {
     _sticky = flume::mapIndices(ops, _sticky);
   }
-  return _model.apply(ops, static_cast<int>(count), typeOf);
+  return _model.apply(ops, static_cast<int>(count), typeOf, std::move(deferredFullSpan));
 }
 
 - (void)invalidateLengths

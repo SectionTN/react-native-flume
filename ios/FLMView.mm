@@ -453,20 +453,31 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   config.dataStart = _rows.headerCount();
   config.afterData = _rows.footer ? 1 : 0;
   config.emptyIndex = _rows.hasEmptyRow() ? _rows.headerCount() : -1;
+  std::vector<int> sticky = [self stickyPositions];
+  [_layout configure:config fullSpan:[self fullSpanPositions:sticky] sticky:sticky];
+}
+
+- (std::vector<int>)stickyPositions
+{
   std::vector<int> sticky = _stickyIndices;
   for (int &index : sticky) {
     index = _rows.position(index);
   }
   std::sort(sticky.begin(), sticky.end());
-  // Sticky rows and the list components span every column of a grid, as on Android.
+  return sticky;
+}
+
+// Sticky rows and the list components span every column of a grid, as on Android.
+- (std::vector<int>)fullSpanPositions:(const std::vector<int> &)sticky
+{
   std::vector<int> fullSpan;
-  if (config.lanes > 1) {
+  if (_layoutConfig.lanes > 1) {
     fullSpan = _rows.fullSpanPositions({});
     fullSpan.insert(fullSpan.end(), sticky.begin(), sticky.end());
     std::sort(fullSpan.begin(), fullSpan.end());
     fullSpan.erase(std::unique(fullSpan.begin(), fullSpan.end()), fullSpan.end());
   }
-  [_layout configure:config fullSpan:fullSpan sticky:sticky];
+  return fullSpan;
 }
 
 // A new cell size across the scroll axis or a new text size: every row binds and measures again.
@@ -686,11 +697,13 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
   const flume::AnchorDecision anchor =
       [_layout prepareForOps:positions count:itemCount edges:flume::insertedAtEdges(ops, count, _inverted)];
+  const std::optional<std::vector<int>> deferredFullSpan =
+      positions.deferred ? std::optional([self fullSpanPositions:[self stickyPositions]]) : std::nullopt;
   __block std::vector<int> retyped;
   void (^update)(void) = ^{
     [self->_collectionView performBatchUpdates:^{
       self->_itemCount = itemCount;
-      retyped = [self->_layout applyOps:positions count:itemCount typeOf:[self typeOf]];
+      retyped = [self->_layout applyOps:positions count:itemCount typeOf:[self typeOf] deferredFullSpan:deferredFullSpan];
       [self->_collectionView deleteItemsAtIndexPaths:FLMIndexPaths(batch.deletes)];
       [self->_collectionView insertItemsAtIndexPaths:FLMIndexPaths(batch.inserts)];
       for (const auto &[from, to] : batch.moves) {

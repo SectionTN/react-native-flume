@@ -54,7 +54,8 @@ class ListLayout {
   void configure(const ListLayoutConfig& config, std::vector<int> fullSpan);  // fullSpan ascending
   void reset(int count, const TypeOf& typeOf);
   // Returns the changed items whose type changed: their cells need a reload, not a reconfigure.
-  std::vector<int> apply(const ListOps& ops, int count, const TypeOf& typeOf);
+  std::vector<int> apply(const ListOps& ops, int count, const TypeOf& typeOf,
+                         std::optional<std::vector<int>> deferredFullSpan = std::nullopt);
   // The anchor's move is its top edge's, or its bottom edge's when inverted.
   LengthChange setLength(int index, float length, int anchor, float viewportLength = 0);
   void invalidateLengths();
