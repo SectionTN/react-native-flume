@@ -1077,7 +1077,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     });
   }
   // A press starts only at rest, so the shadow tree learns where React rows show only then.
-  const BOOL moving = _collectionView.isDragging || _collectionView.isDecelerating || _pendingTarget.has_value();
+  const BOOL moving = _collectionView.isDragging || _collectionView.isDecelerating || _pendingTarget.has_value() || _gliding;
   if (!moving || !_collectionView.scrollEnabled) {
     [self writeShadowOrigins];
   }
