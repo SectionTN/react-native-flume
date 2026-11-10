@@ -26,6 +26,7 @@
 
 #include "adapter/BatchUpdates.h"
 #include "adapter/EdgeTracker.h"
+#include "adapter/ListRows.h"
 #include "adapter/ScrollTargets.h"
 #include "adapter/Viewability.h"
 #include "bindings/Engine.h"
@@ -99,6 +100,22 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   return flume::KeyboardTaps::Never;
 }
 
+// The store's type for a data row, the list component's own for the rest.
+int FLMViewType(int storeId, const flume::ListRows &rows, int position)
+{
+  switch (rows.kind(position)) {
+    case flume::RowKind::Header:
+      return flume::kHeaderViewType;
+    case flume::RowKind::Data:
+      return flume::Engine::instance().viewType(storeId, rows.dataIndex(position));
+    case flume::RowKind::Empty:
+      return flume::kEmptyViewType;
+    case flume::RowKind::Footer:
+      return flume::kFooterViewType;
+  }
+  return flume::kFooterViewType;
+}
+
 }  // namespace
 
 @interface FLMView () <RCTFlumeViewViewProtocol,
@@ -116,7 +133,8 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   std::unordered_set<int> _holders;
   int _storeId;
   int _nextHolderId;
-  NSInteger _count;
+  flume::ListRows _rows;  // the rows the store holds; the data count is the store's
+  NSInteger _itemCount;  // the rows UIKit was told about
   BOOL _attached;
   CGFloat _visibleEnd;  // the viewport's end in content coordinates as of the last scroll, NAN before one
   BOOL _itemAnimations;
@@ -358,9 +376,18 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   config.stackFromEnd =
       !props.inverted && config.lanes == 1 && props.maintainVisibleContentPosition.startRenderingFromBottom;
   std::vector<int> sticky = props.stickyHeaderIndices;
+  for (int &index : sticky) {
+    index = _rows.position(index);
+  }
   std::sort(sticky.begin(), sticky.end());
-  // A sticky header spans every column of a grid, as on Android.
-  std::vector<int> fullSpan = config.lanes > 1 ? sticky : std::vector<int>();
+  // Sticky rows and the list components span every column of a grid, as on Android.
+  std::vector<int> fullSpan;
+  if (config.lanes > 1) {
+    fullSpan = _rows.fullSpanPositions({});
+    fullSpan.insert(fullSpan.end(), sticky.begin(), sticky.end());
+    std::sort(fullSpan.begin(), fullSpan.end());
+    fullSpan.erase(std::unique(fullSpan.begin(), fullSpan.end()), fullSpan.end());
+  }
   [_layout configure:config fullSpan:fullSpan sticky:sticky];
   _horizontal = props.horizontal;
   _inverted = props.inverted;
@@ -429,7 +456,8 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 - (flume::ListLayout::TypeOf)typeOf
 {
   const int storeId = _storeId;
-  return [storeId](int index) { return flume::Engine::instance().viewType(storeId, index); };
+  const flume::ListRows rows = _rows;
+  return [storeId, rows](int position) { return FLMViewType(storeId, rows, position); };
 }
 
 // Reloads on every attach, so rows bound before a detach show the data and size they have now.
@@ -452,13 +480,15 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
     _openingArmed = YES;
   }
   // A return to the same rows keeps their lengths, so the offset still shows them; new data starts over.
-  if (_everAttached && count == _count) {
+  const BOOL sameRows = _everAttached && count == _rows.dataCount;
+  _rows.dataCount = count;
+  _itemCount = _rows.itemCount();
+  if (sameRows) {
     [_layout invalidateLengths];
   } else {
-    [_layout resetWithCount:count typeOf:[self typeOf]];
+    [_layout resetWithCount:_itemCount typeOf:[self typeOf]];
   }
   _everAttached = YES;
-  _count = count;
   _viewability.invalidate();
   [_collectionView reloadData];
   [self scheduleOpening];
@@ -467,14 +497,14 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 // FlatList's initialScrollIndex, or the bottom of a list anchored there; an upright list opens at its top as it is.
 - (void)scheduleOpening
 {
-  if (!_openingArmed || _count == 0) {
+  if (!_openingArmed || _rows.dataCount == 0) {
     return;
   }
   _openingArmed = NO;
-  const std::optional<flume::Landing> landing = flume::openingLanding(_initialScrollIndex, static_cast<int>(_count));
+  const std::optional<flume::Landing> landing = flume::openingLanding(_initialScrollIndex, _rows.dataCount);
   FLMPendingOffset pending{FLMPendingOffset::Kind::Edge};
   if (landing && !landing->contentEnd) {
-    pending = FLMPendingOffset{FLMPendingOffset::Kind::Landing, landing->index, landing->viewPosition};
+    pending = FLMPendingOffset{FLMPendingOffset::Kind::Landing, _rows.position(landing->index), landing->viewPosition};
   } else if (landing) {
     pending.edge = _inverted ? flume::VisualEdge::Top : flume::VisualEdge::Bottom;
   } else if (_inverted || _stackFromEnd) {
@@ -510,21 +540,27 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   if (count == 0) {
     _openingArmed = YES;
   }
-  flume::BatchUpdates batch = flume::toBatchUpdates(ops, static_cast<int>(_count));
+  const flume::ListOps positions = _rows.positions(ops);
+  flume::BatchUpdates batch = flume::toBatchUpdates(positions, static_cast<int>(_itemCount));
+  const BOOL first = _rows.dataCount == 0;
+  // The store holds the new data from here on, and the layout measures the rows a batch can show from it.
+  _rows.dataCount = count;
+  const NSInteger itemCount = _rows.itemCount();
   // The first rows reset and reload, so an armed opening lands before any of them binds.
-  if (batch.reload || _count == 0) {
-    _count = count;
-    [_layout resetWithCount:count typeOf:[self typeOf]];
+  if (batch.reload || first) {
+    _itemCount = itemCount;
+    [_layout resetWithCount:itemCount typeOf:[self typeOf]];
     [_collectionView reloadData];
     [self scheduleOpening];
     return;
   }
-  const flume::AnchorDecision anchor = [_layout prepareForOps:ops count:count];
+  const flume::AnchorDecision anchor =
+      [_layout prepareForOps:positions count:itemCount edges:flume::insertedAtEdges(ops, count, _inverted)];
   __block std::vector<int> retyped;
   void (^update)(void) = ^{
     [self->_collectionView performBatchUpdates:^{
-      self->_count = count;
-      retyped = [self->_layout applyOps:ops count:count typeOf:[self typeOf]];
+      self->_itemCount = itemCount;
+      retyped = [self->_layout applyOps:positions count:itemCount typeOf:[self typeOf]];
       [self->_collectionView deleteItemsAtIndexPaths:FLMIndexPaths(batch.deletes)];
       [self->_collectionView insertItemsAtIndexPaths:FLMIndexPaths(batch.inserts)];
       for (const auto &[from, to] : batch.moves) {
@@ -564,12 +600,13 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section
 {
-  return _attached ? _count : 0;
+  return _attached ? _itemCount : 0;
 }
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
-  const int viewType = flume::Engine::instance().viewType(_storeId, static_cast<int>(indexPath.item));
+  const int position = static_cast<int>(indexPath.item);
+  const int viewType = FLMViewType(_storeId, _rows, position);
   NSString *identifier = [NSString stringWithFormat:@"t%d", viewType];
   if (![_registered containsObject:identifier]) {
     [collectionView registerClass:FLMCell.class forCellWithReuseIdentifier:identifier];
@@ -595,7 +632,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
   if (viewType % 2 == 0) {
     const CGFloat cross = [_layout bindCrossLengthForItem:indexPath.item];
     if ([cell bindStore:_storeId
-                  index:indexPath.item
+                  index:_rows.dataIndex(position)
                   width:_horizontal ? NAN : cross
                  height:_horizontal ? cross : NAN
              horizontal:_horizontal]) {
@@ -606,18 +643,19 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 }
 
 // A row's length before any cell shows it, bound into a holder of its own; -1 for a React row.
-- (CGFloat)measureItem:(NSInteger)index
+- (CGFloat)measureItem:(NSInteger)position
 {
   auto &engine = flume::Engine::instance();
-  if (!_attached || engine.viewType(_storeId, static_cast<int>(index)) % 2 != 0) {
+  const int index = _rows.dataIndex(static_cast<int>(position));
+  if (!_attached || index < 0 || engine.viewType(_storeId, index) % 2 != 0) {
     return -1;
   }
   if (_measureHolder == 0) {
     _measureHolder = ++_nextHolderId;
   }
-  const CGFloat cross = [_layout bindCrossLengthForItem:index];
+  const CGFloat cross = [_layout bindCrossLengthForItem:position];
   const uint64_t start = FLMBindStats.enabled ? clock_gettime_nsec_np(CLOCK_UPTIME_RAW) : 0;
-  if (!engine.bind(_storeId, _measureHolder, static_cast<int>(index), _horizontal ? NAN : cross,
+  if (!engine.bind(_storeId, _measureHolder, index, _horizontal ? NAN : cross,
                    _horizontal ? cross : NAN, _measureBatch)) {
     return -1;
   }
@@ -702,7 +740,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
       : flume::edgeDistances(offset.y, content.height, size.height, insets.top, insets.bottom, _inverted);
   const auto &props = static_cast<const FlumeViewProps &>(*_props);
   const FLMViewport viewport = [_layout viewportFor:_collectionView.bounds];
-  const flume::EdgeHits hits = _edges.update(distances, static_cast<int>(_count), static_cast<float>(viewport.length),
+  const flume::EdgeHits hits = _edges.update(distances, _rows.dataCount, static_cast<float>(viewport.length),
                                              props.startReachedThreshold, props.endReachedThreshold);
   if (hits.end) {
     emitter->onEndReached({hits.distances.fromEnd});
@@ -718,7 +756,15 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
     return;
   }
   const FLMViewport viewport = [_layout viewportFor:_collectionView.bounds];
-  const std::vector<int> viewable = _viewability.compute(static_cast<float>(viewport.length), [_layout spansIn:viewport]);
+  // Only data rows are viewable items, reported at their data indices.
+  std::vector<flume::ItemSpan> spans;
+  for (const flume::ItemSpan &span : [_layout spansIn:viewport]) {
+    const int index = _rows.dataIndex(span.index);
+    if (index >= 0) {
+      spans.push_back(flume::ItemSpan{index, span.start, span.end});
+    }
+  }
+  const std::vector<int> viewable = _viewability.compute(static_cast<float>(viewport.length), spans);
   const int storeId = _storeId;
   auto keyed =
       _viewability.keyed(viewable, [storeId](int index) { return flume::Engine::instance().keyAt(storeId, index); });
@@ -782,9 +828,9 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 // Rows measured during the glide can move the target, so an animated command lands on it again.
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
 {
-  if (_pendingTarget && _count > 0) {
+  if (_pendingTarget && _rows.dataCount > 0) {
     FLMPendingTarget target = *_pendingTarget;
-    target.index = *flume::clampIndex(target.index, static_cast<int>(_count));
+    target.index = *flume::clampIndex(target.index, _rows.dataCount);
     const CGFloat offset = [self offsetOf:target];
     if (std::fabs(offset - [self currentOffset]) > 0.5) {
       [_collectionView setContentOffset:[self pointAt:offset] animated:NO];
@@ -796,13 +842,13 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 
 #pragma mark - Presses
 
-- (void)emitPress:(NSInteger)index pressId:(NSString *)pressId longPress:(BOOL)longPress
+- (void)emitPress:(NSInteger)position pressId:(NSString *)pressId longPress:(BOOL)longPress
 {
   auto emitter = std::static_pointer_cast<const FlumeViewEventEmitter>(_eventEmitter);
-  if (emitter == nullptr) {
+  const int row = _rows.dataIndex(static_cast<int>(position));
+  if (emitter == nullptr || row < 0) {
     return;
   }
-  const int row = static_cast<int>(index);
   std::string key = flume::Engine::instance().keyAt(_storeId, row);
   std::string id = pressId.length > 0 ? std::string(pressId.UTF8String) : std::string();
   if (longPress) {
@@ -913,7 +959,9 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
     case FLMPendingTarget::Kind::Index:
       break;
   }
-  return [_layout targetOffsetForIndex:target.index viewPosition:target.viewPosition viewOffset:target.viewOffset];
+  return [_layout targetOffsetForIndex:_rows.position(target.index)
+                          viewPosition:target.viewPosition
+                            viewOffset:target.viewOffset];
 }
 
 // Past two viewports an animated scroll jumps first, so it glides over measured rows only.
@@ -933,7 +981,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
     [_collectionView setContentOffset:[self pointAt:*near] animated:NO];
     [_collectionView layoutIfNeeded];
   }
-  [_layout measureGlideToIndex:target.index viewPosition:target.viewPosition];
+  [_layout measureGlideToIndex:_rows.position(target.index) viewPosition:target.viewPosition];
   const CGFloat offset = [self offsetOf:target];
   _pendingTarget = target;
   [self scrollTo:offset animated:YES];
@@ -941,10 +989,10 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 
 - (void)scrollToIndex:(NSInteger)index animated:(BOOL)animated viewPosition:(double)viewPosition viewOffset:(double)viewOffset
 {
-  if (!_attached || _count == 0) {
+  if (!_attached || _rows.dataCount == 0) {
     return;
   }
-  const int clamped = *flume::clampIndex(static_cast<int>(index), static_cast<int>(_count));
+  const int clamped = *flume::clampIndex(static_cast<int>(index), _rows.dataCount);
   [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::Index, clamped, viewPosition, viewOffset}
               animated:animated];
 }
@@ -952,7 +1000,7 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 // The content start lands on measured rows; further offsets stay on the estimates.
 - (void)scrollToOffset:(double)offset animated:(BOOL)animated
 {
-  if (!_attached || _count == 0) {
+  if (!_attached || _rows.dataCount == 0) {
     return;
   }
   if (offset <= 0) {
@@ -975,10 +1023,10 @@ flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 
 - (void)scrollToEnd:(BOOL)animated
 {
-  if (!_attached || _count == 0) {
+  if (!_attached || _rows.dataCount == 0) {
     return;
   }
-  [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::End, static_cast<int>(_count) - 1, 1, 0}
+  [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::End, _rows.dataCount - 1, 1, 0}
               animated:animated];
 }
 

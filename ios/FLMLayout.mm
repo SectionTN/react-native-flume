@@ -342,7 +342,7 @@ struct FLMAnchorUpdate {
   [self endMeasuring];
 }
 
-- (flume::AnchorDecision)prepareForOps:(const flume::ListOps &)ops count:(NSInteger)count
+- (flume::AnchorDecision)prepareForOps:(const flume::ListOps &)ops count:(NSInteger)count edges:(flume::EdgeInserts)edges
 {
   [self measureBatchRowsThrough:ops];
   const FLMViewport viewport = [self viewportFor:self.collectionView.bounds];
@@ -375,7 +375,6 @@ struct FLMAnchorUpdate {
   if (_pendingOffset && _pendingOffset->kind == FLMPendingOffset::Kind::Anchor) {
     _pendingOffset->index = flume::mapIndex(ops, _pendingOffset->index).value_or(_pendingOffset->index);
   }
-  const flume::EdgeInserts edges = flume::insertedAtEdges(ops, static_cast<int>(count), _config.inverted);
   const flume::AnchorDecision decision = flume::decideAnchor(_anchorConfig, state, edges.visualTop, edges.visualBottom);
   update.outcome = decision.outcome;
   _update = std::move(update);

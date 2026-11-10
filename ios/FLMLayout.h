@@ -48,7 +48,7 @@ struct FLMPendingOffset {
 @property (nonatomic, readonly) BOOL hasPendingOffset;
 
 @property (nonatomic) flume::AnchorConfig anchorConfig;
-// Before performBatchUpdates: records the rows in view and their edges, and decides what the batch keeps.
-- (flume::AnchorDecision)prepareForOps:(const flume::ListOps &)ops count:(NSInteger)count;
+// Before performBatchUpdates, at list positions: records the rows in view and decides what the batch keeps.
+- (flume::AnchorDecision)prepareForOps:(const flume::ListOps &)ops count:(NSInteger)count edges:(flume::EdgeInserts)edges;
 
 @end
