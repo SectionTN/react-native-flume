@@ -137,6 +137,9 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   FLMSlots *_slots;
   BOOL _slotsFlushPending;
   BOOL _reclaimSlots;  // slots lent around a reload go back to the pool after the next layout pass
+  FlumeViewShadowNode::ConcreteState::Shared _state;
+  CGPoint _writtenOffset;
+  BOOL _offsetWritten;
   std::unique_ptr<FLMStoreListener> _listener;
   NSMutableSet<NSString *> *_registered;
   std::unordered_set<int> _holders;
@@ -910,6 +913,52 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
   [self evaluateViewability];
   [self evaluateEdges];
+  // A press starts only at rest, so the shadow tree learns where React rows show only then.
+  const BOOL moving = _collectionView.isDragging || _collectionView.isDecelerating || _pendingTarget.has_value();
+  if (!moving || !_collectionView.scrollEnabled) {
+    [self writeShadowOrigins];
+  }
+}
+
+#pragma mark - Shadow tree origins
+
+- (void)updateState:(const State::Shared &)state oldState:(const State::Shared &)oldState
+{
+  _state = std::static_pointer_cast<const FlumeViewShadowNode::ConcreteState>(state);
+  if (oldState == nullptr) {
+    _offsetWritten = NO;
+    [self writeShadowOrigins];
+  }
+}
+
+// measure() inside a React cell reads the scroll and the cell's origin from the shadow tree, as ScrollView's content does.
+- (void)writeShadowOrigins
+{
+  NSArray<FLMSlotCell *> *cells = [_slots cells];
+  if (_state == nullptr || cells.count == 0) {
+    return;
+  }
+  const CGPoint offset = _collectionView.contentOffset;
+  if (!_offsetWritten || !CGPointEqualToPoint(offset, _writtenOffset)) {
+    _offsetWritten = YES;
+    _writtenOffset = offset;
+    const facebook::react::Point point{static_cast<Float>(offset.x), static_cast<Float>(offset.y)};
+    _state->updateState([point](const FlumeViewState &old) -> StateData::Shared {
+      if (old.contentOffset == point) {
+        return nullptr;
+      }
+      auto next = std::make_shared<FlumeViewState>(old);
+      next->contentOffset = point;
+      return next;
+    });
+  }
+  const CGPoint list = _collectionView.frame.origin;
+  for (FLMSlotCell *cell in cells) {
+    FLMSlotView *view = cell.view;
+    if (view != nil && view.superview == cell.contentView) {
+      [view writeOrigin:CGPointMake(list.x + cell.frame.origin.x, list.y + cell.frame.origin.y)];
+    }
+  }
 }
 
 - (void)evaluateEdges
@@ -1000,6 +1049,9 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
 {
   _scrollEvents.didEndDragging(decelerate);
+  if (!decelerate) {
+    [self writeShadowOrigins];
+  }
 }
 
 - (void)scrollViewWillBeginDecelerating:(UIScrollView *)scrollView
@@ -1010,6 +1062,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
 {
   [self emitScrollEvents:_scrollEvents.didEndDecelerating() velocity:CGPointZero];
+  [self writeShadowOrigins];
 }
 
 // Rows measured during the glide can move the target, so an animated command lands on it again.
@@ -1025,6 +1078,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
   _pendingTarget.reset();
   [self emitScrollEvents:_scrollEvents.didEndScrollingAnimation() velocity:CGPointZero];
+  [self writeShadowOrigins];
 }
 
 #pragma mark - Presses
