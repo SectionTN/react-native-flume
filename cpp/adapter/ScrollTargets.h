@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <optional>
 
@@ -11,6 +12,7 @@ enum class VisualEdge { Top, Bottom };  // the left and right edges of a horizon
 
 constexpr int kJumpMarginRows = 2;
 constexpr int kMaxJumpRows = 48;
+constexpr int64_t kJumpWaitMs = 1000;  // how long a jump waits for its React rows to render
 
 std::optional<int> clampIndex(int index, int count);
 // Where the viewport starts so the item sits as FlatList's scrollToIndex places it, viewPosition in content order.
