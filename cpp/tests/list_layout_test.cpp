@@ -388,6 +388,38 @@ TEST_CASE("a partial last grid row has no separator") {
   CHECK(layout.separatorRect(1, 400));
 }
 
+TEST_CASE("separators run between data rows only") {
+  ListLayoutConfig config = separated();
+  config.dataStart = 1;
+  config.afterData = 1;
+  ListLayout layout = measured(5, 50, config);
+  CHECK_FALSE(layout.separatorRect(0, 400));
+  CHECK(layout.separatorRect(1, 400));
+  CHECK(layout.separatorRect(2, 400));
+  CHECK_FALSE(layout.separatorRect(3, 400));
+  CHECK_FALSE(layout.separatorRect(4, 400));
+  CHECK(y(layout, 2) == 102);
+  CHECK(y(layout, 4) == 204);
+  CHECK(layout.contentLength(1000) == 254);
+}
+
+TEST_CASE("the empty row fills the viewport the header and footer leave") {
+  ListLayoutConfig config = separated();
+  config.paddingStart = 10;
+  config.paddingEnd = 20;
+  config.dataStart = 1;
+  config.afterData = 1;
+  config.emptyIndex = 1;
+  ListLayout layout = list(3, config);
+  layout.setLength(0, 100, 0);
+  layout.setLength(2, 60, 0);
+  CHECK(layout.emptyMinLength(800) == 610);
+  CHECK(layout.emptyMinLength(150) == 0);
+  config.emptyIndex = -1;
+  layout.configure(config, {});
+  CHECK(layout.emptyMinLength(800) == 0);
+}
+
 TEST_CASE("a zero separator reserves nothing") {
   ListLayout layout = measured(4, 50);
   CHECK(y(layout, 1) == 50);

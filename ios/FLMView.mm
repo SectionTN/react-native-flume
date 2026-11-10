@@ -138,6 +138,9 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   BOOL _slotsFlushPending;
   BOOL _reclaimSlots;  // slots lent around a reload go back to the pool after the next layout pass
   std::optional<std::pair<int, int>> _aheadRange;  // the first and last row of the last look-ahead, reset when rows change
+  flume::ListLayoutConfig _layoutConfig;  // from the props; configureLayoutRows adds what the list components change
+  std::vector<int> _stickyIndices;  // data indices
+  BOOL _componentsMoved;  // a list component came or went while detached, so the next attach resets the rows
   FlumeViewShadowNode::ConcreteState::Shared _state;
   CGPoint _writtenOffset;
   BOOL _offsetWritten;
@@ -262,7 +265,14 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   if (next.separatorColor != old.separatorColor) {
     _layout.separatorColor = RCTUIColorFromSharedColor(next.separatorColor);
   }
-  if (layout) {
+  const BOOL components = next.listHeader != old.listHeader || next.listFooter != old.listFooter ||
+      next.listEmpty != old.listEmpty;
+  if (components) {
+    _rows.header = next.listHeader;
+    _rows.footer = next.listFooter;
+    _rows.emptyComponent = next.listEmpty;
+  }
+  if (layout || components) {
     [self configureLayout:next];
   }
   // Turning inverted on or off keeps item 0 in view.
@@ -279,8 +289,13 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     _storeId = next.storeId;
     _everAttached = NO;
     [self attach];
-  } else if (shape) {
-    [self rebind];
+  } else {
+    if (components) {
+      [self reloadRows];
+    }
+    if (shape) {
+      [self rebind];
+    }
   }
   _emitScrollEvents = next.emitScrollEvents;
   _emitViewability = next.emitViewabilityEvents;
@@ -393,7 +408,26 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   config.separatorInsetEnd = props.separatorInsetEnd;
   config.stackFromEnd =
       !props.inverted && config.lanes == 1 && props.maintainVisibleContentPosition.startRenderingFromBottom;
-  std::vector<int> sticky = props.stickyHeaderIndices;
+  _layoutConfig = config;
+  _stickyIndices = props.stickyHeaderIndices;
+  [self configureLayoutRows];
+  _horizontal = props.horizontal;
+  _inverted = props.inverted;
+  _stackFromEnd = config.stackFromEnd;
+  _collectionView.alwaysBounceHorizontal = _horizontal;
+  // A horizontal strip never takes the status bar tap from the vertical list beside it.
+  _collectionView.scrollsToTop = !_horizontal;
+  [self requestSlotsFlush];
+}
+
+// The header, the footer and the empty row move the data's positions, its separators and the rows that span a grid.
+- (void)configureLayoutRows
+{
+  flume::ListLayoutConfig config = _layoutConfig;
+  config.dataStart = _rows.headerCount();
+  config.afterData = _rows.footer ? 1 : 0;
+  config.emptyIndex = _rows.hasEmptyRow() ? _rows.headerCount() : -1;
+  std::vector<int> sticky = _stickyIndices;
   for (int &index : sticky) {
     index = _rows.position(index);
   }
@@ -407,13 +441,6 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     fullSpan.erase(std::unique(fullSpan.begin(), fullSpan.end()), fullSpan.end());
   }
   [_layout configure:config fullSpan:fullSpan sticky:sticky];
-  _horizontal = props.horizontal;
-  _inverted = props.inverted;
-  _stackFromEnd = config.stackFromEnd;
-  _collectionView.alwaysBounceHorizontal = _horizontal;
-  // A horizontal strip never takes the status bar tap from the vertical list beside it.
-  _collectionView.scrollsToTop = !_horizontal;
-  [self requestSlotsFlush];
 }
 
 // A new cell size across the scroll axis or a new text size: every row binds and measures again.
@@ -425,6 +452,19 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   flume::Engine::instance().invalidateMeasures(_storeId);
   _fontScale = RCTFontSizeMultiplier();
   [_layout invalidateLengths];
+  [self lendSlotCells];
+  [_collectionView reloadData];
+}
+
+// A list component came or went, so every row after it moved.
+- (void)reloadRows
+{
+  if (!_attached) {
+    _componentsMoved = YES;
+    return;
+  }
+  _itemCount = _rows.itemCount();
+  [_layout resetWithCount:_itemCount typeOf:[self typeOf]];
   [self lendSlotCells];
   [_collectionView reloadData];
 }
@@ -533,9 +573,11 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     _openingArmed = YES;
   }
   // A return to the same rows keeps their lengths, so the offset still shows them; new data starts over.
-  const BOOL sameRows = _everAttached && count == _rows.dataCount;
+  const BOOL sameRows = _everAttached && !_componentsMoved && count == _rows.dataCount;
+  _componentsMoved = NO;
   _rows.dataCount = count;
   _itemCount = _rows.itemCount();
+  [self configureLayoutRows];
   if (sameRows) {
     [_layout invalidateLengths];
   } else {
@@ -598,12 +640,14 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   const flume::ListOps positions = _rows.positions(ops);
   flume::BatchUpdates batch = flume::toBatchUpdates(positions, static_cast<int>(_itemCount));
   const BOOL first = _rows.dataCount == 0;
+  const BOOL hadEmptyRow = _rows.hasEmptyRow();
   // The store holds the new data from here on, and the layout measures the rows a batch can show from it.
   _rows.dataCount = count;
   const NSInteger itemCount = _rows.itemCount();
-  // The first rows reset and reload, so an armed opening lands before any of them binds.
-  if (batch.reload || first) {
+  // The first rows reset and reload, so an armed opening lands before any of them binds; so does the empty row.
+  if (batch.reload || first || _rows.hasEmptyRow() != hadEmptyRow) {
     _itemCount = itemCount;
+    [self configureLayoutRows];
     [_layout resetWithCount:itemCount typeOf:[self typeOf]];
     [self lendSlotCells];
     [_collectionView reloadData];
@@ -727,31 +771,51 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 // A React row's cell takes its key's slot, and shows its view at once when the slot has mounted.
 - (void)bindSlotCell:(FLMSlotCell *)cell position:(int)position viewType:(int)viewType
 {
-  const int index = _rows.dataIndex(position);
-  if (index < 0) {
+  if (position < 0 || position >= _rows.itemCount()) {
     return;
   }
-  const std::string itemKey = flume::Engine::instance().keyAt(_storeId, index);
-  NSString *key = [NSString stringWithUTF8String:itemKey.c_str()];
+  const flume::SlotRequest request = [self slotRequestAt:position viewType:viewType];
   // UIKit can drop a cell it prepared for this row and keep it unreused, so a new cell takes its slot over.
-  for (int slot : [_slots pool].slotsFor(flume::kSlotRow, itemKey)) {
+  for (int slot : [_slots pool].slotsFor(request.kind, request.key)) {
     FLMSlotCell *holder = [_slots cellForSlot:slot];
-    if (holder != nil && holder != cell && [_slots pool].groupOf(slot) == flume::SlotGroup{viewType} &&
+    if (holder != nil && holder != cell && [_slots pool].groupOf(slot) == request.group &&
         [_collectionView indexPathForCell:holder] == nil) {
       [_slots releaseCell:holder];
     }
   }
-  [_slots bindCell:cell group:flume::SlotGroup{viewType} kind:flume::kSlotRow key:key index:index];
+  [_slots bindCell:cell
+             group:request.group
+              kind:request.kind
+               key:[NSString stringWithUTF8String:request.key.c_str()]
+             index:request.index];
   [self applySlotSize:[_slots viewForSlot:cell.slot] position:position];
   [self requestSlotsFlush];
 }
 
-// The length of a mounted slot of the row's key laid out at the row's cross length, -1 when none is.
-- (CGFloat)slotLengthAt:(int)position index:(int)index
+// A list component has one slot key of its own, a data row its item's.
+- (flume::SlotRequest)slotRequestAt:(int)position viewType:(int)viewType
 {
-  const std::string key = flume::Engine::instance().keyAt(_storeId, index);
+  const flume::SlotGroup group{viewType};
+  switch (_rows.kind(position)) {
+    case flume::RowKind::Header:
+      return flume::SlotRequest{group, flume::kSlotHeader, "header", -1};
+    case flume::RowKind::Empty:
+      return flume::SlotRequest{group, flume::kSlotEmpty, "empty", -1};
+    case flume::RowKind::Footer:
+      return flume::SlotRequest{group, flume::kSlotFooter, "footer", -1};
+    case flume::RowKind::Data:
+      break;
+  }
+  const int index = _rows.dataIndex(position);
+  return flume::SlotRequest{group, flume::kSlotRow, flume::Engine::instance().keyAt(_storeId, index), index};
+}
+
+// The length of a mounted slot of the row laid out at the row's cross length, -1 when none is.
+- (CGFloat)slotLengthAt:(int)position
+{
+  const flume::SlotRequest request = [self slotRequestAt:position viewType:FLMViewType(_storeId, _rows, position)];
   const CGFloat cross = [_layout bindCrossLengthForItem:position];
-  for (int slot : [_slots pool].slotsFor(flume::kSlotRow, key)) {
+  for (int slot : [_slots pool].slotsFor(request.kind, request.key)) {
     const CGSize size = [_slots viewForSlot:slot].layoutSize;
     if (size.width > 0 && std::fabs((_horizontal ? size.height : size.width) - cross) <= kFLMSlotCrossSlop) {
       return _horizontal ? size.width : size.height;
@@ -763,11 +827,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 // A slot's size reaches the row that shows it, or the row its key sits at when no cell shows it.
 - (void)applySlotSize:(FLMSlotView *)view position:(int)position
 {
-  if (view == nil || !_attached || position < 0 || position >= _itemCount) {
+  if (view == nil || !_attached || position < 0 || position >= std::min<NSInteger>(_itemCount, _rows.itemCount())) {
     return;
   }
-  const int index = _rows.dataIndex(position);
-  const CGFloat length = index >= 0 ? [self slotLengthAt:position index:index] : -1;
+  const CGFloat length = [self slotLengthAt:position];
   if (length >= 0) {
     [_layout setLength:length forItem:position];
   }
@@ -780,6 +843,15 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     return static_cast<int>(path.item);
   }
   const std::optional<flume::SlotEntry> entry = [_slots pool].entry(slot);
+  if (entry && entry->kind == flume::kSlotHeader) {
+    return _rows.header ? 0 : -1;
+  }
+  if (entry && entry->kind == flume::kSlotEmpty) {
+    return _rows.hasEmptyRow() ? _rows.headerCount() : -1;
+  }
+  if (entry && entry->kind == flume::kSlotFooter) {
+    return _rows.footer ? _rows.itemCount() - 1 : -1;
+  }
   if (!entry || entry->index < 0 || entry->index >= _rows.dataCount ||
       flume::Engine::instance().keyAt(_storeId, entry->index) != entry->key) {
     return -1;
@@ -840,12 +912,12 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 - (CGFloat)measureItem:(NSInteger)position
 {
   auto &engine = flume::Engine::instance();
-  const int index = _rows.dataIndex(static_cast<int>(position));
-  if (!_attached || index < 0) {
+  if (!_attached || position < 0 || position >= _rows.itemCount()) {
     return -1;
   }
-  if (engine.viewType(_storeId, index) % 2 != 0) {
-    return [self slotLengthAt:static_cast<int>(position) index:index];
+  const int index = _rows.dataIndex(static_cast<int>(position));
+  if (index < 0 || engine.viewType(_storeId, index) % 2 != 0) {
+    return [self slotLengthAt:static_cast<int>(position)];
   }
   if (_measureHolder == 0) {
     _measureHolder = ++_nextHolderId;
@@ -925,6 +997,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     [self requestSlotsFlush];
   }
   [self renderAhead];
+  [self sizeEmptyRow];
   [self evaluateViewability];
   [self evaluateEdges];
   // A press starts only at rest, so the shadow tree learns where React rows show only then.
@@ -955,16 +1028,30 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   const std::vector<int> visible = [_layout itemsFrom:viewport.start to:end];
   const auto shown = std::minmax_element(visible.begin(), visible.end());
   std::vector<flume::SlotRequest> rows;
+  const int count = static_cast<int>(std::min<NSInteger>(_itemCount, _rows.itemCount()));
   for (int position : window) {
-    const int index = position < _itemCount ? _rows.dataIndex(position) : -1;
-    const int viewType = index >= 0 ? FLMViewType(_storeId, _rows, position) : 0;
     const BOOL onScreen = !visible.empty() && position >= *shown.first && position <= *shown.second;
-    if (viewType % 2 != 0 && !onScreen) {
-      rows.push_back(flume::SlotRequest{
-          flume::SlotGroup{viewType}, flume::kSlotRow, flume::Engine::instance().keyAt(_storeId, index), index});
+    const int viewType = position < count && !onScreen ? FLMViewType(_storeId, _rows, position) : 0;
+    if (viewType % 2 != 0) {
+      rows.push_back([self slotRequestAt:position viewType:viewType]);
     }
   }
   [_slots pool].keepAhead(rows);
+  if ([_slots pool].dirty()) {
+    [self requestSlotsFlush];
+  }
+}
+
+// The empty row fills what the header and footer leave of the viewport, so its content centers in the visible area.
+- (void)sizeEmptyRow
+{
+  if (!_attached || !_rows.hasEmptyRow()) {
+    return;
+  }
+  const float length = static_cast<float>([_layout emptyMinLength]);
+  for (int slot : [_slots pool].slotsFor(flume::kSlotEmpty, "empty")) {
+    [_slots pool].setMinMain(slot, length);
+  }
   if ([_slots pool].dirty()) {
     [self requestSlotsFlush];
   }

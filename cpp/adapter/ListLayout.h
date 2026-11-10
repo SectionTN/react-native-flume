@@ -17,7 +17,9 @@ struct ListLayoutConfig {
   float paddingCrossStart = 0, paddingCrossEnd = 0;
   float estimatedItemLength = -1;  // estimatedItemSize; negative for the per-type mean
   float estimateFloor = 50;
-  float separator = 0;  // the gap after every row but the last, along the scroll axis
+  float separator = 0;  // the gap after every data row but the last, along the scroll axis
+  int dataStart = 0, afterData = 0;  // the items before and after the data rows: the header and the footer
+  int emptyIndex = -1;  // the empty row, -1 for none
   float separatorInsetStart = 0, separatorInsetEnd = 0;  // across the scroll axis, from the padded edges
   // startRenderingFromBottom on an upright list; short content sits at the end, sizes keep the last row in view.
   bool stackFromEnd = false;
@@ -73,6 +75,7 @@ class ListLayout {
   // The edge that stays in place, its bottom when inverted or stacking from the end, in content coordinates.
   float anchorEdgeOf(int index, float viewportLength) const;
   std::vector<int> itemsIn(float start, float end, float viewportLength) const;
+  float emptyMinLength(float viewportLength) const;  // the viewport the padding and the other rows leave
   std::optional<Pinned> pinned(const std::vector<int>& sticky, float viewportStart, float viewportLength) const;
   // Relative to the item's origin: the gap after its row in content order, none after the last row.
   std::optional<ItemRect> separatorRect(int index, float listCrossLength) const;
@@ -99,6 +102,7 @@ class ListLayout {
   bool fullSpan(int index) const;
   void rebuildRows();
   void updateRow(int row);
+  bool gapAfter(int row) const;
   float stride(int row) const;  // the row's length and the separator after it
   float rowStart(int row) const;  // from the start of item 0, inside the padding
   float slack(float viewportLength) const;  // the space a short list that stacks from the end leaves above its rows

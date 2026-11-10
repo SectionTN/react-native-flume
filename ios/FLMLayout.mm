@@ -140,6 +140,11 @@ struct FLMAnchorUpdate {
   return _model.itemsIn(static_cast<float>(start), static_cast<float>(end), _viewportLength);
 }
 
+- (CGFloat)emptyMinLength
+{
+  return _model.emptyMinLength(static_cast<float>([self viewportFor:self.collectionView.bounds].length));
+}
+
 - (std::vector<flume::ItemSpan>)spansIn:(FLMViewport)viewport
 {
   std::vector<flume::ItemSpan> spans;

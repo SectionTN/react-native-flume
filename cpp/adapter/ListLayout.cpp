@@ -206,7 +206,7 @@ std::optional<Pinned> ListLayout::pinned(const std::vector<int>& sticky, float v
 std::optional<ItemRect> ListLayout::separatorRect(int index, float listCrossLength) const {
   if (index < 0 || index >= count() || config_.separator <= 0) return std::nullopt;
   const int row = rowOf_[index];
-  if (row + 1 >= static_cast<int>(rows_.size())) return std::nullopt;
+  if (!gapAfter(row)) return std::nullopt;
   const ItemRect item = rectOf(index, listCrossLength, 0);
   const float crossAt = config_.horizontal ? item.y : item.x;
   const float cross = config_.horizontal ? item.height : item.width;
@@ -216,6 +216,15 @@ std::optional<ItemRect> ListLayout::separatorRect(int index, float listCrossLeng
   const float main = config_.inverted ? -config_.separator : rows_[row].length;
   if (config_.horizontal) return ItemRect{main, from, config_.separator, to - from};
   return ItemRect{from, main, to - from, config_.separator};
+}
+
+float ListLayout::emptyMinLength(float viewportLength) const {
+  if (config_.emptyIndex < 0 || config_.emptyIndex >= count()) return 0;
+  float used = config_.paddingStart + config_.paddingEnd;
+  for (int row = 0; row < static_cast<int>(rows_.size()); row++) {
+    if (row != rowOf_[config_.emptyIndex]) used += stride(row);
+  }
+  return std::max(0.f, viewportLength - used);
 }
 
 bool ListLayout::fullSpan(int index) const { return std::binary_search(fullSpan_.begin(), fullSpan_.end(), index); }
@@ -248,10 +257,12 @@ void ListLayout::updateRow(int row) {
   dirtyFrom_ = std::min(dirtyFrom_, row);
 }
 
-float ListLayout::stride(int row) const {
-  const bool last = row + 1 >= static_cast<int>(rows_.size());
-  return rows_[row].length + (last ? 0 : config_.separator);
+// The header, the footer and the last data row carry no gap.
+bool ListLayout::gapAfter(int row) const {
+  return rows_[row].first >= config_.dataStart && rows_[row].first + rows_[row].count < count() - config_.afterData;
 }
+
+float ListLayout::stride(int row) const { return rows_[row].length + (gapAfter(row) ? config_.separator : 0); }
 
 float ListLayout::rowStart(int row) const {
   for (; dirtyFrom_ < row; dirtyFrom_++) starts_[dirtyFrom_ + 1] = starts_[dirtyFrom_] + stride(dirtyFrom_);
