@@ -4,6 +4,7 @@
 #import <react/renderer/components/FlumeSpec/Props.h>
 #import <react/renderer/components/FlumeSpec/RCTComponentViewHelpers.h>
 #import <React/RCTConversions.h>
+#import <React/RCTMountingTransactionObserving.h>
 #import <React/RCTUtils.h>
 
 #import "FLMBindStats.h"
@@ -14,6 +15,7 @@
 #import "FLMPressableView.h"
 #import "FLMRefresh.h"
 #import "FLMScrollEvents.h"
+#import "FLMSlots.h"
 #import "FLMStoreListener.h"
 #import "FLMText.h"
 
@@ -121,13 +123,16 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 @interface FLMView () <RCTFlumeViewViewProtocol,
                        UICollectionViewDataSource,
                        UICollectionViewDelegate,
-                       UIGestureRecognizerDelegate>
+                       UIGestureRecognizerDelegate,
+                       RCTMountingTransactionObserving>
 @end
 
 @implementation FLMView {
   FLMCollectionView *_collectionView;
   FLMLayout *_layout;
-  UIView *_children;  // Fabric children, kept out of sight
+  UIView *_bay;  // the Fabric children no cell shows, out of sight
+  FLMSlots *_slots;
+  BOOL _slotsFlushPending;
   std::unique_ptr<FLMStoreListener> _listener;
   NSMutableSet<NSString *> *_registered;
   std::unordered_set<int> _holders;
@@ -211,9 +216,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     _rowLongPress.enabled = NO;
     [_collectionView addGestureRecognizer:_rowLongPress];
     self.contentView = _collectionView;
-    _children = [UIView new];
-    _children.hidden = YES;
-    [self addSubview:_children];
+    _bay = [UIView new];
+    _bay.hidden = YES;
+    [self addSubview:_bay];
+    _slots = [[FLMSlots alloc] initWithBay:_bay];
     [NSNotificationCenter.defaultCenter addObserver:self
                                            selector:@selector(contentSizeCategoryChanged:)
                                                name:UIContentSizeCategoryDidChangeNotification
@@ -395,6 +401,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   _collectionView.alwaysBounceHorizontal = _horizontal;
   // A horizontal strip never takes the status bar tap from the vertical list beside it.
   _collectionView.scrollsToTop = !_horizontal;
+  [self requestSlotsFlush];
 }
 
 // A new cell size across the scroll axis or a new text size: every row binds and measures again.
@@ -427,6 +434,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     }
   }
   [_refresh layoutSubviews];
+  [self requestSlotsFlush];
 }
 
 - (void)didMoveToWindow
@@ -443,12 +451,44 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 
 - (void)mountChildComponentView:(UIView<RCTComponentViewProtocol> *)childComponentView index:(NSInteger)index
 {
-  [_children insertSubview:childComponentView atIndex:index];
+  [_slots insertChild:childComponentView atIndex:index];
 }
 
 - (void)unmountChildComponentView:(UIView<RCTComponentViewProtocol> *)childComponentView index:(NSInteger)index
 {
-  [childComponentView removeFromSuperview];
+  [_slots removeChild:childComponentView atIndex:index];
+}
+
+// Pre-rendered slots arrive with the data change they render ahead for, so the deferred data applies once they mount.
+- (void)mountingTransactionDidMount:(const MountingTransaction &)transaction
+               withSurfaceTelemetry:(const SurfaceTelemetry &)surfaceTelemetry
+{
+  [_slots pool].endBatch();
+  if ([_slots takeRegisteredPrerendered] && _storeId != 0) {
+    flume::Engine::instance().refresh(_storeId);
+  }
+  [self requestSlotsFlush];
+}
+
+// One slot table per main run loop turn, and only when it or the grid cell width changed.
+- (void)requestSlotsFlush
+{
+  if (_slotsFlushPending) {
+    return;
+  }
+  _slotsFlushPending = YES;
+  __weak FLMView *weakSelf = self;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    FLMView *view = weakSelf;
+    if (view == nil) {
+      return;
+    }
+    view->_slotsFlushPending = NO;
+    auto emitter = std::static_pointer_cast<const FlumeViewEventEmitter>(view->_eventEmitter);
+    if (emitter != nullptr) {
+      [view->_slots flushTo:*emitter cellWidth:[view->_layout gridCellWidth]];
+    }
+  });
 }
 
 #pragma mark - The store

@@ -124,8 +124,12 @@ float ListLayout::contentLength(float viewportLength) const {
 }
 
 float ListLayout::crossLength(int index, float listCrossLength) const {
-  const float available = std::max(0.f, listCrossLength - config_.paddingCrossStart - config_.paddingCrossEnd);
-  return fullSpan(index) ? available : available / config_.lanes;
+  if (!fullSpan(index)) return laneLength(listCrossLength);
+  return std::max(0.f, listCrossLength - config_.paddingCrossStart - config_.paddingCrossEnd);
+}
+
+float ListLayout::laneLength(float listCrossLength) const {
+  return std::max(0.f, listCrossLength - config_.paddingCrossStart - config_.paddingCrossEnd) / config_.lanes;
 }
 
 ItemRect ListLayout::rectOf(int index, float listCrossLength, float viewportLength) const {

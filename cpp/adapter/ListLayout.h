@@ -65,6 +65,7 @@ class ListLayout {
   float estimate(int type) const;
   float contentLength(float viewportLength) const;
   float crossLength(int index, float listCrossLength) const;  // the size a cell binds at across the scroll axis
+  float laneLength(float listCrossLength) const;  // one column of a grid, the whole width with one lane
   ItemRect rectOf(int index, float listCrossLength, float viewportLength) const;
   int indexAt(float offset, float viewportLength) const;
   // The item whose edge stays put while rows measure, for setLength.

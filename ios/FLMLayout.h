@@ -33,6 +33,7 @@ struct FLMPendingOffset {
 - (std::vector<int>)applyOps:(const flume::ListOps &)ops count:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf;
 - (void)invalidateLengths;
 - (CGFloat)bindCrossLengthForItem:(NSInteger)index;
+- (CGFloat)gridCellWidth;  // a column of a vertical grid, -1 for any other list
 
 @property (nonatomic, copy, nullable) CGFloat (^measureItem)(NSInteger index);  // a worklet row's length, negative for a React row
 // The clamped content offset that lands the item per viewPosition, after measuring the rows the landing shows.

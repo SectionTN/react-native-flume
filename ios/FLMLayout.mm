@@ -106,6 +106,12 @@ struct FLMAnchorUpdate {
   return _model.crossLength(static_cast<int>(index), [self crossLength:self.collectionView.bounds.size]);
 }
 
+- (CGFloat)gridCellWidth
+{
+  const CGFloat width = self.collectionView.bounds.size.width;
+  return _config.lanes > 1 && !_config.horizontal && width > 0 ? _model.laneLength(static_cast<float>(width)) : -1;
+}
+
 #pragma mark - Geometry
 
 - (CGFloat)mainLength:(CGSize)size
