@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.facebook.react.bridge.ReactContext
+import com.facebook.react.uimanager.StateWrapper
 import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.Event
 import com.facebook.react.uimanager.events.NativeGestureUtil
@@ -50,6 +51,11 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private var throttle = ScrollThrottle(16)
   private var scrollState = RecyclerView.SCROLL_STATE_IDLE
   private var pendingAlign: PendingAlign? = null
+  private val origins = ShadowOrigins()
+  private val writeOrigins = Runnable { if (pressCanStart) writeOrigins() }
+  // A touch stops a fling and cancels the JS touch, but a list the user cannot scroll keeps gliding under a press.
+  private val pressCanStart: Boolean
+    get() = scrollState == RecyclerView.SCROLL_STATE_IDLE || !recycler.scrollEnabled
 
   // A jump onto React rows waits for the rows it shows; its retained slots are lent to their binds when it runs.
   private data class Jump(val position: Int, val animated: Boolean, val viewPosition: Float, val viewOffsetDp: Double, val owner: Int)
@@ -203,6 +209,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
     }
     recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
       override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+        origins.scrolled(dx, dy)
+        if (pressCanStart) requestOrigins()
         sticky.refresh()
         if (emitScrollEvents && throttle.shouldEmit(SystemClock.uptimeMillis())) emitScroll(ScrollKind.SCROLL)
         evaluateViewability()
@@ -221,7 +229,11 @@ class FlumeView(context: Context) : FrameLayout(context) {
           if (keyboardDismissOnDrag) recycler.dismissKeyboard()
         }
         if (newState == RecyclerView.SCROLL_STATE_IDLE && throttle.flush() && emitScrollEvents) emitScroll(ScrollKind.SCROLL)
-        if (newState == RecyclerView.SCROLL_STATE_IDLE) realign()
+        if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+          realign()
+          // Inline, so the state is queued before a touch the next looper turn delivers.
+          writeOrigins()
+        }
         if (newState == RecyclerView.SCROLL_STATE_IDLE && reclaimOnIdle) {
           reclaimOnIdle = false
           slots.reclaim()
@@ -296,6 +308,36 @@ class FlumeView(context: Context) : FrameLayout(context) {
     updateEmptyLength()
     evaluateViewability()
     evaluateEdges()
+    requestOrigins()
+  }
+
+  // Every state commit brings a new wrapper, and only the first one needs a pass.
+  fun setStateWrapper(wrapper: StateWrapper?) {
+    val first = origins.viewState == null
+    origins.viewState = wrapper
+    if (first && wrapper != null) requestOrigins()
+  }
+
+  fun requestOrigins() {
+    removeCallbacks(writeOrigins)
+    post(writeOrigins)
+  }
+
+  // Positions use the laid-out top, not the translation an item animation starts from.
+  private fun writeOrigins() {
+    if (slots.count == 0) return
+    origins.writeView()
+    val left = refreshLayout.left + recycler.left
+    val top = refreshLayout.top + recycler.top
+    for (i in 0 until recycler.childCount) {
+      val holder = recycler.getChildAt(i) as? FlumeSlotHolder ?: continue
+      // A disappearing holder can still point at a view another holder took.
+      val view = holder.view?.takeIf { it.measured && it.parent === holder } ?: continue
+      origins.writeSlot(view, left + holder.left, top + holder.top)
+    }
+    val pinned = sticky.reactPinned
+    val view = pinned.view?.takeIf { it.measured && pinned.visibility == VISIBLE } ?: return
+    origins.writeSlot(view, pinned.left + pinned.translationX.roundToInt(), pinned.top + pinned.translationY.roundToInt())
   }
 
   // Offset, range and extent along the scroll axis, as RecyclerView estimates them from the laid-out rows.

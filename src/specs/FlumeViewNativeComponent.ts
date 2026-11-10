@@ -162,4 +162,6 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
   supportedCommands: ['scrollToIndex', 'scrollToOffset', 'scrollToEnd', 'setNativeRefreshing'],
 });
 
-export default codegenNativeComponent<NativeProps>('FlumeView') as FlumeViewType;
+export default codegenNativeComponent<NativeProps>('FlumeView', {
+  interfaceOnly: true,
+}) as FlumeViewType;

@@ -4,6 +4,8 @@ import android.view.View
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.module.annotations.ReactModule
+import com.facebook.react.uimanager.ReactStylesDiffMap
+import com.facebook.react.uimanager.StateWrapper
 import com.facebook.react.uimanager.ThemedReactContext
 import com.facebook.react.uimanager.ViewGroupManager
 import com.facebook.react.uimanager.ViewManagerDelegate
@@ -23,6 +25,16 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
 
   // Slot views live in holders and the bay; Fabric's child order is mirrored so its removeViewAt finds them.
   override fun needsCustomLayoutForChildren(): Boolean = true
+
+  override fun updateState(view: FlumeView, props: ReactStylesDiffMap, stateWrapper: StateWrapper): Any? {
+    view.setStateWrapper(stateWrapper)
+    return null
+  }
+
+  override fun onDropViewInstance(view: FlumeView) {
+    view.setStateWrapper(null)
+    super.onDropViewInstance(view)
+  }
 
   override fun addView(parent: FlumeView, child: View, index: Int) = parent.slots.add(child, index)
 

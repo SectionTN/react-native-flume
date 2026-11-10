@@ -13,7 +13,7 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => min_ios_version_supported }
   s.source       = { :git => "https://github.com/SectionTN/react-native-flume.git", :tag => "#{s.version}" }
 
-  s.source_files = "ios/**/*.{h,mm}", "cpp/core/**/*.{h,cpp}", "cpp/bindings/**/*.{h,cpp}", "cpp/adapter/**/*.{h,cpp}"
+  s.source_files = "ios/**/*.{h,mm}", "cpp/core/**/*.{h,cpp}", "cpp/bindings/**/*.{h,cpp}", "cpp/adapter/**/*.{h,cpp}", "cpp/fabric/**/*.{h,cpp}"
   s.private_header_files = "ios/**/*.h", "cpp/**/*.h"
 
   s.pod_target_xcconfig = {

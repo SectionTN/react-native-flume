@@ -8,4 +8,6 @@ export interface NativeProps extends ViewProps {
   kind?: CodegenTypes.WithDefault<CodegenTypes.Int32, 0>;
 }
 
-export default codegenNativeComponent<NativeProps>('FlumeSlotView') as HostComponent<NativeProps>;
+export default codegenNativeComponent<NativeProps>('FlumeSlotView', {
+  interfaceOnly: true,
+}) as HostComponent<NativeProps>;

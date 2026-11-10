@@ -2,6 +2,8 @@ package me.sectiontn.flume
 
 import android.content.Context
 import com.facebook.react.module.annotations.ReactModule
+import com.facebook.react.uimanager.ReactStylesDiffMap
+import com.facebook.react.uimanager.StateWrapper
 import com.facebook.react.uimanager.ThemedReactContext
 import com.facebook.react.uimanager.ViewGroupManager
 import com.facebook.react.uimanager.ViewManagerDelegate
@@ -18,6 +20,9 @@ class FlumeSlotView(context: Context) : ReactViewGroup(context) {
   var measured = false
     private set
   var onMeasured: ((FlumeSlotView) -> Unit)? = null
+  var stateWrapper: StateWrapper? = null
+  var writtenX = Long.MIN_VALUE
+  var writtenY = Long.MIN_VALUE
   private var lastWidth = -1
   private var lastHeight = -1
 
@@ -42,6 +47,17 @@ class FlumeSlotViewManager : ViewGroupManager<FlumeSlotView>(), FlumeSlotViewMan
   override fun getName(): String = NAME
 
   override fun createViewInstance(context: ThemedReactContext): FlumeSlotView = FlumeSlotView(context)
+
+  // Mounting destroys the previous wrapper after each update, so only the latest one can write.
+  override fun updateState(view: FlumeSlotView, props: ReactStylesDiffMap, stateWrapper: StateWrapper): Any? {
+    view.stateWrapper = stateWrapper
+    return null
+  }
+
+  override fun onDropViewInstance(view: FlumeSlotView) {
+    view.stateWrapper = null
+    super.onDropViewInstance(view)
+  }
 
   @ReactProp(name = "slot")
   override fun setSlot(view: FlumeSlotView, value: Int) {

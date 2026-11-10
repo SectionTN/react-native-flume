@@ -72,7 +72,11 @@ class StickyHeaderHost(
       val index = view.rows.dataIndex(pinnedIndex)
       if (index >= 0) view.emitPress(index, FlumeJni.keyAt(view.storeId, index), id, long)
     }
-    reactPinned.onReady = { refresh() }
+    // A copy can render at rest, after the last layout pass wrote the origins.
+    reactPinned.onReady = {
+      refresh()
+      view.requestOrigins()
+    }
   }
 
   // Whether a touch in the host's coordinates lands on a pinned copy where it is drawn.

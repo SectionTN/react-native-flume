@@ -1,6 +1,6 @@
 #import "FLMView.h"
 
-#import <react/renderer/components/FlumeSpec/ComponentDescriptors.h>
+#include "fabric/FlumeComponentDescriptors.h"
 #import <react/renderer/components/FlumeSpec/Props.h>
 #import <react/renderer/components/FlumeSpec/RCTComponentViewHelpers.h>
 #import <React/RCTConversions.h>

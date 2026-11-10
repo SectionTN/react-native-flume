@@ -1,6 +1,6 @@
 #import "FLMSlotView.h"
 
-#import <react/renderer/components/FlumeSpec/ComponentDescriptors.h>
+#include "fabric/FlumeComponentDescriptors.h"
 #import <react/renderer/components/FlumeSpec/Props.h>
 
 using namespace facebook::react;
