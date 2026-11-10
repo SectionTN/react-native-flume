@@ -33,6 +33,7 @@ class ListStore {
   int count() const { return static_cast<int>(keys_.size()); }
   bool isReactAt(int index) const { return reactByTypeId_[typeIds_[index]]; }
   int viewTypeAt(int index) const { return typeIdAt(index) * 2 + (isReactAt(index) ? 1 : 0); }  // odd for React
+  bool hasReactKinds() const { return kinds_.reactByDefault || !kinds_.reactTypes.empty(); }  // UI thread
   const std::string& keyAt(int index) const { return keys_[index]; }
   const Value& itemAt(int index) const { return items_[index]; }
   uint64_t itemVersion(int index) const { return versions_[index]; }

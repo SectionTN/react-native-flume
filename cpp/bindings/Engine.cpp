@@ -298,6 +298,11 @@ int Engine::viewType(int storeId, int position) {
   return store->list.viewTypeAt(position);
 }
 
+bool Engine::hasReactKinds(int storeId) {
+  auto store = find(storeId);
+  return store != nullptr && store->list.hasReactKinds();
+}
+
 int64_t Engine::itemId(int storeId, int position) {
   auto store = find(storeId);
   if (store == nullptr || position < 0 || position >= store->list.count()) return -1;

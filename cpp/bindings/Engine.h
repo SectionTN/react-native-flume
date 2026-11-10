@@ -47,6 +47,7 @@ class Engine {
   void detach(int storeId);
   int count(int storeId);
   int viewType(int storeId, int position);     // type id * 2, plus 1 for React; 0 for an unknown position
+  bool hasReactKinds(int storeId);             // some item type renders as a React row
   int64_t itemId(int storeId, int position);   // -1 for an unknown position
   std::string keyAt(int storeId, int position);
   bool bind(int storeId, int holderId, int index, float widthDp, float heightDp, OpBatch& out);

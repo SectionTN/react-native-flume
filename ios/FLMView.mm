@@ -1019,14 +1019,30 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
 }
 
-// The status bar tap's own animation ends in scrollViewDidScrollToTop:, never in a command's re-land.
+// React rows show bare under UIKit's own glide, so a list that can show them scrolls to its top through the jump gate.
 - (BOOL)scrollViewShouldScrollToTop:(UIScrollView *)scrollView
 {
+  if (_attached && _rows.dataCount > 0 && [self showsReactRows]) {
+    // The visual top, which is the content end when inverted.
+    const BOOL end = _inverted;
+    // A glide still running must not re-land on its old target while this jump waits for its rows.
+    _pendingTarget.reset();
+    [self scrollToTarget:FLMPendingTarget{end ? FLMPendingTarget::Kind::End : FLMPendingTarget::Kind::Start,
+                                          end ? _rows.dataCount - 1 : 0, end ? 1.0 : 0.0, 0}
+                animated:YES];
+    return NO;
+  }
+  // The status bar tap's own animation ends in scrollViewDidScrollToTop:, never in a command's re-land.
   _pendingTarget.reset();
   _gliding = NO;
   [self dropJump];
   [self reclaimGlideSlots];
   return YES;
+}
+
+- (BOOL)showsReactRows
+{
+  return _rows.header || _rows.footer || flume::Engine::instance().hasReactKinds(_storeId);
 }
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView

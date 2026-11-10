@@ -82,6 +82,21 @@ TEST_CASE("cell kinds follow the type names, including types seen later") {
   CHECK(store.viewTypeAt(0) == 1);
 }
 
+TEST_CASE("a store has React kinds once applied kinds name any") {
+  flume::ListStore store;
+  CHECK_FALSE(store.hasReactKinds());
+  store.setKinds(false, {"card"});
+  CHECK_FALSE(store.hasReactKinds());
+  store.applyPending();
+  CHECK(store.hasReactKinds());
+  store.setKinds(true, {});
+  store.applyPending();
+  CHECK(store.hasReactKinds());
+  store.setKinds(false, {});
+  store.applyPending();
+  CHECK_FALSE(store.hasReactKinds());
+}
+
 TEST_CASE("a key whose type changes is reported changed") {
   flume::ListStore store;
   store.setPending({"a", "b"}, {"t", "t"}, {0, 1}, {V(1), V(2)}, true);
