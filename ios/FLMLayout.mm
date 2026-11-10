@@ -697,7 +697,6 @@ struct FLMAnchorUpdate {
     return;
   }
   if (_updating) {
-    NSLog(@"FLMSlot late size deferred item=%d", item);
     _lateLengths.emplace_back(index, length);
     return;
   }

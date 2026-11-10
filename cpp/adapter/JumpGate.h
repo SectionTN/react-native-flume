@@ -9,7 +9,7 @@
 
 namespace flume {
 
-// Holds a jump until every slot it waits for has rendered, or until its wait runs out; one jump waits at a time.
+// Holds a jump until every slot it waits for has rendered, or until its wait runs out. One jump waits at a time.
 template <class Jump>
 class JumpGate {
  public:

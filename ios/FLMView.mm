@@ -155,7 +155,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   BOOL _slotsFlushPending;
   BOOL _reclaimSlots;  // slots lent around a reload go back to the pool after the next layout pass
   std::optional<std::pair<int, int>> _aheadRange;  // the first and last row of the last look-ahead, reset when rows change
-  flume::ListLayoutConfig _layoutConfig;  // from the props; configureLayoutRows adds what the list components change
+  flume::ListLayoutConfig _layoutConfig;  // from the props, plus what the list components change in configureLayoutRows
   std::vector<int> _stickyIndices;  // data indices
   BOOL _componentsMoved;  // a list component came or went while detached, so the next attach resets the rows
   FlumeViewShadowNode::ConcreteState::Shared _state;
@@ -166,7 +166,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   std::unordered_set<int> _holders;
   int _storeId;
   int _nextHolderId;
-  flume::ListRows _rows;  // the rows the store holds; the data count is the store's
+  flume::ListRows _rows;  // the rows the store holds, with the store's data count
   NSInteger _itemCount;  // the rows UIKit was told about
   BOOL _attached;
   CGFloat _visibleEnd;  // the viewport's end in content coordinates as of the last scroll, NAN before one
@@ -674,7 +674,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   // The store holds the new data from here on, and the layout measures the rows a batch can show from it.
   _rows.dataCount = count;
   const NSInteger itemCount = _rows.itemCount();
-  // The first rows reset and reload, so an armed opening lands before any of them binds; so does the empty row.
+  // The first rows and an empty row change reset and reload, so an armed opening lands before any of them binds.
   if (batch.reload || first || _rows.hasEmptyRow() != hadEmptyRow) {
     _itemCount = itemCount;
     [self configureLayoutRows];

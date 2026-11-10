@@ -34,8 +34,7 @@ struct SlotRequest {
   int index;
 };
 
-// Which slot each cell shows: a slot belongs to one key for life, and a released one waits for its key to come back.
-// A pre-rendered slot (a negative id from JS) waits the same way, in no group until a bind for its key adopts it.
+// Which slot each cell shows: a slot keeps one key for life, and a released or pre-rendered one waits for that key.
 class SlotPool {
  public:
   static constexpr int kMaxFree = 20;
@@ -53,8 +52,7 @@ class SlotPool {
   void lend(int owner);
   // Lent slots no bind took become released slots, so the cap applies to them.
   void reclaim();
-  // Each row rendered ahead of the list's edges keeps a slot its bind adopts, out of the cap and the reclaim.
-  // Slots of rows no longer ahead become released slots.
+  // Rows rendered ahead of the edges keep slots out of the cap and the reclaim, released once no longer ahead.
   void keepAhead(const std::vector<SlotRequest>& rows);
   std::vector<int> slotsFor(int kind, const std::string& key) const;
   void setIndex(int slot, int index);
