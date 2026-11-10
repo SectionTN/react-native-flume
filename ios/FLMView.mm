@@ -18,6 +18,7 @@
 #import "FLMSlots.h"
 #import "FLMStoreListener.h"
 #import "FLMText.h"
+#import "FLMTouchCancel.h"
 
 #include <algorithm>
 #include <cmath>
@@ -174,6 +175,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   int _measureHolder;  // binds rows no cell shows, for their lengths; 0 until the first measure
   flume::OpBatch _measureBatch;
   std::optional<FLMPendingTarget> _pendingTarget;
+  BOOL _gliding;  // an animated scroll runs, isDecelerating reads NO through it
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -202,6 +204,9 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     __weak FLMView *weakSelf = self;
     _collectionView.didLayout = ^{
       [weakSelf listDidLayout];
+    };
+    _collectionView.touchDown = ^{
+      [weakSelf listTouchedDown];
     };
     _refresh = [[FLMRefresh alloc] initWithScrollView:_collectionView
                                             onRefresh:^{
@@ -497,6 +502,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     [self attach];
   } else {
     _pendingTarget.reset();
+    _gliding = NO;
     [self emitScrollEvents:_scrollEvents.leftWindow() velocity:CGPointZero];
     [self detach];
   }
@@ -974,15 +980,32 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 - (BOOL)scrollViewShouldScrollToTop:(UIScrollView *)scrollView
 {
   _pendingTarget.reset();
+  _gliding = NO;
   return YES;
 }
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
   _pendingTarget.reset();
+  _gliding = NO;
+  // The list takes the touch, so no React handler under it may still press, as on Android.
+  FLMCancelJSTouches(self);
   [self emitScrollEvents:_scrollEvents.willBeginDragging() velocity:CGPointZero];
   _viewability.interacted = true;
   [self evaluateViewability];
+}
+
+// A touch that stops a fling or a glide, or that never mode spends on the keyboard, never reaches JS, as ScrollView claims it.
+- (void)listTouchedDown
+{
+  BOOL stops = NO;
+  if (_collectionView.scrollEnabled) {
+    stops = _collectionView.isDecelerating || _gliding;
+    _gliding = NO;
+  }
+  if (stops || [self swallowsTaps]) {
+    FLMWithholdJSTouch(self);
+  }
 }
 
 #pragma mark - List events
@@ -1213,6 +1236,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 // Rows measured during the glide can move the target, so an animated command lands on it again.
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
 {
+  _gliding = NO;
   if (_pendingTarget && _rows.dataCount > 0) {
     FLMPendingTarget target = *_pendingTarget;
     target.index = *flume::clampIndex(target.index, _rows.dataCount);
@@ -1244,11 +1268,12 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
 }
 
-// A pressable keeps the keyboard in handled mode; a row is one while the list has a press handler.
+// A pressable keeps the keyboard in handled mode, a worklet row while the list has a press handler, a React row always (its slot decides in JS).
 - (BOOL)pressableAt:(UITouch *)touch
 {
   for (UIView *view = touch.view; view != nil && view != _collectionView; view = view.superview) {
-    if ([view isKindOfClass:FLMPressableView.class] || (_rowsPressable && [view isKindOfClass:FLMCell.class])) {
+    if ([view isKindOfClass:FLMPressableView.class] || [view isKindOfClass:FLMSlotCell.class] ||
+        (_rowsPressable && [view isKindOfClass:FLMCell.class])) {
       return YES;
     }
   }
@@ -1336,8 +1361,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   if (animated) {
     _scrollEvents.scrolledProgrammatically(true);
     [_collectionView setContentOffset:[self pointAt:offset] animated:YES];
+    _gliding = YES;
     return;
   }
+  _gliding = NO;
   [_collectionView setContentOffset:[self pointAt:offset] animated:NO];
   [self emitScrollEvents:_scrollEvents.scrolledProgrammatically(false) velocity:CGPointZero];
 }
