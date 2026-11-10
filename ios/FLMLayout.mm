@@ -135,6 +135,11 @@ struct FLMAnchorUpdate {
   return FLMViewport{origin + start, std::max<CGFloat>(0, [self mainLength:bounds.size] - start - end)};
 }
 
+- (std::vector<int>)itemsFrom:(CGFloat)start to:(CGFloat)end
+{
+  return _model.itemsIn(static_cast<float>(start), static_cast<float>(end), _viewportLength);
+}
+
 - (std::vector<flume::ItemSpan>)spansIn:(FLMViewport)viewport
 {
   std::vector<flume::ItemSpan> spans;

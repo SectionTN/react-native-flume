@@ -53,6 +53,9 @@ class SlotPool {
   void lend(int owner);
   // Lent slots no bind took become released slots, so the cap applies to them.
   void reclaim();
+  // Each row rendered ahead of the list's edges keeps a slot its bind adopts, out of the cap and the reclaim.
+  // Slots of rows no longer ahead become released slots.
+  void keepAhead(const std::vector<SlotRequest>& rows);
   std::vector<int> slotsFor(int kind, const std::string& key) const;
   void setIndex(int slot, int index);
   void setMinMain(int slot, float minMain);
@@ -82,9 +85,10 @@ class SlotPool {
 
   int maxFree_;
   std::map<int, Slot> slots_;
-  // Released, lent and pre-rendered slots wait in separate queues, oldest first.
+  // Released, lent, ahead and pre-rendered slots wait in separate queues, oldest first.
   std::vector<int> free_;
   std::vector<int> lent_;
+  std::vector<int> ahead_;
   std::vector<int> unadopted_;
   int nextId_ = 1;
   bool batchOpen_ = false;

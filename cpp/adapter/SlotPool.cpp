@@ -1,6 +1,8 @@
 #include "adapter/SlotPool.h"
 
 #include <algorithm>
+#include <unordered_set>
+#include <utility>
 
 namespace flume {
 
@@ -51,6 +53,7 @@ int SlotPool::acquire(int owner, SlotGroup group, int kind, const std::string& k
   }
   if (slot == nullptr) slot = firstIn(free_, group, kind, key);
   if (slot == nullptr) slot = firstIn(lent_, group, kind, key);
+  if (slot == nullptr) slot = firstIn(ahead_, group, kind, key);
   if (slot == nullptr) slot = firstIn(unadopted_, std::nullopt, kind, key);
   if (slot == nullptr) {
     const int id = nextId_++;
@@ -59,6 +62,7 @@ int SlotPool::acquire(int owner, SlotGroup group, int kind, const std::string& k
   if (slot->owner != owner) {
     erase(free_, slot->id);
     erase(lent_, slot->id);
+    erase(ahead_, slot->id);
     erase(unadopted_, slot->id);
     slot->group = group;
     slot->owner = owner;
@@ -106,6 +110,39 @@ void SlotPool::reclaim() {
   const std::vector<int> waiting = std::move(lent_);
   lent_.clear();
   for (int slot : waiting) cache(free_, slot);
+}
+
+void SlotPool::keepAhead(const std::vector<SlotRequest>& rows) {
+  std::vector<int> kept;
+  std::unordered_set<std::string> boundKeys;
+  for (const auto& [id, slot] : slots_) {
+    if (slot.owner != 0) boundKeys.insert(slot.key);
+  }
+  for (const SlotRequest& row : rows) {
+    const bool bound = boundKeys.count(row.key) > 0 && std::any_of(slots_.begin(), slots_.end(), [&](const auto& item) {
+                         return item.second.owner != 0 && matches(item.second, row.group, row.kind, row.key);
+                       });
+    if (bound) continue;
+    Slot* slot = firstIn(ahead_, row.group, row.kind, row.key);
+    if (slot == nullptr) slot = firstIn(free_, row.group, row.kind, row.key);
+    if (slot == nullptr) slot = firstIn(lent_, row.group, row.kind, row.key);
+    if (slot == nullptr) slot = firstIn(unadopted_, std::nullopt, row.kind, row.key);
+    if (slot == nullptr) {
+      const int id = nextId_++;
+      slot = &slots_.emplace(id, Slot{id, row.group, row.kind, row.key}).first->second;
+      dirty_ = true;
+    }
+    erase(free_, slot->id);
+    erase(lent_, slot->id);
+    erase(unadopted_, slot->id);
+    slot->group = row.group;
+    setIndex(slot->id, row.index);
+    if (std::find(kept.begin(), kept.end(), slot->id) == kept.end()) kept.push_back(slot->id);
+  }
+  const std::vector<int> left = std::exchange(ahead_, std::move(kept));
+  for (int slot : left) {
+    if (std::find(ahead_.begin(), ahead_.end(), slot) == ahead_.end()) cache(free_, slot);
+  }
 }
 
 std::vector<int> SlotPool::slotsFor(int kind, const std::string& key) const {

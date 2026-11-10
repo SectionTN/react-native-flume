@@ -137,6 +137,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   FLMSlots *_slots;
   BOOL _slotsFlushPending;
   BOOL _reclaimSlots;  // slots lent around a reload go back to the pool after the next layout pass
+  std::optional<std::pair<int, int>> _aheadRange;  // the first and last row of the last look-ahead, reset when rows change
   FlumeViewShadowNode::ConcreteState::Shared _state;
   CGPoint _writtenOffset;
   BOOL _offsetWritten;
@@ -661,6 +662,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
       [_slots reindexCell:cell index:_rows.dataIndex(static_cast<int>(path.item))];
     }
   }
+  // The look-ahead's positions now hold other keys, or the same keys at other indices.
+  _aheadRange.reset();
   [self requestSlotsFlush];
 }
 
@@ -728,7 +731,16 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   if (index < 0) {
     return;
   }
-  NSString *key = [NSString stringWithUTF8String:flume::Engine::instance().keyAt(_storeId, index).c_str()];
+  const std::string itemKey = flume::Engine::instance().keyAt(_storeId, index);
+  NSString *key = [NSString stringWithUTF8String:itemKey.c_str()];
+  // UIKit can drop a cell it prepared for this row and keep it unreused, so a new cell takes its slot over.
+  for (int slot : [_slots pool].slotsFor(flume::kSlotRow, itemKey)) {
+    FLMSlotCell *holder = [_slots cellForSlot:slot];
+    if (holder != nil && holder != cell && [_slots pool].groupOf(slot) == flume::SlotGroup{viewType} &&
+        [_collectionView indexPathForCell:holder] == nil) {
+      [_slots releaseCell:holder];
+    }
+  }
   [_slots bindCell:cell group:flume::SlotGroup{viewType} kind:flume::kSlotRow key:key index:index];
   [self applySlotSize:[_slots viewForSlot:cell.slot] position:position];
   [self requestSlotsFlush];
@@ -800,6 +812,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 {
   [_slots detachAll];
   _reclaimSlots = YES;
+  _aheadRange.reset();
   [self requestSlotsFlush];
 }
 
@@ -911,12 +924,49 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     [_slots pool].reclaim();
     [self requestSlotsFlush];
   }
+  [self renderAhead];
   [self evaluateViewability];
   [self evaluateEdges];
   // A press starts only at rest, so the shadow tree learns where React rows show only then.
   const BOOL moving = _collectionView.isDragging || _collectionView.isDecelerating || _pendingTarget.has_value();
   if (!moving || !_collectionView.scrollEnabled) {
     [self writeShadowOrigins];
+  }
+}
+
+// React rows within drawDistance past each visible edge render ahead, so a fling never reaches one still rendering.
+- (void)renderAhead
+{
+  const FLMViewport viewport = [_layout viewportFor:_collectionView.bounds];
+  if (!_attached || viewport.length <= 0) {
+    return;
+  }
+  const double drawDistance = static_cast<const FlumeViewProps &>(*_props).drawDistance;
+  const CGFloat distance = drawDistance < 0 ? viewport.length : drawDistance;
+  const CGFloat end = viewport.start + viewport.length;
+  const std::vector<int> window = [_layout itemsFrom:viewport.start - distance to:end + distance];
+  const auto bounds = std::minmax_element(window.begin(), window.end());
+  const std::pair<int, int> range =
+      window.empty() ? std::make_pair(-1, -1) : std::make_pair(*bounds.first, *bounds.second);
+  if (_aheadRange == range) {
+    return;
+  }
+  _aheadRange = range;
+  const std::vector<int> visible = [_layout itemsFrom:viewport.start to:end];
+  const auto shown = std::minmax_element(visible.begin(), visible.end());
+  std::vector<flume::SlotRequest> rows;
+  for (int position : window) {
+    const int index = position < _itemCount ? _rows.dataIndex(position) : -1;
+    const int viewType = index >= 0 ? FLMViewType(_storeId, _rows, position) : 0;
+    const BOOL onScreen = !visible.empty() && position >= *shown.first && position <= *shown.second;
+    if (viewType % 2 != 0 && !onScreen) {
+      rows.push_back(flume::SlotRequest{
+          flume::SlotGroup{viewType}, flume::kSlotRow, flume::Engine::instance().keyAt(_storeId, index), index});
+    }
+  }
+  [_slots pool].keepAhead(rows);
+  if ([_slots pool].dirty()) {
+    [self requestSlotsFlush];
   }
 }
 

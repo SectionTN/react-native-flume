@@ -28,6 +28,7 @@ struct FLMPendingOffset {
 @property (nonatomic, strong, nullable) UIColor *separatorColor;  // nil keeps the gap and draws nothing
 
 - (std::vector<flume::ItemSpan>)spansIn:(FLMViewport)viewport;  // the items in it, from its start, unpinned
+- (std::vector<int>)itemsFrom:(CGFloat)start to:(CGFloat)end;  // along the scroll axis, in content coordinates
 - (void)configure:(const flume::ListLayoutConfig &)config fullSpan:(std::vector<int>)fullSpan sticky:(std::vector<int>)sticky;
 - (void)resetWithCount:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf;
 - (std::vector<int>)applyOps:(const flume::ListOps &)ops count:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf;

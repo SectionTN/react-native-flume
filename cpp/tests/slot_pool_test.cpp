@@ -154,3 +154,63 @@ TEST_CASE("slotsFor lists every slot of a key") {
   const std::vector<int> slots = pool.slotsFor(kSlotRow, "a");
   CHECK(std::set<int>(slots.begin(), slots.end()) == std::set<int>{owned, released, -1});
 }
+
+namespace {
+
+SlotRequest row(const std::string& key, int index, SlotGroup group = kList) {
+  return SlotRequest{group, kSlotRow, key, index};
+}
+
+}  // namespace
+
+TEST_CASE("rows ahead each wait in a slot their bind adopts") {
+  SlotPool pool;
+  pool.keepAhead({row("a", 5), row("b", 6)});
+  const std::vector<SlotEntry> entries = pool.snapshot();
+  REQUIRE(entries.size() == 2);
+  CHECK(entries[0] == SlotEntry{entries[0].slot, kSlotRow, "a", 5, false});
+  CHECK(entries[1] == SlotEntry{entries[1].slot, kSlotRow, "b", 6, false});
+  CHECK(pool.acquire(3, kList, kSlotRow, "a", 5) == entries[0].slot);
+  CHECK(pool.acquire(4, kCards, kSlotRow, "b", 6) != entries[1].slot);
+}
+
+TEST_CASE("a row bound in its group gets no slot ahead") {
+  SlotPool pool;
+  const int a = pool.acquire(1, kList, kSlotRow, "a", 0);
+  pool.keepAhead({row("a", 0)});
+  CHECK(pool.slotsFor(kSlotRow, "a") == std::vector<int>{a});
+}
+
+TEST_CASE("a released or lent slot of a row ahead leaves the cap and the reclaim") {
+  SlotPool pool(0);
+  const int a = pool.acquire(1, kList, kSlotRow, "a", 0);
+  pool.registerPrerendered(-1, kSlotRow, "b");
+  pool.lend(1);
+  pool.acquire(2, kList, kSlotRow, "c", 2);
+  pool.keepAhead({row("a", 0), row("b", 1), row("c", 2)});
+  pool.release(2, pool.slotsFor(kSlotRow, "c").front());
+  pool.reclaim();
+  CHECK(pool.slotsFor(kSlotRow, "a") == std::vector<int>{a});
+  CHECK(pool.slotsFor(kSlotRow, "b") == std::vector<int>{-1});
+  CHECK(pool.slotsFor(kSlotRow, "c").empty());
+}
+
+TEST_CASE("slots of rows that leave the look-ahead are released") {
+  SlotPool pool(1);
+  pool.keepAhead({row("a", 0), row("b", 1), row("c", 2)});
+  pool.keepAhead({row("c", 2)});
+  CHECK(pool.slotsFor(kSlotRow, "a").empty());
+  CHECK(pool.slotsFor(kSlotRow, "b").size() == 1);
+  CHECK(pool.slotsFor(kSlotRow, "c").size() == 1);
+}
+
+TEST_CASE("slots ahead follow their row's index, and an unchanged look-ahead changes nothing") {
+  SlotPool pool;
+  pool.keepAhead({row("a", 5)});
+  pool.snapshot();
+  pool.keepAhead({row("a", 5)});
+  CHECK_FALSE(pool.dirty());
+  pool.keepAhead({row("a", 7)});
+  CHECK(pool.dirty());
+  CHECK(pool.snapshot().front().index == 7);
+}
