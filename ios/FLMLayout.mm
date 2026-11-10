@@ -344,6 +344,26 @@ struct FLMAnchorUpdate {
   [self endMeasuring];
 }
 
+- (flume::IndexRange)jumpItemsToIndex:(NSInteger)index viewPosition:(CGFloat)viewPosition glideStart:(CGFloat)glideStart
+{
+  const std::optional<int> target = flume::clampIndex(static_cast<int>(index), _model.count());
+  if (!target) {
+    return {0, -1};
+  }
+  [self beginMeasuring];
+  flume::IndexRange rows = [self measureLandingOfRow:_model.rowOf(*target) viewPosition:viewPosition];
+  if (!std::isnan(glideStart)) {
+    const float start = static_cast<float>(glideStart);
+    const std::vector<int> from = _model.itemsIn(start, start + _measureViewport, _measureViewport);
+    if (!from.empty()) {
+      const auto [low, high] = std::minmax_element(from.begin(), from.end());
+      rows = flume::glideWindow({_model.rowOf(*low), _model.rowOf(*high)}, rows);
+    }
+  }
+  [self endMeasuring];
+  return _model.itemsOfRows(rows.first, rows.last);
+}
+
 #pragma mark - Anchoring
 
 // A row that self-sizes inside performBatchUpdates loses its offset adjustment, so the rows a batch can show measure first.

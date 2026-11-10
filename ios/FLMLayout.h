@@ -45,6 +45,8 @@ struct FLMPendingOffset {
 - (CGFloat)offsetForVisualEdge:(flume::VisualEdge)edge;
 // Measures the rows between the viewport and the item's landing, capped at the rows nearest the landing.
 - (void)measureGlideToIndex:(NSInteger)index viewPosition:(CGFloat)viewPosition;
+// The items a jump shows: its landing, and for a glide the rows from the viewport at glideStart, NAN for none.
+- (flume::IndexRange)jumpItemsToIndex:(NSInteger)index viewPosition:(CGFloat)viewPosition glideStart:(CGFloat)glideStart;
 // Applied at the end of the next prepareLayout with rows and a size, so the rows at the wrong end never bind.
 - (void)scheduleOffset:(const FLMPendingOffset &)pending;
 // A list anchored at its end keeps the viewport's end where it was when the end inset moves, as a keyboard inset does.

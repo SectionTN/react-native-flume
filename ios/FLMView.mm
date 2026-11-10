@@ -29,6 +29,7 @@
 
 #include "adapter/BatchUpdates.h"
 #include "adapter/EdgeTracker.h"
+#include "adapter/JumpGate.h"
 #include "adapter/ListRows.h"
 #include "adapter/ScrollTargets.h"
 #include "adapter/Viewability.h"
@@ -91,6 +92,21 @@ struct FLMPendingTarget {
   double viewPosition;
   double viewOffset;
 };
+
+// A command held until the React rows it shows render: their slots belong to owner until it runs.
+struct FLMJump {
+  FLMPendingTarget target;
+  bool animated;
+  int owner;
+  bool timedOut = false;
+};
+
+constexpr int kFLMMaxRealigns = 4;
+
+static double FLMNowMs()
+{
+  return CACurrentMediaTime() * 1000;
+}
 
 flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 {
@@ -176,6 +192,11 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   flume::OpBatch _measureBatch;
   std::optional<FLMPendingTarget> _pendingTarget;
   BOOL _gliding;  // an animated scroll runs, isDecelerating reads NO through it
+  flume::JumpGate<FLMJump> _jumps;
+  std::optional<FLMJump> _readyJump;  // its rows rendered inside a Fabric mount, so it runs a turn later
+  BOOL _reclaimAfterGlide;  // a glide's lent slots go back to the pool when it ends
+  std::optional<FLMPendingTarget> _realign;
+  int _realigns;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -468,6 +489,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     _componentsMoved = YES;
     return;
   }
+  [self dropJump];
   _itemCount = _rows.itemCount();
   [_layout resetWithCount:_itemCount typeOf:[self typeOf]];
   [self lendSlotCells];
@@ -503,6 +525,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   } else {
     _pendingTarget.reset();
     _gliding = NO;
+    [self dropJump];
+    _reclaimAfterGlide = NO;
     [self emitScrollEvents:_scrollEvents.leftWindow() velocity:CGPointZero];
     [self detach];
   }
@@ -696,8 +720,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   } else {
     [UIView performWithoutAnimation:update];
   }
+  _realign.reset();
   if (anchor.outcome == flume::AnchorOutcome::ScrollToEdge) {
     _pendingTarget.reset();
+    [self dropJump];
     [self scrollTo:[_layout offsetForVisualEdge:anchor.edge] animated:anchor.animated];
   }
   [self reindexSlotCells];
@@ -875,6 +901,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 {
   FLMSlotView *view = [_slots viewForSlot:slot];
   [self applySlotSize:view position:[self positionOfSlot:slot]];
+  [self jumpSlotRendered:slot];
 }
 
 - (void)releaseSlotCell:(FLMSlotCell *)cell
@@ -981,6 +1008,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 {
   _pendingTarget.reset();
   _gliding = NO;
+  [self dropJump];
+  [self reclaimGlideSlots];
   return YES;
 }
 
@@ -988,6 +1017,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 {
   _pendingTarget.reset();
   _gliding = NO;
+  [self dropJump];
+  [self reclaimGlideSlots];
   // The list takes the touch, so no React handler under it may still press, as on Android.
   FLMCancelJSTouches(self);
   [self emitScrollEvents:_scrollEvents.willBeginDragging() velocity:CGPointZero];
@@ -1023,6 +1054,12 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   [self sizeEmptyRow];
   [self evaluateViewability];
   [self evaluateEdges];
+  if (_realign) {
+    __weak FLMView *weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [weakSelf realignIfIdle];
+    });
+  }
   // A press starts only at rest, so the shadow tree learns where React rows show only then.
   const BOOL moving = _collectionView.isDragging || _collectionView.isDecelerating || _pendingTarget.has_value();
   if (!moving || !_collectionView.scrollEnabled) {
@@ -1035,6 +1072,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 {
   const FLMViewport viewport = [_layout viewportFor:_collectionView.bounds];
   if (!_attached || viewport.length <= 0) {
+    return;
+  }
+  // A waiting jump owns the rows it will show, and its landing is not where the list rests.
+  if (_jumps.pending() || _readyJump) {
     return;
   }
   const double drawDistance = static_cast<const FlumeViewProps &>(*_props).drawDistance;
@@ -1246,6 +1287,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     }
   }
   _pendingTarget.reset();
+  [self reclaimGlideSlots];
   [self emitScrollEvents:_scrollEvents.didEndScrollingAnimation() velocity:CGPointZero];
   [self writeShadowOrigins];
 }
@@ -1356,6 +1398,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   // No animation will end, so no command waits to land again.
   if (std::fabs(offset - [self currentOffset]) <= 0.5) {
     _pendingTarget.reset();
+    [self reclaimGlideSlots];
     return;
   }
   if (animated) {
@@ -1385,8 +1428,195 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
                             viewOffset:target.viewOffset];
 }
 
-// Past two viewports an animated scroll jumps first, so it glides over measured rows only.
+// React rows paint a frame or more after their bind, so a jump first has the rows it will show rendered, as on Android.
 - (void)scrollToTarget:(const FLMPendingTarget &)target animated:(BOOL)animated
+{
+  [self dropJump];
+  const int owner = ++_nextHolderId;
+  const std::unordered_set<int> waiting = [self reserveJumpTo:target animated:animated owner:owner];
+  const FLMJump jump{target, static_cast<bool>(animated), owner};
+  if (waiting.empty()) {
+    [self runJump:jump];
+    return;
+  }
+  _jumps.request(jump, waiting, static_cast<int64_t>(FLMNowMs()));
+  __weak FLMView *weakSelf = self;
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (flume::kJumpWaitMs + 1) * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+    [weakSelf jumpDue];
+  });
+}
+
+// The jump owns a slot for each React row it shows that no cell holds, rendered or not, so the free cap cannot drop one.
+- (std::unordered_set<int>)reserveJumpTo:(const FLMPendingTarget &)target animated:(BOOL)animated owner:(int)owner
+{
+  std::unordered_set<int> waiting;
+  const int count = static_cast<int>(std::min<NSInteger>(_itemCount, _rows.itemCount()));
+  if (!_attached || count == 0) {
+    return waiting;
+  }
+  const bool index = target.kind == FLMPendingTarget::Kind::Index;
+  const int position = index ? _rows.position(target.index) : target.kind == FLMPendingTarget::Kind::End ? count - 1 : 0;
+  const double viewPosition = index ? target.viewPosition : target.kind == FLMPendingTarget::Kind::End ? 1 : 0;
+  const FLMViewport viewport = [_layout viewportFor:_collectionView.bounds];
+  const CGFloat current = [self currentOffset];
+  const CGFloat landing = [self offsetOf:target];
+  CGFloat glideStart = NAN;
+  if (animated) {
+    const std::optional<float> near = flume::preJumpOffset(static_cast<float>(current), static_cast<float>(landing),
+                                                           static_cast<float>(viewport.length));
+    glideStart = viewport.start + (near ? *near - current : 0);
+  }
+  const flume::IndexRange items = [_layout jumpItemsToIndex:position viewPosition:viewPosition glideStart:glideStart];
+  std::vector<int> positions;
+  for (int at = items.first; at <= items.last; at++) {
+    positions.push_back(at);
+  }
+  // The sticky row that pins at the landing comes from outside the window.
+  positions.push_back([_layout pinnedIndexAt:viewport.start + landing - current]);
+  flume::SlotPool &pool = [_slots pool];
+  for (const int at : positions) {
+    const int viewType = at >= 0 && at < count ? FLMViewType(_storeId, _rows, at) : 0;
+    if (viewType % 2 == 0) {
+      continue;
+    }
+    const flume::SlotRequest request = [self slotRequestAt:at viewType:viewType];
+    if ([self slotShownFor:request]) {
+      continue;
+    }
+    const int slot = pool.acquire(owner, request.group, request.kind, request.key, request.index);
+    if ([_slots viewForSlot:slot] == nil) {
+      waiting.insert(slot);
+    }
+  }
+  if (pool.dirty()) {
+    [self requestSlotsFlush];
+  }
+  return waiting;
+}
+
+- (BOOL)slotShownFor:(const flume::SlotRequest &)request
+{
+  flume::SlotPool &pool = [_slots pool];
+  for (const int slot : pool.slotsFor(request.kind, request.key)) {
+    const std::optional<flume::SlotGroup> group = pool.groupOf(slot);
+    if ((!group || *group == request.group) && [_slots cellForSlot:slot] != nil && [_slots viewForSlot:slot] != nil) {
+      return YES;
+    }
+  }
+  return NO;
+}
+
+// A slot mounts inside a Fabric mount, so the jump it opens runs a main-queue turn later, outside it.
+- (void)jumpSlotRendered:(int)slot
+{
+  std::optional<FLMJump> jump = _jumps.rendered(slot);
+  if (!jump) {
+    return;
+  }
+  _readyJump = jump;
+  __weak FLMView *weakSelf = self;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [weakSelf runReadyJump];
+  });
+}
+
+- (void)runReadyJump
+{
+  std::optional<FLMJump> jump = std::exchange(_readyJump, std::nullopt);
+  if (jump) {
+    [self runJump:*jump];
+  }
+}
+
+- (void)jumpDue
+{
+  std::optional<FLMJump> jump = _jumps.due(static_cast<int64_t>(FLMNowMs()));
+  if (jump) {
+    jump->timedOut = true;
+    [self runJump:*jump];
+  }
+}
+
+- (void)runJump:(const FLMJump &)jump
+{
+  flume::SlotPool &pool = [_slots pool];
+  pool.lend(jump.owner);
+  [self requestSlotsFlush];
+  if (!_attached || _rows.dataCount == 0) {
+    pool.reclaim();
+    return;
+  }
+  if (jump.animated) {
+    _reclaimAfterGlide = YES;
+  } else {
+    _reclaimSlots = YES;
+  }
+  _realign.reset();
+  if (jump.timedOut) {
+    _realign = jump.target;
+    _realigns = 0;
+  }
+  [self startScrollToTarget:jump.target animated:jump.animated];
+}
+
+// A drag, another command, a reload or leaving the window ends a waiting jump and gives its slots back.
+- (void)dropJump
+{
+  _realign.reset();
+  std::optional<FLMJump> jump = _jumps.cancel();
+  if (!jump) {
+    jump = std::exchange(_readyJump, std::nullopt);
+  }
+  if (jump) {
+    [_slots pool].lend(jump->owner);
+    [_slots pool].reclaim();
+    [self requestSlotsFlush];
+  }
+}
+
+// After the next layout pass, so the rows the glide ends on bind their lent slots first.
+- (void)reclaimGlideSlots
+{
+  if (_reclaimAfterGlide) {
+    _reclaimAfterGlide = NO;
+    _reclaimSlots = YES;
+    [_collectionView setNeedsLayout];
+  }
+}
+
+// While the list rests, a jump that ran before its rows rendered goes back to its target until the rows in view render.
+- (void)realignIfIdle
+{
+  if (!_realign || _collectionView.isDragging || _collectionView.isDecelerating || _gliding || _pendingTarget) {
+    return;
+  }
+  const CGFloat offset = [self offsetOf:*_realign];
+  if (std::fabs(offset - [self currentOffset]) <= 0.5) {
+    if ([self visibleSlotCellsShow]) {
+      _realign.reset();
+    }
+    return;
+  }
+  if (_realigns >= kFLMMaxRealigns) {
+    _realign.reset();
+    return;
+  }
+  _realigns++;
+  [_collectionView setContentOffset:[self pointAt:offset] animated:NO];
+}
+
+- (BOOL)visibleSlotCellsShow
+{
+  for (UICollectionViewCell *cell in _collectionView.visibleCells) {
+    if ([cell isKindOfClass:[FLMSlotCell class]] && ((FLMSlotCell *)cell).view == nil) {
+      return NO;
+    }
+  }
+  return YES;
+}
+
+// Past two viewports an animated scroll jumps first, so it glides over measured rows only.
+- (void)startScrollToTarget:(const FLMPendingTarget &)target animated:(BOOL)animated
 {
   _viewability.interacted = true;
   _pendingTarget.reset();
@@ -1424,6 +1654,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   if (!_attached || _rows.dataCount == 0) {
     return;
   }
+  [self dropJump];
   if (offset <= 0) {
     [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::Start, 0, 0, 0} animated:animated];
     return;
