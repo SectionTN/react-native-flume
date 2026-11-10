@@ -106,6 +106,11 @@ using namespace facebook;
   return _bySlot[@(slot)];
 }
 
+- (nullable FLMSlotCell *)cellForSlot:(int)slot
+{
+  return [_cells objectForKey:@(slot)];
+}
+
 - (BOOL)takeRegisteredPrerendered
 {
   const BOOL registered = _registered;

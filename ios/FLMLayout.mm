@@ -33,7 +33,7 @@ struct FLMAnchorUpdate {
   BOOL _measuredAny;
   std::optional<FLMPendingOffset> _pendingOffset;
   std::optional<FLMAnchorUpdate> _update;
-  BOOL _updating;  // between prepareForCollectionViewUpdates: and finalizeCollectionViewUpdates
+  std::vector<std::pair<NSInteger, CGFloat>> _lateLengths;  // slot lengths that arrived during a batch
   CGFloat _appearShift;  // the anchored offset minus the one UIKit proposed, during an update
 }
 
@@ -644,6 +644,40 @@ struct FLMAnchorUpdate {
   _updating = NO;
   _update.reset();
   _appearShift = 0;
+  const std::vector<std::pair<NSInteger, CGFloat>> late = std::move(_lateLengths);
+  _lateLengths.clear();
+  for (const auto &[index, length] : late) {
+    [self setLength:length forItem:index];
+  }
+}
+
+#pragma mark - React rows
+
+// UIKit drops an offset adjustment inside performBatchUpdates, so a length that arrives then waits for its end.
+- (void)setLength:(CGFloat)length forItem:(NSInteger)index
+{
+  const int item = static_cast<int>(index);
+  if (item < 0 || item >= _model.count() || length < 0) {
+    return;
+  }
+  if (_updating) {
+    NSLog(@"FLMSlot late size deferred item=%d", item);
+    _lateLengths.emplace_back(index, length);
+    return;
+  }
+  const CGFloat scale = self.collectionView.traitCollection.displayScale;
+  const CGFloat pixel = scale > 0 ? 1 / scale : 1;
+  if (_model.measured(item) && std::fabs(length - [self mainLength:[self frameOf:item].size]) <= pixel) {
+    return;
+  }
+  const int anchor = _model.anchorAt([self viewportFor:self.collectionView.bounds].start, _viewportLength);
+  const flume::LengthChange change = _model.setLength(item, static_cast<float>(length), anchor, _viewportLength);
+  UICollectionViewLayoutInvalidationContext *context = [UICollectionViewLayoutInvalidationContext new];
+  const CGFloat moved = change.anchorMoved;
+  const CGFloat grown = change.contentMoved;
+  context.contentOffsetAdjustment = _config.horizontal ? CGPointMake(moved, 0) : CGPointMake(0, moved);
+  context.contentSizeAdjustment = _config.horizontal ? CGSizeMake(grown, 0) : CGSizeMake(0, grown);
+  [self invalidateLayoutWithContext:context];
 }
 
 @end

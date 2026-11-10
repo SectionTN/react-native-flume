@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)removeChild:(UIView *)child atIndex:(NSInteger)index;  // Fabric's unmount, out of any cell first
 - (nullable FLMSlotView *)viewForSlot:(int)slot;
 - (BOOL)takeRegisteredPrerendered;  // YES once per transaction that registered a pre-rendered slot
+- (nullable FLMSlotCell *)cellForSlot:(int)slot;  // the cell bound to the slot
 // The whole table when it changed; Fabric replaces a queued unique event of the same type.
 - (void)flushTo:(const facebook::react::FlumeViewEventEmitter &)emitter cellWidth:(CGFloat)cellWidth;
 

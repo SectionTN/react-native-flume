@@ -52,4 +52,8 @@ struct FLMPendingOffset {
 // Before performBatchUpdates, at list positions: records the rows in view and decides what the batch keeps.
 - (flume::AnchorDecision)prepareForOps:(const flume::ListOps &)ops count:(NSInteger)count edges:(flume::EdgeInserts)edges;
 
+// A React row's length from its slot: the anchor's move becomes the offset adjustment, or it waits for the batch.
+- (void)setLength:(CGFloat)length forItem:(NSInteger)index;
+@property (nonatomic, readonly) BOOL updating;  // between prepareForCollectionViewUpdates: and finalizeCollectionViewUpdates
+
 @end

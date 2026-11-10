@@ -81,6 +81,8 @@ UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissM
   return UIScrollViewKeyboardDismissModeNone;
 }
 
+constexpr CGFloat kFLMSlotCrossSlop = 0.5;  // Yoga rounds a slot to the pixel grid
+
 // An animated command's landing, computed again when its animation ends.
 struct FLMPendingTarget {
   enum class Kind { Index, Start, End } kind;  // Start and End are the content's edges, padding included
@@ -124,7 +126,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
                        UICollectionViewDataSource,
                        UICollectionViewDelegate,
                        UIGestureRecognizerDelegate,
-                       RCTMountingTransactionObserving>
+                       RCTMountingTransactionObserving,
+                       FLMSlotViewHost>
 @end
 
 @implementation FLMView {
@@ -221,6 +224,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     _bay.hidden = YES;
     [self addSubview:_bay];
     _slots = [[FLMSlots alloc] initWithBay:_bay];
+    _slots.viewHost = self;
+    _slots.onRendered = ^(int slot) {
+      [weakSelf slotRendered:slot];
+    };
     [NSNotificationCenter.defaultCenter addObserver:self
                                            selector:@selector(contentSizeCategoryChanged:)
                                                name:UIContentSizeCategoryDidChangeNotification
@@ -720,7 +727,61 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
   NSString *key = [NSString stringWithUTF8String:flume::Engine::instance().keyAt(_storeId, index).c_str()];
   [_slots bindCell:cell group:flume::SlotGroup{viewType} kind:flume::kSlotRow key:key index:index];
+  [self applySlotSize:[_slots viewForSlot:cell.slot] position:position];
   [self requestSlotsFlush];
+}
+
+// The length of a mounted slot of the row's key laid out at the row's cross length, -1 when none is.
+- (CGFloat)slotLengthAt:(int)position index:(int)index
+{
+  const std::string key = flume::Engine::instance().keyAt(_storeId, index);
+  const CGFloat cross = [_layout bindCrossLengthForItem:position];
+  for (int slot : [_slots pool].slotsFor(flume::kSlotRow, key)) {
+    const CGSize size = [_slots viewForSlot:slot].layoutSize;
+    if (size.width > 0 && std::fabs((_horizontal ? size.height : size.width) - cross) <= kFLMSlotCrossSlop) {
+      return _horizontal ? size.width : size.height;
+    }
+  }
+  return -1;
+}
+
+// A slot's size reaches the row that shows it, or the row its key sits at when no cell shows it.
+- (void)applySlotSize:(FLMSlotView *)view position:(int)position
+{
+  if (view == nil || !_attached || position < 0 || position >= _itemCount) {
+    return;
+  }
+  const int index = _rows.dataIndex(position);
+  const CGFloat length = index >= 0 ? [self slotLengthAt:position index:index] : -1;
+  if (length >= 0) {
+    [_layout setLength:length forItem:position];
+  }
+}
+
+- (int)positionOfSlot:(int)slot
+{
+  NSIndexPath *path = [_collectionView indexPathForCell:[_slots cellForSlot:slot]];
+  if (path != nil) {
+    return static_cast<int>(path.item);
+  }
+  const std::optional<flume::SlotEntry> entry = [_slots pool].entry(slot);
+  if (!entry || entry->index < 0 || entry->index >= _rows.dataCount ||
+      flume::Engine::instance().keyAt(_storeId, entry->index) != entry->key) {
+    return -1;
+  }
+  return _rows.position(entry->index);
+}
+
+- (void)slotViewDidResize:(FLMSlotView *)view
+{
+  [self applySlotSize:view position:[self positionOfSlot:view.slot]];
+}
+
+// A slot mounts complete and laid out, so its row can take its size.
+- (void)slotRendered:(int)slot
+{
+  FLMSlotView *view = [_slots viewForSlot:slot];
+  [self applySlotSize:view position:[self positionOfSlot:slot]];
 }
 
 - (void)releaseSlotCell:(FLMSlotCell *)cell
@@ -759,13 +820,16 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
 }
 
-// A row's length before any cell shows it, bound into a holder of its own; -1 for a React row.
+// A row's length before any cell shows it: a worklet row binds into a holder of its own, a React row reads its slot.
 - (CGFloat)measureItem:(NSInteger)position
 {
   auto &engine = flume::Engine::instance();
   const int index = _rows.dataIndex(static_cast<int>(position));
-  if (!_attached || index < 0 || engine.viewType(_storeId, index) % 2 != 0) {
+  if (!_attached || index < 0) {
     return -1;
+  }
+  if (engine.viewType(_storeId, index) % 2 != 0) {
+    return [self slotLengthAt:static_cast<int>(position) index:index];
   }
   if (_measureHolder == 0) {
     _measureHolder = ++_nextHolderId;
