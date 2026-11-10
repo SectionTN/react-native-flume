@@ -29,6 +29,7 @@ Engine& Engine::instance() {
 }
 
 int Engine::beginSession(std::shared_ptr<facebook::react::CallInvoker> invoker) {
+  logged_.clear();  // a new runtime starts with an empty LogBox
   std::lock_guard<std::mutex> lock(mutex_);
   int session = nextSession_++;
   sessions_[session].invoker = std::move(invoker);

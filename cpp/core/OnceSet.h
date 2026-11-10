@@ -14,6 +14,11 @@ class OnceSet {
     return seen_.insert(message).second;
   }
 
+  void clear() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    seen_.clear();
+  }
+
  private:
   std::mutex mutex_;
   std::unordered_set<std::string> seen_;

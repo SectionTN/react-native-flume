@@ -68,3 +68,16 @@ TEST_CASE("a reload sweeps the stores its runtime never released") {
   CHECK(engine.count(id) == 0);
   CHECK(flume.expired());
 }
+
+TEST_CASE("a warning reported before a reload is reported again after it") {
+  auto before = std::make_unique<ReactSide>();
+  before->rig.eval("__flume.setReporter(function () {})");
+  flume::Engine::instance().warn("reported once per runtime");
+  before->invoker->drain(before->rig.rt());
+  before.reset();
+  ReactSide after;
+  after.rig.eval("globalThis.reported = ''; __flume.setReporter(function (level, message) { reported = message; })");
+  flume::Engine::instance().warn("reported once per runtime");
+  after.invoker->drain(after.rig.rt());
+  CHECK(after.rig.eval("reported").asString(after.rig.rt()).utf8(after.rig.rt()) == "reported once per runtime");
+}
