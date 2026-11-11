@@ -155,13 +155,27 @@ class SlotPool(private val maxFree: Int = MAX_FREE) {
   }
 
   private fun trim(queue: LinkedHashSet<Int>) {
-    while (queue.size > maxFree) {
-      val oldest = queue.first()
+    var headers = slots.values.count { it.kind == SlotKinds.HEADER }
+    var footers = slots.values.count { it.kind == SlotKinds.FOOTER }
+    while (queue.count { counted(it, headers, footers) } > maxFree) {
+      val oldest = queue.first { counted(it, headers, footers) }
+      when (slots.getValue(oldest).kind) {
+        SlotKinds.HEADER -> headers--
+        SlotKinds.FOOTER -> footers--
+      }
       queue.remove(oldest)
       slots.remove(oldest)
       dirty = true
     }
   }
+
+  // A shown header or footer stays mounted, as FlatList keeps it, while it is its kind's only slot.
+  private fun counted(id: Int, headers: Int, footers: Int) =
+    when (slots.getValue(id).kind) {
+      SlotKinds.HEADER -> headers > 1
+      SlotKinds.FOOTER -> footers > 1
+      else -> true
+    }
 
   private fun Slot.matches(group: SlotGroup?, kind: Int, key: String) =
     this.group == group && this.kind == kind && this.key == key

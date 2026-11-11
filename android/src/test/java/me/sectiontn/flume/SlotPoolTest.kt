@@ -146,4 +146,34 @@ class SlotPoolTest {
     pool.acquire(3, list, SlotKinds.ROW, "b", 1)
     assertEquals(setOf(owned, released, -1), pool.slotsFor(SlotKinds.ROW, "a").toSet())
   }
+
+  @Test
+  fun aShownHeaderAndFooterOutliveTrafficPastTheCap() {
+    val pool = SlotPool(maxFree = 2)
+    val header = pool.acquire(1, list, SlotKinds.HEADER, "header", -1).also { pool.release(1, it) }
+    val footer = pool.acquire(2, list, SlotKinds.FOOTER, "footer", -1).also { pool.release(2, it) }
+    val rows = (0 until 5).map { i -> pool.acquire(10 + i, list, SlotKinds.ROW, "r$i", i).also { pool.release(10 + i, it) } }
+    assertEquals(listOf(header, footer) + rows.takeLast(2), pool.snapshot().map { it.slot })
+    assertEquals(header, pool.acquire(20, list, SlotKinds.HEADER, "header", -1))
+    assertEquals(footer, pool.acquire(21, list, SlotKinds.FOOTER, "footer", -1))
+  }
+
+  @Test
+  fun aSecondHeaderSlotStaysUnderTheCap() {
+    val pool = SlotPool(maxFree = 1)
+    val shown = pool.acquire(1, list, SlotKinds.HEADER, "header", -1)
+    pool.acquire(2, list, SlotKinds.HEADER, "header", -1).also { pool.release(2, it) }
+    val row = pool.acquire(3, list, SlotKinds.ROW, "a", 0).also { pool.release(3, it) }
+    assertEquals(listOf(shown, row), pool.snapshot().map { it.slot })
+  }
+
+  @Test
+  fun ofTwoPreRenderedHeadersPastTheCapTheNewerOneStays() {
+    val pool = SlotPool(maxFree = 0)
+    pool.register(-1, SlotKinds.HEADER, "header")
+    pool.register(-2, SlotKinds.HEADER, "header")
+    pool.endBatch()
+    pool.register(-3, SlotKinds.ROW, "a")
+    assertEquals(listOf(-3, -2), pool.snapshot().map { it.slot })
+  }
 }

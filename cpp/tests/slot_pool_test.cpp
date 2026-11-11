@@ -214,3 +214,38 @@ TEST_CASE("slots ahead follow their row's index, and an unchanged look-ahead cha
   CHECK(pool.dirty());
   CHECK(pool.snapshot().front().index == 7);
 }
+
+TEST_CASE("a shown header and footer outlive traffic past the cap, rows alone count toward it") {
+  SlotPool pool(2);
+  const int header = pool.acquire(1, kList, kSlotHeader, "header", -1);
+  const int footer = pool.acquire(2, kList, kSlotFooter, "footer", -1);
+  pool.release(1, header);
+  pool.release(2, footer);
+  std::vector<int> rows;
+  for (int i = 0; i < 5; i++) {
+    rows.push_back(pool.acquire(10 + i, kList, kSlotRow, "r" + std::to_string(i), i));
+    pool.release(10 + i, rows.back());
+  }
+  CHECK(ids(pool.snapshot()) == std::vector<int>{header, footer, rows[3], rows[4]});
+  CHECK(pool.acquire(20, kList, kSlotHeader, "header", -1) == header);
+  CHECK(pool.acquire(21, kList, kSlotFooter, "footer", -1) == footer);
+}
+
+TEST_CASE("a second header slot stays under the cap") {
+  SlotPool pool(1);
+  const int shown = pool.acquire(1, kList, kSlotHeader, "header", -1);
+  const int second = pool.acquire(2, kList, kSlotHeader, "header", -1);
+  pool.release(2, second);
+  const int row = pool.acquire(3, kList, kSlotRow, "a", 0);
+  pool.release(3, row);
+  CHECK(ids(pool.snapshot()) == std::vector<int>{shown, row});
+}
+
+TEST_CASE("of two pre-rendered headers past the cap, the newer one stays") {
+  SlotPool pool(0);
+  pool.registerPrerendered(-1, kSlotHeader, "header");
+  pool.registerPrerendered(-2, kSlotHeader, "header");
+  pool.endBatch();
+  pool.registerPrerendered(-3, kSlotRow, "a");
+  CHECK(ids(pool.snapshot()) == std::vector<int>{-3, -2});
+}

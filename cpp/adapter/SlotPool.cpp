@@ -199,10 +199,24 @@ void SlotPool::cache(std::vector<int>& queue, int slot) {
 }
 
 void SlotPool::trim(std::vector<int>& queue) {
-  while (static_cast<int>(queue.size()) > maxFree_) {
-    const int oldest = queue.front();
-    queue.erase(queue.begin());
-    slots_.erase(oldest);
+  int headers = 0;
+  int footers = 0;
+  for (const auto& [id, slot] : slots_) {
+    headers += slot.kind == kSlotHeader;
+    footers += slot.kind == kSlotFooter;
+  }
+  // A shown header or footer stays mounted, as FlatList keeps it, while it is its kind's only slot.
+  auto counted = [&](int id) {
+    const int kind = slots_.at(id).kind;
+    return kind == kSlotHeader ? headers > 1 : kind == kSlotFooter ? footers > 1 : true;
+  };
+  while (std::count_if(queue.begin(), queue.end(), counted) > maxFree_) {
+    const auto oldest = std::find_if(queue.begin(), queue.end(), counted);
+    const int kind = slots_.at(*oldest).kind;
+    headers -= kind == kSlotHeader;
+    footers -= kind == kSlotFooter;
+    slots_.erase(*oldest);
+    queue.erase(oldest);
     dirty_ = true;
   }
 }
