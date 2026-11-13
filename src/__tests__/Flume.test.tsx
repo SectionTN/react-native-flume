@@ -190,6 +190,19 @@ describe('Flume store lifecycle', () => {
     });
   });
 
+  it('leaves no store behind after a StrictMode mount and unmount', async () => {
+    const host = installHost();
+    const { Flume } = await import('../Flume');
+    const tree = await mount(
+      createElement(StrictMode, null, createElement(Flume, { data: [item], renderCell })),
+    );
+    expect([...host.alive]).toEqual([renderedStoreId(tree)]);
+    await act(async () => {
+      tree.unmount();
+    });
+    expect(host.alive.size).toBe(0);
+  });
+
   it('releases the rendered store on unmount', async () => {
     const host = installHost();
     const { Flume } = await import('../Flume');

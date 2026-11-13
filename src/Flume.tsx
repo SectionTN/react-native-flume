@@ -82,7 +82,12 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     keyboardShouldPersistTaps,
   } = props;
   const host = getHost();
-  const [storeId, setStoreId] = useState(() => host.createStore());
+  // StrictMode calls a state initializer twice and drops one result, so the first store is reused.
+  const firstStore = useRef<number | null>(null);
+  const [storeId, setStoreId] = useState(() => {
+    if (firstStore.current === null) firstStore.current = host.createStore();
+    return firstStore.current;
+  });
   const released = useRef(false);
   const prev = useRef<{ storeId: number; signature?: string; state?: DataState<T> }>({ storeId });
   const warned = useRef({ duplicates: false, messages: new Set<string>() });
