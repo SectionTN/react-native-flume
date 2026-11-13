@@ -1,5 +1,7 @@
 #include "doctest.h"
 
+#include <string>
+
 #include "core/Color.h"
 
 using flume::parseColor;
