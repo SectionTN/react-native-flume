@@ -82,6 +82,17 @@ TEST_CASE("parses the full vocabulary") {
   CHECK(s.decoration == 3);
 }
 
+TEST_CASE("percent strings take Fabric's CSS number") {
+  auto width = [](const char* text) { return flume::Style::fromValue(obj({{"width", V(text)}})).width; };
+  CHECK(width("5e1%") == flume::Dimension{flume::Dimension::Unit::Percent, 50});
+  CHECK(width("+.5%") == flume::Dimension{flume::Dimension::Unit::Percent, 0.5f});
+  CHECK(width("50.%") == flume::Dimension{flume::Dimension::Unit::Percent, 50});
+  CHECK(width("nan%") == flume::Dimension{});
+  CHECK(width("0x10%") == flume::Dimension{});
+  CHECK(width(" 50%\n") == flume::Dimension{flume::Dimension::Unit::Percent, 50});
+  CHECK(width("50 %") == flume::Dimension{});
+}
+
 TEST_CASE("unknown keys are collected") {
   std::vector<std::string> unknown;
   flume::Style::fromValue(obj({{"flex", V(1)}, {"foo", V(1)}}), &unknown);

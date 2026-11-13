@@ -2,11 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 #include <string>
 #include <vector>
 
 #include "core/ColorNames.h"
+#include "core/Number.h"
 
 namespace flume {
 namespace {
@@ -61,18 +61,17 @@ std::optional<std::vector<Part>> parseParts(std::string_view text) {
     if (piece.empty() || parts.size() == 4) return std::nullopt;
     bool percent = piece.back() == '%';
     if (percent) piece.remove_suffix(1);
-    std::string buffer(piece);
-    char* end = nullptr;
-    double value = std::strtod(buffer.c_str(), &end);
-    if (buffer.empty() || end == nullptr || *end != '\0') return std::nullopt;
-    parts.push_back({value, percent});
+    auto value = parseNumber(piece, false);
+    if (!value) return std::nullopt;
+    parts.push_back({*value, percent});
     if (comma == std::string_view::npos) break;
     text.remove_prefix(comma + 1);
   }
   return parts;
 }
 
-uint32_t channel(double v) { return static_cast<uint32_t>(std::lround(std::clamp(v, 0.0, 255.0))); }
+// parse255 reads a channel with parseInt, so it truncates.
+uint32_t channel(double v) { return static_cast<uint32_t>(std::clamp(std::trunc(v), 0.0, 255.0)); }
 uint32_t alphaByte(double a) { return static_cast<uint32_t>(std::lround(std::clamp(a, 0.0, 1.0) * 255.0)); }
 uint32_t pack(uint32_t a, uint32_t rgb) { return (a << 24) | (rgb & 0xFFFFFFu); }
 uint32_t unit(double fraction) { return static_cast<uint32_t>(std::lround(fraction * 255.0)); }

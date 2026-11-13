@@ -1,24 +1,33 @@
 #include "core/Style.h"
 
-#include <cstdlib>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 
 #include "core/Color.h"
+#include "core/Number.h"
 
 namespace flume {
+
+namespace {
+
+bool isCssSpace(char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f'; }
+
+}  // namespace
 
 Dimension Dimension::fromValue(const Value& v, bool allowAuto) {
   if (v.kind() == Value::Kind::Number) return {Unit::Point, static_cast<float>(v.asNumber())};
   if (v.kind() != Value::Kind::String) return {};
   const std::string& s = v.asString();
   if (allowAuto && s == "auto") return {Unit::Auto, 0};
-  if (s.size() < 2 || s.back() != '%') return {};
-  char* end = nullptr;
-  float n = std::strtof(s.c_str(), &end);
-  if (end != s.c_str() + s.size() - 1) return {};
-  return {Unit::Percent, n};
+  // Fabric's CSS parser skips whitespace around the value.
+  std::string_view text(s);
+  while (!text.empty() && isCssSpace(text.front())) text.remove_prefix(1);
+  while (!text.empty() && isCssSpace(text.back())) text.remove_suffix(1);
+  if (text.size() < 2 || text.back() != '%') return {};
+  auto n = parseNumber(text.substr(0, text.size() - 1), true);
+  if (!n) return {};
+  return {Unit::Percent, static_cast<float>(*n)};
 }
 
 namespace {

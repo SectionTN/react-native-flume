@@ -33,3 +33,16 @@ TEST_CASE("keywords, hsl and hwb follow normalize-colors") {
   CHECK_FALSE(flume::parseColor("Red").has_value());
   CHECK_FALSE(flume::parseColor("blue ").has_value());
 }
+
+TEST_CASE("color numbers follow normalize-colors' number grammar") {
+  CHECK(parseColor("rgb(127.9, 0, 0)") == 0xFF7F0000u);
+  CHECK(parseColor("rgb(+17, -4, 300)") == 0xFF1100FFu);
+  CHECK(parseColor("rgba(0, 0, 0, .5)") == 0x80000000u);
+  CHECK(parseColor("hsl(-240, 100%, 50.0%)") == 0xFF00FF00u);
+  CHECK_FALSE(parseColor("rgb(nan, 0, 0)").has_value());
+  CHECK_FALSE(parseColor("rgb(inf, 0, 0)").has_value());
+  CHECK_FALSE(parseColor("rgb(1e2, 0, 0)").has_value());
+  CHECK_FALSE(parseColor("rgb(0x10, 0, 0)").has_value());
+  CHECK_FALSE(parseColor("rgb(17., 0, 0)").has_value());
+  CHECK_FALSE(parseColor("rgb(-, 0, 0)").has_value());
+}
