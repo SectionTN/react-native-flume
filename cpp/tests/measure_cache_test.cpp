@@ -1,5 +1,6 @@
 #include "doctest.h"
 
+#include <cmath>
 #include <functional>
 #include <string>
 #include <vector>
@@ -32,4 +33,9 @@ TEST_CASE("the measure cache tells apart requests that differ in any field") {
     CAPTURE(i);
     CHECK(cache.find(changed) == nullptr);
   }
+
+  flume::TextMeasureRequest nan = base;
+  nan.fontSize = NAN;
+  cache.put(nan, {10, 10});
+  CHECK(cache.find(nan) != nullptr);
 }
