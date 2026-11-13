@@ -68,7 +68,8 @@ export function diffData<T>(
 
 const SHORT_TABLE = 8;
 
-// Without dedupe a repeated key ends the scan, so unique data pays one map write per item.
+// Without dedupe a repeated key leaves the map short and the caller scans again with dedupe, so unique data pays
+// one map write per item.
 function scan<T>(
   prev: DataState<T> | undefined,
   data: readonly T[],
@@ -98,8 +99,14 @@ function scan<T>(
   let same = prev !== undefined && prev.keys.length === count;
   for (let i = 0; i < count; i++) {
     const item = data[i] as T;
-    let key = extract(item, i);
-    if (stableKeys && !userKeys && ownKey(item) === undefined) stableKeys = false;
+    let key: string;
+    if (userKeys) {
+      key = extract(item, i);
+    } else {
+      const own = ownKey(item);
+      if (own === undefined) stableKeys = false;
+      key = own ?? String(i);
+    }
     if (dedupe && index.has(key)) {
       const base = key;
       let suffix = 2;
@@ -107,9 +114,7 @@ function scan<T>(
       if (suffix === 2) duplicates.push(base);
       key = `${base}:${suffix}`;
     }
-    const size = index.size;
     index.set(key, i);
-    if (index.size === size) return undefined;
     keys[i] = key;
     const type = getItemType?.(item, i) ?? 'default';
     types[i] = type;
@@ -138,6 +143,7 @@ function scan<T>(
       changedItems.push(item);
     }
   }
+  if (!dedupe && index.size !== count) return undefined;
   return {
     keys,
     types,
