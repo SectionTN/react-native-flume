@@ -23,6 +23,8 @@ export type JumpResult = {
   repeat: number;
   frames: FrameStats;
   blank: BlankSummary;
+  temperatureStart: number | null;
+  temperatureEnd: number | null;
 };
 
 export type DeviceInfo = {
