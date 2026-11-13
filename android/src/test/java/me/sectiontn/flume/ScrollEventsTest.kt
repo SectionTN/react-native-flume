@@ -35,4 +35,13 @@ class ScrollEventsTest {
     assertEquals(100, ScrollMetrics.fromContentStart(100, 1000, 300, inverted = false))
     assertEquals(600, ScrollMetrics.fromContentStart(100, 1000, 300, inverted = true))
   }
+
+  @Test
+  fun theLastOffsetPlusTheViewLengthReachesTheContentSize() {
+    // 1000 px of rows in a 300 px list padded 10 above and 20 below: extent 270, so the last offset is 730.
+    val padding = intArrayOf(4, 10, 6, 20)
+    assertEquals(Pair(360, 730 + 300), ScrollMetrics.contentSizePx(false, 1000, padding, 360, 300))
+    // Across a horizontal list: 4 left and 6 right of a 360 px viewport leave an extent of 350.
+    assertEquals(Pair(1000 - 350 + 360, 300), ScrollMetrics.contentSizePx(true, 1000, padding, 360, 300))
+  }
 }
