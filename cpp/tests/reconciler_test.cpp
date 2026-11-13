@@ -241,6 +241,24 @@ TEST_CASE("the root label joins the texts in order") {
   CHECK(std::count(ops.begin(), ops.end(), 8) == 0);
 }
 
+TEST_CASE("a root testID change keeps the label derived from the texts") {
+  auto row = [](const char* testID) {
+    return obj({{"type", V("view")},
+                {"testID", V(testID)},
+                {"children", arr({obj({{"type", V("text")}, {"text", V("hello")}})})}});
+  };
+  Rig rig;
+  rig.bind(row("a"));
+  rig.bind(row("b"));
+  std::optional<DecodedOp> last;
+  for (const auto& op : decode(rig.batch)) {
+    if (op.op == 8 && op.id == 0) last = op;
+  }
+  REQUIRE(last.has_value());
+  CHECK(rig.batch.strings[last->ints[0]] == "hello");
+  CHECK(rig.batch.strings[last->ints[1]] == "b");
+}
+
 TEST_CASE("a border change re-emits the view style") {
   Rig rig;
   rig.bind(rowCell(imageNode("u"), {}, "#fff"));
