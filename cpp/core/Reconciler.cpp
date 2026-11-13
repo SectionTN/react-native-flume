@@ -288,7 +288,7 @@ void Reconciler::emitRootLabel(Holder& holder, OpBatch& out) {
   appendTexts(root, joined);
   if (joined == holder.rootLabel) return;
   holder.rootLabel = joined;
-  out.accessibility(0, joined, root.testID, 0, root.accessible);
+  out.accessibility(0, joined, root.testID, root.type == NodeType::Pressable ? 1 : 0, root.accessible);
 }
 
 // A nested pressable without a label of its own reads as the texts inside it, as React Native's views do.

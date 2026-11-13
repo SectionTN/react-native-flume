@@ -264,21 +264,36 @@ TEST_CASE("the root label joins the texts in order") {
 }
 
 TEST_CASE("a root testID change keeps the label derived from the texts") {
-  auto row = [](const char* testID) {
-    return obj({{"type", V("view")},
-                {"testID", V(testID)},
-                {"children", arr({obj({{"type", V("text")}, {"text", V("hello")}})})}});
+  auto row = [](const char* type, const char* testID) {
+    auto text = arr({obj({{"type", V("text")}, {"text", V("hello")}})});
+    if (std::string_view(type) == "pressable") {
+      return obj({{"type", V(type)}, {"id", V("row")}, {"testID", V(testID)}, {"children", text}});
+    }
+    return obj({{"type", V(type)}, {"testID", V(testID)}, {"children", text}});
+  };
+  auto lastRootOp = [](const flume::OpBatch& batch) {
+    std::optional<DecodedOp> last;
+    for (const auto& op : decode(batch)) {
+      if (op.op == 8 && op.id == 0) last = op;
+    }
+    return last;
   };
   Rig rig;
-  rig.bind(row("a"));
-  rig.bind(row("b"));
-  std::optional<DecodedOp> last;
-  for (const auto& op : decode(rig.batch)) {
-    if (op.op == 8 && op.id == 0) last = op;
-  }
+  rig.bind(row("view", "a"));
+  rig.bind(row("view", "b"));
+  auto last = lastRootOp(rig.batch);
   REQUIRE(last.has_value());
   CHECK(rig.batch.strings[last->ints[0]] == "hello");
   CHECK(rig.batch.strings[last->ints[1]] == "b");
+  CHECK(last->ints[2] == 0);
+
+  Rig pressable;
+  pressable.bind(row("pressable", "a"));
+  pressable.bind(row("pressable", "b"));
+  last = lastRootOp(pressable.batch);
+  REQUIRE(last.has_value());
+  CHECK(pressable.batch.strings[last->ints[0]] == "hello");
+  CHECK(last->ints[2] == 1);
 }
 
 TEST_CASE("a border change re-emits the view style") {
