@@ -99,7 +99,6 @@ void Layout::invalidateText(Mounted& node) {
   for (auto& child : node.children) invalidateText(*child);
 }
 
-
 static bool sameConstraint(float a, float b) { return (std::isnan(a) && std::isnan(b)) || a == b; }
 
 // A root laid out at another size re-measures every text first, or Yoga reuses a width it measured before.

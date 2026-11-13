@@ -226,8 +226,10 @@ void Reconciler::reconcileChildren(Holder& holder, Mounted& mounted, Node& fresh
     }
     std::unique_ptr<Mounted> child = std::move(old[match[i]]);
     reconcileNode(holder, *child, *fresh.children[i], out);
-    size_t current = 0;
-    while (YGNodeGetChild(mounted.yoga, current) != child->yoga) current++;
+    // The children before i are already in place, so this one sits at i or after it.
+    size_t current = i;
+    const size_t count = YGNodeGetChildCount(mounted.yoga);
+    while (current < count && YGNodeGetChild(mounted.yoga, current) != child->yoga) current++;
     if (current != i) {
       YGNodeRemoveChild(mounted.yoga, child->yoga);
       YGNodeInsertChild(mounted.yoga, child->yoga, i);
