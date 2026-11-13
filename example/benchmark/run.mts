@@ -285,19 +285,20 @@ async function jumpPass(
   screen: [number, number],
 ): Promise<JumpResult> {
   const ready = await launch(adb, config);
+  // Read outside the recording: a slow adb read would add idle frames to the blank mean.
+  const temperatureStart = adb.temperature();
   adb.gfxinfoReset();
   const kind = animated ? 'animated' : 'instant';
   const name = `jump-${config.scenario}-${config.impl}-${config.load ? 'load' : 'idle'}-${kind}-${repeat}`;
   const recorder = record(adb, out, name, screen);
   await sleep(500);
-  const temperatureStart = adb.temperature();
   for (const share of JUMPS) {
     adb.assertForeground();
     await action(adb, config, 'jump', { index: Math.round(share * (config.count - 1)), animated });
     await sleep(JUMP_SETTLE_MS);
   }
-  const temperatureEnd = adb.temperature();
   const path = await recorder.stop();
+  const temperatureEnd = adb.temperature();
   const frames = parseGfxinfo(adb.gfxinfo());
   const crop = cropFor(ready.rect, screen, videoSize(path));
   const blank = summarizeBlank(
