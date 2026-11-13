@@ -19,8 +19,10 @@ class AnchorPolicyTest {
     assertEquals(AnchorDecision(), AnchorPolicy.decide(config, before, true, false))
   }
 
-  @Test fun anInsertAtTheTopWithinTheThresholdScrollsThere() =
-    assertEquals(AnchorDecision(scrollTo = VisualEdge.TOP, animated = true), AnchorPolicy.decide(AnchorConfig(autoscrollToTopThreshold = 1.0), before, true, false))
+  @Test fun anInsertAtTheTopWithinTheThresholdScrollsThereAlwaysAnimated() {
+    val config = AnchorConfig(autoscrollToTopThreshold = 1.0, animateAutoScrollToBottom = false)
+    assertEquals(AnchorDecision(scrollTo = VisualEdge.TOP, animated = true), AnchorPolicy.decide(config, before, true, false))
+  }
 
   @Test fun aChangeThatRemovesEveryLaidOutRowKeepsThePosition() {
     assertEquals(AnchorDecision(restore = 3 to -12), AnchorPolicy.decide(AnchorConfig(), before, true, false, anchorLost = true))
