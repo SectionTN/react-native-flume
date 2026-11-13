@@ -45,4 +45,5 @@ TEST_CASE("color numbers follow normalize-colors' number grammar") {
   CHECK_FALSE(parseColor("rgb(0x10, 0, 0)").has_value());
   CHECK_FALSE(parseColor("rgb(17., 0, 0)").has_value());
   CHECK_FALSE(parseColor("rgb(-, 0, 0)").has_value());
+  CHECK(parseColor("rgb(1." + std::string(309, '0') + ", 0, 0)") == 0xFF010000u);
 }

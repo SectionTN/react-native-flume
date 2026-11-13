@@ -91,6 +91,8 @@ TEST_CASE("percent strings take Fabric's CSS number") {
   CHECK(width("0x10%") == flume::Dimension{});
   CHECK(width(" 50%\n") == flume::Dimension{flume::Dimension::Unit::Percent, 50});
   CHECK(width("50 %") == flume::Dimension{});
+  CHECK(width("0e309%") == flume::Dimension{flume::Dimension::Unit::Percent, 0});
+  CHECK(width(("1." + std::string(309, '0') + "%").c_str()) == flume::Dimension{flume::Dimension::Unit::Percent, 1});
 }
 
 TEST_CASE("unknown keys are collected") {
