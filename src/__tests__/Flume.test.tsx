@@ -1,4 +1,4 @@
-import { createElement, createRef, StrictMode, useState } from 'react';
+import { createElement, createRef, Fragment, StrictMode, useState } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FlumeHost } from '../store';
@@ -623,6 +623,32 @@ describe('Flume stats', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     await mount(createElement(Flume, { data: items, renderCell }));
     expect(statsLines(log)).toHaveLength(0);
+  });
+
+  it('logs no line for a commit whose diff ran before stats were on', async () => {
+    installHost();
+    const { unstable_setFlumeStats } = await import('../stats');
+    const { Flume } = await import('../Flume');
+    unstable_setFlumeStats(false);
+    // A sibling rendered after the list switches stats on before the list's layout effect runs.
+    function StatsOn() {
+      useState(() => {
+        unstable_setFlumeStats(true);
+        return null;
+      });
+      return null;
+    }
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await mount(
+      createElement(
+        Fragment,
+        null,
+        createElement(Flume, { data: items, renderCell }),
+        createElement(StatsOn),
+      ),
+    );
+    expect(statsLines(log)).toHaveLength(0);
+    unstable_setFlumeStats(false);
   });
 });
 

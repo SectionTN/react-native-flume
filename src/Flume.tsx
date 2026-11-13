@@ -163,13 +163,14 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       }
       return kind === 'worklet';
     };
-    const start = statsEnabled() ? performance.now() : 0;
+    // Null when stats were off for the diff, so a commit that turned them on logs no made-up time.
+    const start = statsEnabled() ? performance.now() : null;
     // With renderItem and no renderCell every type is a React cell, so items are never compared.
     const current = latest.current;
     const native: NativeItems =
       current.renderCell === undefined && current.renderItem !== undefined ? 'none' : sendsItem;
     const diff = diffData(base, data, keyExtractor, getItemType, native);
-    const diffMs = statsEnabled() ? performance.now() - start : 0;
+    const diffMs = start === null ? null : performance.now() - start;
     return { kinds: latest.current.kinds, diff, missing, first: base === undefined, diffMs };
   }, [storeId, signature, data, keyExtractor, getItemType]);
 
@@ -187,7 +188,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       );
     }
     if (!commit.first && diff.sameForNative) return;
-    const timed = statsEnabled();
+    const timed = statsEnabled() && commit.diffMs !== null;
     const start = timed ? performance.now() : 0;
     host.setData(
       storeId,
@@ -199,7 +200,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       diff.stableKeys,
       !commit.first && prerendering.current,
     );
-    if (timed)
+    if (timed && commit.diffMs !== null)
       logSetData(
         diff.keys.length,
         diff.changedItems.length,
