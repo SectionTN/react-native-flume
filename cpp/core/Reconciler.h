@@ -30,7 +30,7 @@ class Reconciler {
   void emitViewStyle(const Mounted& node, OpBatch& out);
   void emitImage(const Mounted& node, OpBatch& out);
   void emitPressable(const Mounted& node, OpBatch& out);
-  void emitAccessibility(const Mounted& node, OpBatch& out);
+  void emitAccessibility(Holder& holder, const Mounted& node, OpBatch& out);
 
   Layout& layout_;
 };

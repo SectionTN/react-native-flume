@@ -121,7 +121,7 @@ std::unique_ptr<Mounted> Reconciler::mountNew(Holder& holder, Node& fresh, int v
   if (isContainer(mounted->type) && hasVisual(mounted->style)) emitViewStyle(*mounted, out);
   if (mounted->type == NodeType::Image) emitImage(*mounted, out);
   if (mounted->type == NodeType::Pressable) emitPressable(*mounted, out);
-  if (hasAccessibility(*mounted)) emitAccessibility(*mounted, out);
+  if (hasAccessibility(*mounted)) emitAccessibility(holder, *mounted, out);
   if (mounted->type == NodeType::Text) mounted->textDirty = true;
   mounted->children.reserve(fresh.children.size());
   for (size_t i = 0; i < fresh.children.size(); i++) {
@@ -176,7 +176,7 @@ void Reconciler::reconcileNode(Holder& holder, Mounted& mounted, Node& fresh, Op
     mounted.accessibilityLabel = std::move(fresh.accessibilityLabel);
     mounted.testID = std::move(fresh.testID);
     mounted.accessible = fresh.accessible;
-    emitAccessibility(mounted, out);
+    emitAccessibility(holder, mounted, out);
   }
   mounted.key = std::move(fresh.key);
   reconcileChildren(holder, mounted, fresh, out);
@@ -300,9 +300,11 @@ void Reconciler::emitPressable(const Mounted& node, OpBatch& out) {
   out.pressable(node.viewId, node.pressId, node.pressedOpacity);
 }
 
-void Reconciler::emitAccessibility(const Mounted& node, OpBatch& out) {
+void Reconciler::emitAccessibility(Holder& holder, const Mounted& node, OpBatch& out) {
   out.accessibility(node.viewId, node.accessibilityLabel, node.testID, node.type == NodeType::Pressable ? 1 : 0,
                     node.accessible);
+  // The op carries the root's own label, empty when it derives one, so emitRootLabel sends the derived one again.
+  if (node.viewId == 0) holder.rootLabel.clear();
 }
 
 void Reconciler::release(Holder& holder) {
