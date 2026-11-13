@@ -683,9 +683,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
     val horizontal = geometry.horizontal
     val (offsetPx, rangePx, extentPx) = scrollMetrics()
     val offsetDp = ScrollMetrics.fromContentStart(offsetPx, rangePx, extentPx, inverted) / density
-    val contentWidthDp = (if (horizontal) rangePx else geometry.innerWidthPx) / density
-    val contentHeightDp = (if (horizontal) geometry.innerHeightPx else rangePx) / density
-    dispatch(FlumeScrollEvent(UIManagerHelper.getSurfaceId(this), id, kind, horizontal, offsetDp, contentWidthDp, contentHeightDp, recycler.width / density, recycler.height / density))
+    val (contentWidthPx, contentHeightPx) = ScrollMetrics.contentSizePx(horizontal, rangePx, geometry.paddingPx, recycler.width, recycler.height)
+    dispatch(FlumeScrollEvent(UIManagerHelper.getSurfaceId(this), id, kind, horizontal, offsetDp, contentWidthPx / density, contentHeightPx / density, recycler.width / density, recycler.height / density))
   }
 
   fun dispatch(event: Event<*>) {

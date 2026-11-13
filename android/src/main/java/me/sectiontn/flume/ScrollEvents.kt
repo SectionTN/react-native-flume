@@ -53,6 +53,14 @@ class ScrollThrottle(private val intervalMs: Long) {
 object ScrollMetrics {
   fun fromContentStart(offsetPx: Int, rangePx: Int, extentPx: Int, inverted: Boolean): Int =
     if (inverted) max(0, rangePx - extentPx - offsetPx) else offsetPx
+
+  // ScrollView's content size holds its padding, so the last offset plus the view's length reaches it.
+  fun contentSizePx(horizontal: Boolean, rangePx: Int, paddingPx: IntArray, widthPx: Int, heightPx: Int): Pair<Int, Int> =
+    if (horizontal) {
+      Pair(rangePx + paddingPx[0] + paddingPx[2], heightPx)
+    } else {
+      Pair(widthPx, rangePx + paddingPx[1] + paddingPx[3])
+    }
 }
 
 // The ScrollView payload in dp, so a Reanimated scroll handler reads it unchanged.
