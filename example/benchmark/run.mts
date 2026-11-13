@@ -48,7 +48,12 @@ const JUMP_SETTLE_MS = 800;
 
 type Config = Pick<BenchParams, 'scenario' | 'impl' | 'load' | 'count'>;
 // The battery temperature when the line was read: a warm phone slows every list.
-type SetDataResult = { round: number; label: string; line: SetDataLine; temperature: number | null };
+type SetDataResult = {
+  round: number;
+  label: string;
+  line: SetDataLine;
+  temperature: number | null;
+};
 
 const { values } = parseArgs({
   options: {
