@@ -5,6 +5,7 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.uimanager.events.Event
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 enum class ScrollKind(val eventName: String) {
   SCROLL("topScroll"),
@@ -63,6 +64,41 @@ object ScrollMetrics {
     }
 }
 
+// ScrollView's velocities in px per ms: a scroll from the offset change, a drag's end from the finger, momentum from that release.
+class ScrollVelocity {
+  private var lastOffsetPx = 0
+  private var lastMs = Long.MIN_VALUE
+  private var scrollPxPerMs = 0f
+  private var releaseX = 0f
+  private var releaseY = 0f
+
+  fun scrolled(offsetPx: Int, nowMs: Long) {
+    if (lastMs != Long.MIN_VALUE && nowMs != lastMs) scrollPxPerMs = (offsetPx - lastOffsetPx).toFloat() / (nowMs - lastMs)
+    lastOffsetPx = offsetPx
+    lastMs = nowMs
+  }
+
+  fun touchStarted() {
+    releaseX = 0f
+    releaseY = 0f
+  }
+
+  // An inverted list flips the finger on its axis, so the release keeps pointing against the reported offset.
+  fun released(xPxPerMs: Float, yPxPerMs: Float, horizontal: Boolean, inverted: Boolean) {
+    releaseX = if (inverted && horizontal) -xPxPerMs else xPxPerMs
+    releaseY = if (inverted && !horizontal) -yPxPerMs else yPxPerMs
+  }
+
+  fun of(kind: ScrollKind, horizontal: Boolean, afterDrag: Boolean): Pair<Float, Float> = when (kind) {
+    ScrollKind.SCROLL -> if (horizontal) Pair(scrollPxPerMs, 0f) else Pair(0f, scrollPxPerMs)
+    ScrollKind.END_DRAG -> Pair(releaseX, releaseY)
+    // ScrollView rounds the release to whole px before it starts the momentum.
+    ScrollKind.MOMENTUM_BEGIN ->
+      if (afterDrag) Pair(releaseX.roundToInt().toFloat(), releaseY.roundToInt().toFloat()) else Pair(0f, 0f)
+    ScrollKind.BEGIN_DRAG, ScrollKind.MOMENTUM_END -> Pair(0f, 0f)
+  }
+}
+
 // The ScrollView payload in dp, so a Reanimated scroll handler reads it unchanged.
 class FlumeScrollEvent(
   surfaceId: Int,
@@ -74,6 +110,8 @@ class FlumeScrollEvent(
   private val contentHeightDp: Float,
   private val widthDp: Float,
   private val heightDp: Float,
+  private val velocityXDp: Float = 0f,
+  private val velocityYDp: Float = 0f,
 ) : Event<FlumeScrollEvent>(surfaceId, viewTag) {
   override fun getEventName(): String = kind.eventName
 
@@ -84,7 +122,7 @@ class FlumeScrollEvent(
     putMap("contentOffset", point(if (horizontal) offsetDp else 0f, if (horizontal) 0f else offsetDp))
     putMap("contentSize", size(contentWidthDp, contentHeightDp))
     putMap("layoutMeasurement", size(widthDp, heightDp))
-    putMap("velocity", point(0f, 0f))
+    putMap("velocity", point(velocityXDp, velocityYDp))
     putInt("target", viewTag)
     putDouble("timestamp", timestampMs.toDouble())
   }

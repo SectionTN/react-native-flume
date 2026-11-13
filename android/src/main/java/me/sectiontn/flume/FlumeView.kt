@@ -3,6 +3,7 @@ package me.sectiontn.flume
 import android.content.Context
 import android.view.MotionEvent
 import android.view.View
+import android.view.VelocityTracker
 import android.view.ViewConfiguration
 import android.content.res.Configuration
 import android.os.SystemClock
@@ -49,6 +50,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private var stickySet: Set<Int> = emptySet()
   private val measureHolderId = adapter.allocateHolderId()
   private var throttle = ScrollThrottle(16)
+  private val velocity = ScrollVelocity()
+  private var finger: VelocityTracker? = null
   private var scrollState = RecyclerView.SCROLL_STATE_IDLE
   private var pendingAlign: PendingAlign? = null
   private val origins = ShadowOrigins()
@@ -212,14 +215,22 @@ class FlumeView(context: Context) : FrameLayout(context) {
         origins.scrolled(dx, dy)
         if (pressCanStart) requestOrigins()
         sticky.refresh()
-        if (emitScrollEvents && throttle.shouldEmit(SystemClock.uptimeMillis())) emitScroll(ScrollKind.SCROLL)
+        if (emitScrollEvents) {
+          // ScrollView samples its velocity on every change, before the throttle.
+          val now = SystemClock.uptimeMillis()
+          val metrics = scrollMetrics()
+          velocity.scrolled(ScrollMetrics.fromContentStart(metrics.offsetPx, metrics.rangePx, metrics.extentPx, inverted), now)
+          if (throttle.shouldEmit(now)) emitScroll(ScrollKind.SCROLL, metrics = metrics)
+        }
         evaluateViewability()
         evaluateEdges()
       }
 
       // Drag and momentum events are per gesture and always sent; a suppressed scroll event is flushed on idle.
       override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-        for (kind in ScrollStateMachine.transition(scrollState, newState)) emitScroll(kind)
+        for (kind in ScrollStateMachine.transition(scrollState, newState)) {
+          emitScroll(kind, afterDrag = scrollState == RecyclerView.SCROLL_STATE_DRAGGING)
+        }
         scrollState = newState
         if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
           pendingAlign = null
@@ -679,12 +690,30 @@ class FlumeView(context: Context) : FrameLayout(context) {
   fun emitPress(index: Int, key: String, pressId: String?, long: Boolean) =
     dispatch(FlumePressEvent(UIManagerHelper.getSurfaceId(this), id, long, index, key, pressId))
 
-  private fun emitScroll(kind: ScrollKind) {
+  private fun emitScroll(kind: ScrollKind, afterDrag: Boolean = false, metrics: ScrollRange = scrollMetrics()) {
     val horizontal = geometry.horizontal
-    val (offsetPx, rangePx, extentPx) = scrollMetrics()
+    val (offsetPx, rangePx, extentPx) = metrics
     val offsetDp = ScrollMetrics.fromContentStart(offsetPx, rangePx, extentPx, inverted) / density
     val (contentWidthPx, contentHeightPx) = ScrollMetrics.contentSizePx(horizontal, rangePx, geometry.paddingPx, recycler.width, recycler.height)
-    dispatch(FlumeScrollEvent(UIManagerHelper.getSurfaceId(this), id, kind, horizontal, offsetDp, contentWidthPx / density, contentHeightPx / density, recycler.width / density, recycler.height / density))
+    val (velocityX, velocityY) = velocity.of(kind, horizontal, afterDrag)
+    dispatch(FlumeScrollEvent(UIManagerHelper.getSurfaceId(this), id, kind, horizontal, offsetDp, contentWidthPx / density, contentHeightPx / density, recycler.width / density, recycler.height / density, velocityX / density, velocityY / density))
+  }
+
+  // ScrollView's drag end carries the finger's velocity at release, read before RecyclerView ends the drag inside super.
+  override fun dispatchTouchEvent(e: MotionEvent): Boolean {
+    val tracker = finger ?: VelocityTracker.obtain().also { finger = it }
+    if (e.actionMasked == MotionEvent.ACTION_DOWN) {
+      velocity.touchStarted()
+      tracker.clear()
+    }
+    tracker.addMovement(e)
+    if (e.actionMasked == MotionEvent.ACTION_UP || e.actionMasked == MotionEvent.ACTION_CANCEL) {
+      tracker.computeCurrentVelocity(1)
+      velocity.released(tracker.xVelocity, tracker.yVelocity, geometry.horizontal, inverted)
+      tracker.recycle()
+      finger = null
+    }
+    return super.dispatchTouchEvent(e)
   }
 
   fun dispatch(event: Event<*>) {
