@@ -39,9 +39,8 @@ const state: { host?: FlumeHost; runtime?: ReturnType<typeof createWorkletRuntim
 
 export function getHost(): FlumeHost {
   if (state.host !== undefined) return state.host;
-  if (NativeFlume == null) {
-    throw new Error('react-native-flume: the NativeFlume module is not available');
-  }
+  // The read requires the module under inline requires, and the require installs `__flume`.
+  void NativeFlume;
   const host = (globalThis as { __flume?: FlumeHost }).__flume;
   if (host === undefined) {
     throw new Error('react-native-flume: the native host is not installed');
@@ -59,6 +58,16 @@ export function getHost(): FlumeHost {
     'worklet';
     host.install();
   });
-  state.host = host;
-  return host;
+  // Each property read on the host object builds a new native function, so every method is read once.
+  state.host = {
+    install: host.install,
+    setScheduler: host.setScheduler,
+    createStore: host.createStore,
+    releaseStore: host.releaseStore,
+    setData: host.setData,
+    setCell: host.setCell,
+    setCellKinds: host.setCellKinds,
+    setReporter: host.setReporter,
+  };
+  return state.host;
 }
