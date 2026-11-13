@@ -201,6 +201,28 @@ TEST_CASE("a pressable mounts with its id and pressed opacity") {
   CHECK(createdParent(rig.batch, 2) == 1);
 }
 
+TEST_CASE("a pressable without a label reads as the texts inside it") {
+  auto row = [](const char* text) {
+    return rowCell(obj({{"type", V("pressable")}, {"id", V("like")}, {"children", arr({textNode(text, 14, "#0066ff")})}}), {});
+  };
+  // The last accessibility op for the pressable, view 1.
+  auto label = [](const flume::OpBatch& batch) -> std::optional<std::string> {
+    std::optional<std::string> found;
+    for (const auto& op : decode(batch)) {
+      if (op.op == 8 && op.id == 1) found = op.ints[0] < 0 ? "" : batch.strings[op.ints[0]];
+    }
+    return found;
+  };
+  Rig rig;
+  rig.bind(row("Like"));
+  CHECK(label(rig.batch) == "Like");
+  CHECK(firstOp(rig.batch, 8, 1).ints[2] == 1);
+  rig.bind(row("Like"));
+  CHECK_FALSE(label(rig.batch).has_value());
+  rig.bind(row("Liked"));
+  CHECK(label(rig.batch) == "Liked");
+}
+
 TEST_CASE("a text op carries the font options") {
   Rig rig;
   rig.bind(obj({{"type", V("text")}, {"text", V("a")}, {"allowFontScaling", V(false)},

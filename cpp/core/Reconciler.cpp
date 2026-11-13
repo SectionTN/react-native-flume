@@ -260,6 +260,7 @@ void Reconciler::emitAfterLayout(Holder& holder, OpBatch& out) {
   if (holder.root == nullptr) return;
   emitTextOf(*holder.root, out);
   emitRootLabel(holder, out);
+  emitPressableLabels(*holder.root, out);
 }
 
 void Reconciler::emitTextOf(Mounted& node, OpBatch& out) {
@@ -290,6 +291,19 @@ void Reconciler::emitRootLabel(Holder& holder, OpBatch& out) {
   out.accessibility(0, joined, root.testID, 0, root.accessible);
 }
 
+// A nested pressable without a label of its own reads as the texts inside it, as React Native's views do.
+void Reconciler::emitPressableLabels(Mounted& node, OpBatch& out) {
+  if (node.viewId != 0 && node.type == NodeType::Pressable && node.accessibilityLabel.empty()) {
+    std::string joined;
+    appendTexts(node, joined);
+    if (joined != node.derivedLabel) {
+      node.derivedLabel = joined;
+      out.accessibility(node.viewId, joined, node.testID, 1, node.accessible);
+    }
+  }
+  for (auto& child : node.children) emitPressableLabels(*child, out);
+}
+
 void Reconciler::emitViewStyle(const Mounted& node, OpBatch& out) { out.viewStyle(node.viewId, node.style); }
 
 void Reconciler::emitImage(const Mounted& node, OpBatch& out) {
@@ -300,11 +314,15 @@ void Reconciler::emitPressable(const Mounted& node, OpBatch& out) {
   out.pressable(node.viewId, node.pressId, node.pressedOpacity);
 }
 
-void Reconciler::emitAccessibility(Holder& holder, const Mounted& node, OpBatch& out) {
+void Reconciler::emitAccessibility(Holder& holder, Mounted& node, OpBatch& out) {
   out.accessibility(node.viewId, node.accessibilityLabel, node.testID, node.type == NodeType::Pressable ? 1 : 0,
                     node.accessible);
-  // The op carries the root's own label, empty when it derives one, so emitRootLabel sends the derived one again.
-  if (node.viewId == 0) holder.rootLabel.clear();
+  // The op carries the node's own label, empty when it derives one, so the derived one goes out again after layout.
+  if (node.viewId == 0) {
+    holder.rootLabel.clear();
+  } else {
+    node.derivedLabel.clear();
+  }
 }
 
 void Reconciler::release(Holder& holder) {
