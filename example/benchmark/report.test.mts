@@ -66,6 +66,8 @@ const jump = (repeat: number, framesOver: number, animated: boolean): JumpResult
   repeat,
   frames: frames(2, 20),
   blank: { frames: 300, meanPercent: 1.5, maxPercent: 40, framesOver },
+  temperatureStart: 31,
+  temperatureEnd: 33,
 });
 
 it('writes one jump row per list, load and scroll kind with the medians', () => {

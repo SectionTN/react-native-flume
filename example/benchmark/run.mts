@@ -47,7 +47,8 @@ const JUMPS = [0.5, 0.1, 0.9, 0.3, 0.7];
 const JUMP_SETTLE_MS = 800;
 
 type Config = Pick<BenchParams, 'scenario' | 'impl' | 'load' | 'count'>;
-type SetDataResult = { round: number; label: string; line: SetDataLine };
+// The battery temperature when the line was read: a warm phone slows every list.
+type SetDataResult = { round: number; label: string; line: SetDataLine; temperature: number | null };
 
 const { values } = parseArgs({
   options: {
@@ -284,11 +285,13 @@ async function jumpPass(
   const name = `jump-${config.scenario}-${config.impl}-${config.load ? 'load' : 'idle'}-${kind}-${repeat}`;
   const recorder = record(adb, out, name, screen);
   await sleep(500);
+  const temperatureStart = adb.temperature();
   for (const share of JUMPS) {
     adb.assertForeground();
     await action(adb, config, 'jump', { index: Math.round(share * (config.count - 1)), animated });
     await sleep(JUMP_SETTLE_MS);
   }
+  const temperatureEnd = adb.temperature();
   const path = await recorder.stop();
   const frames = parseGfxinfo(adb.gfxinfo());
   const crop = cropFor(ready.rect, screen, videoSize(path));
@@ -296,7 +299,7 @@ async function jumpPass(
     await blankFractions(path, crop, SENTINEL_RGB, BLANK_TOLERANCE),
     BLANK_FRAME_THRESHOLD,
   );
-  return { ...config, animated, repeat, frames, blank };
+  return { ...config, animated, repeat, frames, blank, temperatureStart, temperatureEnd };
 }
 
 async function prime(adb: Adb, scenario: Scenario, count: number) {
@@ -344,10 +347,12 @@ async function setDataRounds(adb: Adb, repeat: number): Promise<SetDataResult[]>
   for (let round = 0; round < repeat; round++) {
     for (const [config, name, first, second] of rounds) {
       await launch(adb, config);
-      results.push({ round, label: first, line: await newestSetData(adb, 0) });
+      const mounted = await newestSetData(adb, 0);
+      results.push({ round, label: first, line: mounted, temperature: adb.temperature() });
       adb.logcatClear();
       await action(adb, config, name);
-      results.push({ round, label: second, line: await newestSetData(adb, 0) });
+      const changed = await newestSetData(adb, 0);
+      results.push({ round, label: second, line: changed, temperature: adb.temperature() });
     }
   }
   return results;
