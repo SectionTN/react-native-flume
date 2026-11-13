@@ -1,11 +1,20 @@
 #include "core/MeasureCache.h"
 
+#include <cmath>
 #include <functional>
 #include <string_view>
 
 namespace flume {
 
 constexpr size_t kMaxEntries = 4096;
+
+namespace {
+
+// A NaN style value from a worklet still finds its entry.
+bool sameFloat(float a, float b) { return a == b || (std::isnan(a) && std::isnan(b)); }
+size_t hashFloat(float v) { return std::isnan(v) ? 0 : std::hash<float>{}(v); }
+
+}  // namespace
 
 MeasureCache::Key::Key(const TextMeasureRequest& request)
     : text(request.text), fontFamily(request.fontFamily), fields(request) {
@@ -24,12 +33,12 @@ size_t MeasureCache::Hash::operator()(const TextMeasureRequest& r) const {
   size_t seed = std::hash<std::string_view>{}(r.text);
   auto mix = [&seed](size_t h) { seed ^= h + size_t{0x9e3779b9} + (seed << 6) + (seed >> 2); };
   mix(std::hash<std::string_view>{}(r.fontFamily));
-  mix(std::hash<float>{}(r.fontSize));
+  mix(hashFloat(r.fontSize));
   mix(std::hash<int>{}(r.fontWeight));
-  mix(std::hash<float>{}(r.maxWidth));
+  mix(hashFloat(r.maxWidth));
   mix(std::hash<int>{}(r.numberOfLines));
-  mix(std::hash<float>{}(r.lineHeight));
-  mix(std::hash<float>{}(r.letterSpacing));
+  mix(hashFloat(r.lineHeight));
+  mix(hashFloat(r.letterSpacing));
   mix(std::hash<int>{}(r.textAlign));
   mix(std::hash<int>{}(r.decoration));
   mix((r.italic ? 1u : 0u) | (r.allowFontScaling ? 2u : 0u));
@@ -37,10 +46,11 @@ size_t MeasureCache::Hash::operator()(const TextMeasureRequest& r) const {
 }
 
 bool MeasureCache::Equal::same(const TextMeasureRequest& a, const TextMeasureRequest& b) {
-  return a.text == b.text && a.fontFamily == b.fontFamily && a.fontSize == b.fontSize &&
-         a.fontWeight == b.fontWeight && a.maxWidth == b.maxWidth && a.numberOfLines == b.numberOfLines &&
-         a.italic == b.italic && a.lineHeight == b.lineHeight && a.letterSpacing == b.letterSpacing &&
-         a.textAlign == b.textAlign && a.decoration == b.decoration && a.allowFontScaling == b.allowFontScaling;
+  return a.text == b.text && a.fontFamily == b.fontFamily && sameFloat(a.fontSize, b.fontSize) &&
+         a.fontWeight == b.fontWeight && sameFloat(a.maxWidth, b.maxWidth) && a.numberOfLines == b.numberOfLines &&
+         a.italic == b.italic && sameFloat(a.lineHeight, b.lineHeight) &&
+         sameFloat(a.letterSpacing, b.letterSpacing) && a.textAlign == b.textAlign && a.decoration == b.decoration &&
+         a.allowFontScaling == b.allowFontScaling;
 }
 
 const TextMetrics* MeasureCache::find(const TextMeasureRequest& request) const {
