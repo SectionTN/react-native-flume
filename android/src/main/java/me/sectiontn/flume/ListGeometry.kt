@@ -19,6 +19,7 @@ class ListGeometry(private val density: Float) {
   val ready: Boolean get() = bindAxisPx(widthPx, heightPx) > 0
   val innerWidthPx: Int get() = widthPx - paddingPx[0] - paddingPx[2]
   val innerHeightPx: Int get() = heightPx - paddingPx[1] - paddingPx[3]
+  val widthDp: Float get() = if (widthPx > 0) widthPx / density else -1f
 
   // True when the bind axis or the font scale changed; a zero bind axis is ignored, the other axis is only stored.
   fun update(widthPx: Int, heightPx: Int, fontScale: Float): Boolean {

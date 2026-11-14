@@ -51,6 +51,7 @@ class FlumeAdapter(
     // React grid cells take their width from JS, which learns it from the slot snapshot.
     val grid = geometry.ready && !geometry.horizontal && geometry.numColumns > 1
     slots.cellWidthDp = if (grid) geometry.cellWidthDp(false) else -1f
+    slots.widthDp = geometry.widthDp
     slots.flush()
     notifyDataSetChanged()
   }

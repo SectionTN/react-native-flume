@@ -48,9 +48,27 @@ export type SlotTable = {
   pending: readonly SlotEntry[];
   jsSeen: number;
   cellWidth: number;
+  width: number;
 };
 
-export type SlotSnapshot = { slots: readonly SlotEntry[]; jsSeen: number; cellWidth: number };
+export type SlotSnapshot = {
+  slots: readonly SlotEntry[];
+  jsSeen: number;
+  cellWidth: number;
+  width: number;
+};
+
+// A grid column from the list width native reported, so a numColumns change renders at the new width at once.
+// Native's column wins when it differs by under a point in total (Android rounds the padding to whole pixels).
+export function gridCellWidth(
+  table: { width: number; cellWidth: number },
+  numColumns: number,
+  padding: { left: number; right: number },
+): number {
+  if (table.width < 0) return -1;
+  const computed = (table.width - padding.left - padding.right) / numColumns;
+  return Math.abs(table.cellWidth - computed) * numColumns < 1 ? table.cellWidth : computed;
+}
 
 // A pending slot stays until native has registered it (jsSeen reaches its id); one native has not bound yet keeps
 // the index it was rendered with.
@@ -66,6 +84,7 @@ export function applySnapshot(table: SlotTable, event: SlotSnapshot): SlotTable 
     pending: table.pending.filter((entry) => entry.slot < event.jsSeen),
     jsSeen: event.jsSeen,
     cellWidth: event.cellWidth,
+    width: event.width,
   };
 }
 

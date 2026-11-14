@@ -28,7 +28,8 @@ export type ViewabilityEvent = Readonly<{
   changed: { index: CodegenTypes.Int32; key: string; isViewable: boolean }[];
 }>;
 
-// The whole slot table, since Fabric replaces a queued event of the same type; cellWidth is -1 off a grid.
+// The whole slot table, since Fabric replaces a queued event of the same type. cellWidth is -1 off a grid, width
+// (the list's) -1 before layout.
 export type SlotsEvent = Readonly<{
   slots: {
     slot: CodegenTypes.Int32;
@@ -40,6 +41,7 @@ export type SlotsEvent = Readonly<{
   }[];
   jsSeen: CodegenTypes.Int32;
   cellWidth: CodegenTypes.Double;
+  width: CodegenTypes.Double;
 }>;
 
 export interface NativeProps extends ViewProps {

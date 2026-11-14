@@ -22,6 +22,7 @@ import { FlumeSlot } from './FlumeSlot';
 import { contentPadding, nativeProps } from './props';
 import {
   applySnapshot,
+  gridCellWidth,
   prerender,
   type SlotEntry,
   SlotKind,
@@ -216,6 +217,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     pending: [],
     jsSeen: 0,
     cellWidth: -1,
+    width: -1,
   });
   const nextSlot = useRef(-1);
   // React Native pools the event and nulls nativeEvent once this returns, before the updater runs.
@@ -224,7 +226,7 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     setTable((current) => applySnapshot(current, snapshot));
   }, []);
   const padding = contentPadding(props.contentContainerStyle);
-  const { cellWidth } = table;
+  const cellWidth = !horizontal && numColumns > 1 ? gridCellWidth(table, numColumns, padding) : -1;
   const layout = useMemo<SlotLayout>(
     () => ({
       horizontal,

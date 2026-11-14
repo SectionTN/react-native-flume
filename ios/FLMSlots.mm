@@ -14,6 +14,7 @@ using namespace facebook;
   flume::SlotPool _pool;
   BOOL _registered;
   CGFloat _sentCellWidth;
+  CGFloat _sentWidth;
 }
 
 - (instancetype)initWithBay:(UIView *)bay
@@ -24,6 +25,7 @@ using namespace facebook;
     _bySlot = [NSMutableDictionary dictionary];
     _cells = [NSMapTable strongToWeakObjectsMapTable];
     _sentCellWidth = NAN;
+    _sentWidth = NAN;
   }
   return self;
 }
@@ -177,16 +179,18 @@ using namespace facebook;
   return _cells.objectEnumerator.allObjects;
 }
 
-- (void)flushTo:(const react::FlumeViewEventEmitter &)emitter cellWidth:(CGFloat)cellWidth
+- (void)flushTo:(const react::FlumeViewEventEmitter &)emitter cellWidth:(CGFloat)cellWidth width:(CGFloat)width
 {
-  if (!_pool.dirty() && cellWidth == _sentCellWidth) {
+  if (!_pool.dirty() && cellWidth == _sentCellWidth && width == _sentWidth) {
     return;
   }
   _sentCellWidth = cellWidth;
+  _sentWidth = width;
   std::vector<flume::SlotEntry> entries = _pool.snapshot();
   const int jsSeen = _pool.jsSeen();
-  const double width = cellWidth;
-  emitter.dispatchUniqueEvent("slotsChanged", [entries = std::move(entries), jsSeen, width](jsi::Runtime &runtime) {
+  const double column = cellWidth;
+  const double listWidth = width;
+  emitter.dispatchUniqueEvent("slotsChanged", [entries = std::move(entries), jsSeen, column, listWidth](jsi::Runtime &runtime) {
     auto slots = jsi::Array(runtime, entries.size());
     for (size_t i = 0; i < entries.size(); i++) {
       const flume::SlotEntry &entry = entries[i];
@@ -202,7 +206,8 @@ using namespace facebook;
     auto payload = jsi::Object(runtime);
     payload.setProperty(runtime, "slots", slots);
     payload.setProperty(runtime, "jsSeen", jsSeen);
-    payload.setProperty(runtime, "cellWidth", width);
+    payload.setProperty(runtime, "cellWidth", column);
+    payload.setProperty(runtime, "width", listWidth);
     return payload;
   });
 }

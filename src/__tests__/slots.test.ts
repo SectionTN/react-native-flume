@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { applySnapshot, prerender, SlotKind, type SlotTable, slotStyle } from '../slots';
+import {
+  applySnapshot,
+  gridCellWidth,
+  prerender,
+  SlotKind,
+  type SlotTable,
+  slotStyle,
+} from '../slots';
 
 const layout = {
   horizontal: false,
@@ -52,7 +59,27 @@ describe('slotStyle for the empty row', () => {
   });
 });
 
-const blank: SlotTable = { native: [], pending: [], jsSeen: 0, cellWidth: -1 };
+describe('gridCellWidth', () => {
+  const padding = { left: 16, right: 8 };
+
+  it('divides the list width inside the padding before native reports a column', () => {
+    expect(gridCellWidth({ width: 360, cellWidth: -1 }, 2, padding)).toBe(168);
+  });
+
+  it("keeps native's column computed for the same columns and padding", () => {
+    expect(gridCellWidth({ width: 360, cellWidth: 168.25 }, 2, padding)).toBe(168.25);
+  });
+
+  it("drops native's column computed for other columns", () => {
+    expect(gridCellWidth({ width: 360, cellWidth: 168 }, 3, padding)).toBe(112);
+  });
+
+  it('is unknown until the list is laid out', () => {
+    expect(gridCellWidth({ width: -1, cellWidth: -1 }, 2, padding)).toBe(-1);
+  });
+});
+
+const blank: SlotTable = { native: [], pending: [], jsSeen: 0, cellWidth: -1, width: -1 };
 const bound = (slot: number, key: string, index: number) => ({ ...row, slot, key, index });
 
 describe('prerender', () => {
@@ -137,18 +164,27 @@ describe('applySnapshot', () => {
   it('keeps a pre-rendered slot until native has registered it', () => {
     const pending = [{ slot: -1, kind: SlotKind.row, key: 'a', index: 0, bound: true, minMain: 0 }];
     const table = { ...blank, pending };
-    expect(applySnapshot(table, { slots: [], jsSeen: 0, cellWidth: 360 }).pending).toEqual(pending);
-    expect(applySnapshot(table, { slots: [], jsSeen: -1, cellWidth: 360 }).pending).toEqual([]);
+    expect(
+      applySnapshot(table, { slots: [], jsSeen: 0, cellWidth: 360, width: 720 }).pending,
+    ).toEqual(pending);
+    expect(
+      applySnapshot(table, { slots: [], jsSeen: -1, cellWidth: 360, width: 720 }).pending,
+    ).toEqual([]);
   });
 
   it('keeps the index a pre-rendered slot rendered with until native binds it', () => {
     const table = { ...blank, pending: [bound(-1, 'a', 4)] };
     const parked = { ...bound(-1, 'a', -1), bound: false };
-    const next = applySnapshot(table, { slots: [parked], jsSeen: -1, cellWidth: -1 });
+    const next = applySnapshot(table, { slots: [parked], jsSeen: -1, cellWidth: -1, width: 360 });
     expect(next.native).toEqual([{ ...parked, index: 4 }]);
-    const later = applySnapshot(next, { slots: [parked], jsSeen: -1, cellWidth: -1 });
+    const later = applySnapshot(next, { slots: [parked], jsSeen: -1, cellWidth: -1, width: 360 });
     expect(later.native[0]?.index).toBe(4);
-    const adopted = applySnapshot(later, { slots: [bound(-1, 'a', 6)], jsSeen: -1, cellWidth: -1 });
+    const adopted = applySnapshot(later, {
+      slots: [bound(-1, 'a', 6)],
+      jsSeen: -1,
+      cellWidth: -1,
+      width: 360,
+    });
     expect(adopted.native[0]?.index).toBe(6);
   });
 });
