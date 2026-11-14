@@ -18,8 +18,7 @@ class ListStore {
  public:
   // JS thread; a second snapshot before the first is applied merges into it.
   void setPending(std::vector<std::string> keys, std::vector<std::string> types, std::vector<int> changedIndices,
-                  std::vector<Value> changedItems, bool stableKeys, bool deferred = false,
-                  std::vector<int> sticky = {});
+                  std::vector<Value> changedItems, bool stableKeys, std::vector<int> sticky = {});
 
   // JS thread. Joins pending data or applies alone: true when nothing was pending, so the caller schedules the apply.
   bool setSticky(std::vector<int> sticky);
@@ -54,7 +53,6 @@ class ListStore {
     std::vector<int> changedIndices;
     std::vector<Value> changedItems;
     bool stableKeys = true;
-    bool deferred = false;
     std::vector<int> sticky;
   };
   struct Kinds {

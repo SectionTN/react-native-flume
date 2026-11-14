@@ -33,11 +33,12 @@ struct FLMPendingOffset {
 - (int)pinnedIndexAt:(CGFloat)viewportStart;  // the sticky row pinned with the viewport there, -1 for none
 - (void)configure:(const flume::ListLayoutConfig &)config fullSpan:(std::vector<int>)fullSpan sticky:(std::vector<int>)sticky;
 - (void)resetWithCount:(NSInteger)count typeOf:(flume::ListLayout::TypeOf)typeOf;
-// A deferred batch's full-span rows come computed for its new count, since its props landed first.
+// The full-span and sticky positions are the new data's, computed for its count.
 - (std::vector<int>)applyOps:(const flume::ListOps &)ops
                        count:(NSInteger)count
                       typeOf:(flume::ListLayout::TypeOf)typeOf
-            deferredFullSpan:(std::optional<std::vector<int>>)deferredFullSpan;
+                    fullSpan:(std::vector<int>)fullSpan
+                      sticky:(std::vector<int>)sticky;
 - (void)invalidateLengths;
 - (CGFloat)bindCrossLengthForItem:(NSInteger)index;
 - (CGFloat)gridCellWidth;  // a column of a vertical grid, -1 for any other list

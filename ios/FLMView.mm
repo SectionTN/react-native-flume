@@ -108,6 +108,12 @@ static double FLMNowMs()
   return CACurrentMediaTime() * 1000;
 }
 
+// Ops that move, add or change no row: a sticky-only change.
+static BOOL FLMMovesNoRow(const flume::ListOps &ops)
+{
+  return !ops.reset && ops.removed.empty() && ops.inserted.empty() && ops.moved.empty() && ops.changed.empty();
+}
+
 flume::KeyboardTaps FLMKeyboardTapsMode(FlumeViewKeyboardShouldPersistTaps mode)
 {
   switch (mode) {
@@ -284,7 +290,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   const BOOL layout = shape || next.inverted != old.inverted || next.contentPaddingTop != old.contentPaddingTop ||
       next.contentPaddingLeft != old.contentPaddingLeft || next.contentPaddingBottom != old.contentPaddingBottom ||
       next.contentPaddingRight != old.contentPaddingRight || next.estimatedItemSize != old.estimatedItemSize ||
-      next.stickyHeaderIndices != old.stickyHeaderIndices || next.separatorSize != old.separatorSize ||
+      next.separatorSize != old.separatorSize ||
       next.separatorInsetStart != old.separatorInsetStart || next.separatorInsetEnd != old.separatorInsetEnd ||
       next.maintainVisibleContentPosition.startRenderingFromBottom !=
           old.maintainVisibleContentPosition.startRenderingFromBottom;
@@ -435,7 +441,6 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   config.stackFromEnd =
       !props.inverted && config.lanes == 1 && props.maintainVisibleContentPosition.startRenderingFromBottom;
   _layoutConfig = config;
-  _stickyIndices = props.stickyHeaderIndices;
   [self configureLayoutRows];
   _horizontal = props.horizontal;
   _inverted = props.inverted;
@@ -619,6 +624,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   _componentsMoved = NO;
   _rows.dataCount = count;
   _itemCount = _rows.itemCount();
+  _stickyIndices = flume::Engine::instance().stickyIndices(_storeId);
   [self configureLayoutRows];
   if (sameRows) {
     [_layout invalidateLengths];
@@ -676,6 +682,12 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   if (!_attached) {
     return;
   }
+  // The indices belong to this data, so every path below lays out with them.
+  _stickyIndices = ops.sticky;
+  if (FLMMovesNoRow(ops) && count == _rows.dataCount) {
+    [self configureLayoutRows];
+    return;
+  }
   // Keys moved between indices, so the next viewable set counts as changed, as FlatList resets its cache.
   _viewability.invalidate();
   if (count == 0) {
@@ -701,13 +713,17 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
   const flume::AnchorDecision anchor =
       [_layout prepareForOps:positions count:itemCount edges:flume::insertedAtEdges(ops, count, _inverted)];
-  const std::optional<std::vector<int>> deferredFullSpan =
-      positions.deferred ? std::optional([self fullSpanPositions:[self stickyPositions]]) : std::nullopt;
+  const std::vector<int> sticky = [self stickyPositions];
+  const std::vector<int> fullSpan = [self fullSpanPositions:sticky];
   __block std::vector<int> retyped;
   void (^update)(void) = ^{
     [self->_collectionView performBatchUpdates:^{
       self->_itemCount = itemCount;
-      retyped = [self->_layout applyOps:positions count:itemCount typeOf:[self typeOf] deferredFullSpan:deferredFullSpan];
+      retyped = [self->_layout applyOps:positions
+                                  count:itemCount
+                                 typeOf:[self typeOf]
+                               fullSpan:fullSpan
+                                 sticky:sticky];
       [self->_collectionView deleteItemsAtIndexPaths:FLMIndexPaths(batch.deletes)];
       [self->_collectionView insertItemsAtIndexPaths:FLMIndexPaths(batch.inserts)];
       for (const auto &[from, to] : batch.moves) {
