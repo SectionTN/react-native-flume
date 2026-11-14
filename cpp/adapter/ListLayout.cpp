@@ -2,8 +2,6 @@
 
 #include <algorithm>
 
-#include "adapter/ContentAnchor.h"
-
 namespace flume {
 
 namespace {
@@ -32,16 +30,12 @@ void ListLayout::reset(int count, const TypeOf& typeOf) {
   rebuildRows();
 }
 
-std::vector<int> ListLayout::apply(const ListOps& ops, int count, const TypeOf& typeOf,
-                                   std::optional<std::vector<int>> deferredFullSpan) {
+std::vector<int> ListLayout::apply(const ListOps& ops, int count, const TypeOf& typeOf, std::vector<int> fullSpan) {
   if (ops.reset) {
     reset(count, typeOf);
     return {};
   }
-  // Immediate data lands before its props, so until they catch up the full-span indices follow their items.
-  if (!ops.deferred) fullSpan_ = mapIndices(ops, fullSpan_);
-  // Deferred data lands after its props, but the footer's position still moves with the new count.
-  if (ops.deferred && deferredFullSpan) fullSpan_ = std::move(*deferredFullSpan);
+  fullSpan_ = std::move(fullSpan);
   for (const auto& range : ops.removed) {
     if (range.index < 0 || range.index + range.count > this->count()) continue;
     items_.erase(items_.begin() + range.index, items_.begin() + range.index + range.count);

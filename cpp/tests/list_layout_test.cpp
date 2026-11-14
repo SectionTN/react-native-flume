@@ -82,7 +82,7 @@ TEST_CASE("removes, inserts and moves keep measured lengths with their items") {
   layout.setLength(3, 40, 0);
   ListOps ops = diffKeys({"a", "b", "c", "d"}, {"x", "d", "a", "c"}, {}, true);
   REQUIRE_FALSE(ops.reset);
-  layout.apply(ops, 4, kOneType);
+  layout.apply(ops, 4, kOneType, {});
   CHECK(layout.count() == 4);
   CHECK(length(layout, 0) == 50);
   CHECK(length(layout, 1) == 40);
@@ -124,38 +124,35 @@ TEST_CASE("a grid row takes its longest cell and a full-span item a row of its o
   CHECK(layout.contentLength(1000) == 220);
 }
 
-TEST_CASE("a full-span header keeps its own row through a removal before its props catch up") {
+TEST_CASE("a full-span header keeps its own row through a removal") {
   ListLayoutConfig config;
   config.lanes = 2;
   ListLayout layout = list(6, config, {2});
   ListOps removeFirst;
   removeFirst.removed = {{0, 1}};
-  layout.apply(removeFirst, 5, kOneType);
+  layout.apply(removeFirst, 5, kOneType, {1});
   CHECK(layout.itemsOfRows(1, 1) == IndexRange{1, 1});
   CHECK(layout.crossLength(1, 400) == 400);
 }
 
-TEST_CASE("a deferred batch leaves the full-span indices to the props that already landed") {
+TEST_CASE("a batch takes the full span of its own data, not the old rows mapped") {
   ListLayoutConfig config;
   config.lanes = 2;
   ListLayout layout = list(6, config, {2});
   ListOps prepend;
   prepend.inserted = {{0, 1}};
-  prepend.deferred = true;
-  layout.configure(config, {3});
-  layout.apply(prepend, 7, kOneType);
-  CHECK(layout.crossLength(3, 400) == 400);
-  CHECK(layout.crossLength(4, 400) == 200);
+  layout.apply(prepend, 7, kOneType, {0});
+  CHECK(layout.crossLength(0, 400) == 400);
+  CHECK(layout.crossLength(3, 400) == 200);
 }
 
-TEST_CASE("a deferred batch takes the footer's full-span row at the new count") {
+TEST_CASE("a batch takes the footer's full-span row at the new count") {
   ListLayoutConfig config;
   config.lanes = 2;
   ListLayout layout = list(4, config, {0, 3});
   ListOps prepend;
   prepend.inserted = {{1, 1}};
-  prepend.deferred = true;
-  layout.apply(prepend, 5, kOneType, std::vector<int>{0, 4});
+  layout.apply(prepend, 5, kOneType, {0, 4});
   CHECK(layout.crossLength(3, 400) == 200);
   CHECK(layout.crossLength(4, 400) == 400);
 }
@@ -298,7 +295,7 @@ TEST_CASE("apply reports the changed items whose type changed, to be measured ag
   types[1] = 2;
   ListOps ops;
   ops.changed = {0, 1};
-  CHECK(layout.apply(ops, 3, typeOf) == std::vector<int>{1});
+  CHECK(layout.apply(ops, 3, typeOf, {}) == std::vector<int>{1});
   CHECK(layout.measured(0));
   CHECK_FALSE(layout.measured(1));
 }

@@ -6,7 +6,7 @@ namespace flume {
 
 void ListStore::setPending(std::vector<std::string> keys, std::vector<std::string> types,
                            std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys,
-                           bool deferred, std::vector<int> sticky) {
+                           std::vector<int> sticky) {
   std::lock_guard<std::mutex> lock(mutex_);
   // The snapshot carries the indices of its own data, newer than any sticky-only change.
   pendingSticky_.reset();
@@ -31,7 +31,7 @@ void ListStore::setPending(std::vector<std::string> keys, std::vector<std::strin
     stableKeys = stableKeys && old.stableKeys;
   }
   pending_ = Pending{std::move(keys), std::move(types), std::move(changedIndices), std::move(changedItems), stableKeys,
-                     deferred, std::move(sticky)};
+                     std::move(sticky)};
 }
 
 bool ListStore::setSticky(std::vector<int> sticky) {
@@ -127,7 +127,6 @@ std::optional<ListOps> ListStore::applyPending() {
   std::sort(changed.begin(), changed.end());
   changed.erase(std::unique(changed.begin(), changed.end()), changed.end());
   ListOps ops = diffKeys(keys_, pending->keys, changed, pending->stableKeys);
-  ops.deferred = pending->deferred;
   sticky_ = stickyWithin(pending->sticky, size);
   ops.sticky = sticky_;
 

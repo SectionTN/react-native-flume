@@ -18,26 +18,11 @@ TEST_CASE("a first snapshot inserts everything") {
   CHECK(store.keyAt(2) == "c");
 }
 
-TEST_CASE("deferred data marks its ops as landing after their commit's props") {
-  flume::ListStore store;
-  store.setPending({"a"}, {"t"}, {0}, {V(1)}, true);
-  store.applyPending();
-  store.setPending({"z", "a"}, {"t", "t"}, {0}, {V(0)}, true, true);
-  auto deferred = store.applyPending();
-  REQUIRE(deferred);
-  CHECK(deferred->deferred);
-  store.setPending({"y", "z", "a"}, {"t", "t", "t"}, {0}, {V(0)}, true, true);
-  store.setPending({"x", "y", "z", "a"}, {"t", "t", "t", "t"}, {0}, {V(0)}, true);
-  auto immediate = store.applyPending();
-  REQUIRE(immediate);
-  CHECK_FALSE(immediate->deferred);
-}
-
 TEST_CASE("a reset carries the sticky indices of its own data") {
   flume::ListStore store;
-  store.setPending({"a", "b", "c"}, {"t", "t", "t"}, {0, 1, 2}, {V(1), V(2), V(3)}, true, false, {0});
+  store.setPending({"a", "b", "c"}, {"t", "t", "t"}, {0, 1, 2}, {V(1), V(2), V(3)}, true, {0});
   store.applyPending();
-  store.setPending({"c", "a", "b"}, {"t", "t", "t"}, {}, {}, false, false, {0, 2});
+  store.setPending({"c", "a", "b"}, {"t", "t", "t"}, {}, {}, false, {0, 2});
   auto ops = store.applyPending();
   REQUIRE(ops);
   CHECK(ops->reset);
@@ -49,17 +34,17 @@ TEST_CASE("the newest sticky indices win across coalesced snapshots") {
   flume::ListStore store;
   const std::vector<std::string> keys{"a", "b", "c", "d"};
   const std::vector<std::string> types{"t", "t", "t", "t"};
-  store.setPending(keys, types, {}, {}, true, false, {1});
-  store.setPending(keys, types, {}, {}, true, false, {2});
+  store.setPending(keys, types, {}, {}, true, {1});
+  store.setPending(keys, types, {}, {}, true, {2});
   CHECK(store.applyPending()->sticky == std::vector<int>{2});
   store.setSticky({1});
-  store.setPending(keys, types, {}, {}, true, false, {3});
+  store.setPending(keys, types, {}, {}, true, {3});
   CHECK(store.applyPending()->sticky == std::vector<int>{3});
 }
 
 TEST_CASE("a sticky-only change applies as empty ops") {
   flume::ListStore store;
-  store.setPending({"a", "b"}, {"t", "t"}, {}, {}, true, false, {0});
+  store.setPending({"a", "b"}, {"t", "t"}, {}, {}, true, {0});
   store.applyPending();
   CHECK(store.setSticky({1}));
   auto ops = store.applyPending();
@@ -73,9 +58,9 @@ TEST_CASE("a sticky-only change applies as empty ops") {
   CHECK(store.sticky() == std::vector<int>{1});
 }
 
-TEST_CASE("a sticky-only change waits with pending deferred data") {
+TEST_CASE("a sticky-only change joins pending data") {
   flume::ListStore store;
-  store.setPending({"a", "b"}, {"t", "t"}, {}, {}, true, true, {});
+  store.setPending({"a", "b"}, {"t", "t"}, {}, {}, true, {});
   CHECK_FALSE(store.setSticky({0}));
   auto ops = store.applyPending();
   REQUIRE(ops);
@@ -84,7 +69,7 @@ TEST_CASE("a sticky-only change waits with pending deferred data") {
 
 TEST_CASE("sticky indices outside the data are dropped") {
   flume::ListStore store;
-  store.setPending({"a", "b", "c"}, {"t", "t", "t"}, {}, {}, true, false, {0, 3, 7});
+  store.setPending({"a", "b", "c"}, {"t", "t", "t"}, {}, {}, true, {0, 3, 7});
   CHECK(store.applyPending()->sticky == std::vector<int>{0});
 }
 
