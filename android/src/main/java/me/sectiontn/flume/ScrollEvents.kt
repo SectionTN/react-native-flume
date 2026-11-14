@@ -24,6 +24,11 @@ object ScrollStateMachine {
     if (from == RecyclerView.SCROLL_STATE_SETTLING) out += ScrollKind.MOMENTUM_END
     if (to == RecyclerView.SCROLL_STATE_DRAGGING) out += ScrollKind.BEGIN_DRAG
     if (to == RecyclerView.SCROLL_STATE_SETTLING) out += ScrollKind.MOMENTUM_BEGIN
+    // A release without a fling still gets ScrollView's momentum pair (handlePostTouchScrolling on ACTION_UP).
+    if (from == RecyclerView.SCROLL_STATE_DRAGGING && to == RecyclerView.SCROLL_STATE_IDLE) {
+      out += ScrollKind.MOMENTUM_BEGIN
+      out += ScrollKind.MOMENTUM_END
+    }
     return out
   }
 }
