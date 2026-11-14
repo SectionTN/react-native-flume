@@ -18,7 +18,11 @@ class ListStore {
  public:
   // JS thread; a second snapshot before the first is applied merges into it.
   void setPending(std::vector<std::string> keys, std::vector<std::string> types, std::vector<int> changedIndices,
-                  std::vector<Value> changedItems, bool stableKeys, bool deferred = false);
+                  std::vector<Value> changedItems, bool stableKeys, bool deferred = false,
+                  std::vector<int> sticky = {});
+
+  // JS thread. Joins pending data or applies alone: true when nothing was pending, so the caller schedules the apply.
+  bool setSticky(std::vector<int> sticky);
 
   // JS thread; the next applyPending applies it, also when no data is pending.
   void setKinds(bool reactByDefault, std::vector<std::string> reactTypes);
@@ -41,6 +45,7 @@ class ListStore {
   int64_t itemIdAt(int index) const { return itemIds_[index]; }  // per key, stable for the store's life
   const std::vector<std::string>& keys() const { return keys_; }
   uint64_t keysGeneration() const { return keysGeneration_; }  // bumped when the key set changes
+  const std::vector<int>& sticky() const { return sticky_; }    // UI thread, the applied data's sticky indices
 
  private:
   struct Pending {
@@ -50,6 +55,7 @@ class ListStore {
     std::vector<Value> changedItems;
     bool stableKeys = true;
     bool deferred = false;
+    std::vector<int> sticky;
   };
   struct Kinds {
     bool reactByDefault = false;
@@ -62,7 +68,9 @@ class ListStore {
   bool attached_ = false;
   std::optional<Pending> pending_;
   std::optional<Kinds> pendingKinds_;
+  std::optional<std::vector<int>> pendingSticky_;  // a sticky-only change, set only while no data is pending
   Kinds kinds_;
+  std::vector<int> sticky_;
   std::vector<bool> reactByTypeId_;
 
   std::vector<std::string> keys_;

@@ -33,6 +33,61 @@ TEST_CASE("deferred data marks its ops as landing after their commit's props") {
   CHECK_FALSE(immediate->deferred);
 }
 
+TEST_CASE("a reset carries the sticky indices of its own data") {
+  flume::ListStore store;
+  store.setPending({"a", "b", "c"}, {"t", "t", "t"}, {0, 1, 2}, {V(1), V(2), V(3)}, true, false, {0});
+  store.applyPending();
+  store.setPending({"c", "a", "b"}, {"t", "t", "t"}, {}, {}, false, false, {0, 2});
+  auto ops = store.applyPending();
+  REQUIRE(ops);
+  CHECK(ops->reset);
+  CHECK(ops->sticky == std::vector<int>{0, 2});
+  CHECK(store.sticky() == std::vector<int>{0, 2});
+}
+
+TEST_CASE("the newest sticky indices win across coalesced snapshots") {
+  flume::ListStore store;
+  const std::vector<std::string> keys{"a", "b", "c", "d"};
+  const std::vector<std::string> types{"t", "t", "t", "t"};
+  store.setPending(keys, types, {}, {}, true, false, {1});
+  store.setPending(keys, types, {}, {}, true, false, {2});
+  CHECK(store.applyPending()->sticky == std::vector<int>{2});
+  store.setSticky({1});
+  store.setPending(keys, types, {}, {}, true, false, {3});
+  CHECK(store.applyPending()->sticky == std::vector<int>{3});
+}
+
+TEST_CASE("a sticky-only change applies as empty ops") {
+  flume::ListStore store;
+  store.setPending({"a", "b"}, {"t", "t"}, {}, {}, true, false, {0});
+  store.applyPending();
+  CHECK(store.setSticky({1}));
+  auto ops = store.applyPending();
+  REQUIRE(ops);
+  CHECK_FALSE(ops->reset);
+  CHECK(ops->removed.empty());
+  CHECK(ops->inserted.empty());
+  CHECK(ops->moved.empty());
+  CHECK(ops->changed.empty());
+  CHECK(ops->sticky == std::vector<int>{1});
+  CHECK(store.sticky() == std::vector<int>{1});
+}
+
+TEST_CASE("a sticky-only change waits with pending deferred data") {
+  flume::ListStore store;
+  store.setPending({"a", "b"}, {"t", "t"}, {}, {}, true, true, {});
+  CHECK_FALSE(store.setSticky({0}));
+  auto ops = store.applyPending();
+  REQUIRE(ops);
+  CHECK(ops->sticky == std::vector<int>{0});
+}
+
+TEST_CASE("sticky indices outside the data are dropped") {
+  flume::ListStore store;
+  store.setPending({"a", "b", "c"}, {"t", "t", "t"}, {}, {}, true, false, {0, 3, 7});
+  CHECK(store.applyPending()->sticky == std::vector<int>{0});
+}
+
 TEST_CASE("coalesced snapshots diff against the applied order") {
   flume::ListStore store;
   store.setPending({"a", "b"}, {"t", "t"}, {0, 1}, {V(1), V(2)}, true);

@@ -6,8 +6,10 @@ namespace flume {
 
 void ListStore::setPending(std::vector<std::string> keys, std::vector<std::string> types,
                            std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys,
-                           bool deferred) {
+                           bool deferred, std::vector<int> sticky) {
   std::lock_guard<std::mutex> lock(mutex_);
+  // The snapshot carries the indices of its own data, newer than any sticky-only change.
+  pendingSticky_.reset();
   // A second snapshot before the UI thread applied the first replaces it: items it carries are stale.
   if (pending_) {
     Pending& old = *pending_;
@@ -29,8 +31,30 @@ void ListStore::setPending(std::vector<std::string> keys, std::vector<std::strin
     stableKeys = stableKeys && old.stableKeys;
   }
   pending_ = Pending{std::move(keys), std::move(types), std::move(changedIndices), std::move(changedItems), stableKeys,
-                     deferred};
+                     deferred, std::move(sticky)};
 }
+
+bool ListStore::setSticky(std::vector<int> sticky) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (pending_) {
+    pending_->sticky = std::move(sticky);
+    return false;
+  }
+  pendingSticky_ = std::move(sticky);
+  return true;
+}
+
+namespace {
+
+std::vector<int> stickyWithin(const std::vector<int>& sticky, size_t count) {
+  std::vector<int> out;
+  for (int index : sticky) {
+    if (index >= 0 && static_cast<size_t>(index) < count) out.push_back(index);
+  }
+  return out;
+}
+
+}  // namespace
 
 void ListStore::setAttached(bool attached) {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -57,16 +81,24 @@ void ListStore::resolveKinds() {
 std::optional<ListOps> ListStore::applyPending() {
   std::optional<Pending> pending;
   std::optional<Kinds> kinds;
+  std::optional<std::vector<int>> sticky;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     pending.swap(pending_);
     kinds.swap(pendingKinds_);
+    sticky.swap(pendingSticky_);
   }
   if (kinds) {
     kinds_ = std::move(*kinds);
     resolveKinds();
   }
-  if (!pending) return std::nullopt;
+  if (!pending) {
+    if (!sticky) return std::nullopt;
+    sticky_ = stickyWithin(*sticky, keys_.size());
+    ListOps ops;
+    ops.sticky = sticky_;
+    return ops;
+  }
 
   std::unordered_map<std::string, size_t> previous;
   previous.reserve(keys_.size());
@@ -96,6 +128,8 @@ std::optional<ListOps> ListStore::applyPending() {
   changed.erase(std::unique(changed.begin(), changed.end()), changed.end());
   ListOps ops = diffKeys(keys_, pending->keys, changed, pending->stableKeys);
   ops.deferred = pending->deferred;
+  sticky_ = stickyWithin(pending->sticky, size);
+  ops.sticky = sticky_;
 
   for (size_t i = 0; i < pending->changedIndices.size(); i++) {
     size_t index = static_cast<size_t>(pending->changedIndices[i]);
