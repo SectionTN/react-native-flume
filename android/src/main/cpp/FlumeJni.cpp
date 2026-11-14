@@ -74,6 +74,10 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
     return jni::make_jstring(flume::Engine::instance().keyAt(storeId, position));
   }
 
+  static jni::local_ref<jni::JArrayInt> stickyIndices(jni::alias_ref<jclass>, jint storeId) {
+    return flume::android::intArray(flume::Engine::instance().stickyIndices(storeId));
+  }
+
   static jni::local_ref<JFlumeBatch> bind(jni::alias_ref<jclass>, jint storeId, jint holderId, jint index,
                                           jfloat widthDp, jfloat heightDp) {
     flume::OpBatch batch;
@@ -109,6 +113,7 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
         makeNativeMethod("viewType", JFlumeJni::viewType),
         makeNativeMethod("itemId", JFlumeJni::itemId),
         makeNativeMethod("keyAt", JFlumeJni::keyAt),
+        makeNativeMethod("stickyIndices", JFlumeJni::stickyIndices),
         makeNativeMethod("bind", JFlumeJni::bind),
         makeNativeMethod("releaseHolder", JFlumeJni::releaseHolder),
         makeNativeMethod("invalidateMeasures", JFlumeJni::invalidateMeasures),

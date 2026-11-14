@@ -25,6 +25,10 @@ class FlumeAdapter(
   var fullSpans = FullSpans(IntArray(0))
   var onFirstData: (() -> Unit)? = null
   var onDataChanged: ((reset: Boolean) -> Unit)? = null
+  var onStickyIndicesChanged: (() -> Unit)? = null
+  // Data indices of the applied data, from the store with each data change.
+  var stickyIndices = IntArray(0)
+    private set
   var rowsPressable = false
   var anchorConfig = AnchorConfig()
   var onAutoscroll: ((index: Int, viewPosition: Float, animated: Boolean) -> Unit)? = null
@@ -65,10 +69,15 @@ class FlumeAdapter(
     if (this.storeId != 0 && this.storeId != storeId) detach()
     val reload = attached.onAttach(storeId)
     val attachedCount = FlumeJni.attach(storeId, this, measurer, density)
+    val sticky = FlumeJni.stickyIndices(storeId)
+    val stickyChanged = !sticky.contentEquals(stickyIndices)
+    stickyIndices = sticky
     if (reload || attachedCount != rows.dataCount) {
       setCount(attachedCount)
       notifyDataSetChanged()
       onDataChanged?.invoke(true)
+    } else if (stickyChanged) {
+      onStickyIndicesChanged?.invoke()
     }
   }
 
@@ -78,7 +87,21 @@ class FlumeAdapter(
     attached.onDetach()
   }
 
-  override fun onListChanged(reset: Boolean, removed: IntArray, inserted: IntArray, moved: IntArray, changed: IntArray, count: Int) {
+  override fun onListChanged(
+    reset: Boolean,
+    removed: IntArray,
+    inserted: IntArray,
+    moved: IntArray,
+    changed: IntArray,
+    count: Int,
+    sticky: IntArray,
+  ) {
+    stickyIndices = sticky
+    // A sticky-only change moves no row: only the pinned and full-span rows change.
+    if (!reset && removed.isEmpty() && inserted.isEmpty() && moved.isEmpty() && changed.isEmpty() && count == rows.dataCount) {
+      onStickyIndicesChanged?.invoke()
+      return
+    }
     // The empty row comes and goes with the data, which the store's operations do not know about.
     val reload = reset || rows.hasEmptyRow != rows.copy(dataCount = count).hasEmptyRow
     val before = if (reload) null else anchorState()

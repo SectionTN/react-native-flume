@@ -210,6 +210,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
       }
       applySpans()
     }
+    adapter.onStickyIndicesChanged = { applySpans() }
     recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
       override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
         origins.scrolled(dx, dy)
@@ -296,10 +297,10 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   // Sticky rows and the list components take the full span; their positions move with the data and the components.
   private fun applySpans() {
-    val positions = stickyHeaderIndices.filter { it in 0 until rows.dataCount }.map(rows::position).sorted().toIntArray()
+    val positions = adapter.stickyIndices.filter { it in 0 until rows.dataCount }.map(rows::position).sorted().toIntArray()
     val previous = stickySet
     stickySet = positions.toHashSet()
-    adapter.fullSpans = FullSpans(rows.fullSpanPositions(stickyHeaderIndices))
+    adapter.fullSpans = FullSpans(rows.fullSpanPositions(adapter.stickyIndices))
     applyFullSpan()
     sticky.indices = positions
     adapter.onStickyChanged(previous, stickySet)
