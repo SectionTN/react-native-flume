@@ -30,6 +30,8 @@ class FlumeSlotView(context: Context) : ReactViewGroup(context) {
 
   override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
     super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    // forceLayout clears View's measure cache, which a ReactViewGroup's no-op requestLayout never does.
+    forceLayout()
     measured = true
     if (measuredWidth == lastWidth && measuredHeight == lastHeight) return
     lastWidth = measuredWidth
