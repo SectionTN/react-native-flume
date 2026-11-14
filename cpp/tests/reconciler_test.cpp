@@ -321,6 +321,88 @@ TEST_CASE("a shadow change re-emits the view style") {
   CHECK(firstOp(rig.batch, 4, 0).floats[7] == 0.0f);
 }
 
+namespace {
+
+flume::Value styledImage(flume::Value::Object extra) {
+  flume::Value::Object style{{"width", V(40)}, {"height", V(40)}, {"borderRadius", V(20)}};
+  for (auto& entry : extra) style.push_back(std::move(entry));
+  return rowCell(obj({{"type", V("image")}, {"source", V("u")}, {"style", flume::Value(std::move(style))}}), {});
+}
+
+int indexOf(const flume::OpBatch& batch, int code, int id) {
+  auto ops = decode(batch);
+  for (size_t i = 0; i < ops.size(); i++) {
+    if (ops[i].op == code && ops[i].id == id) return static_cast<int>(i);
+  }
+  return -1;
+}
+
+}  // namespace
+
+TEST_CASE("an image's background and border reach it as a view style before its image op") {
+  Rig rig;
+  rig.bind(styledImage({{"backgroundColor", V("#ddd")}, {"borderWidth", V(2)}, {"borderColor", V("#f00")}}));
+  auto op = firstOp(rig.batch, 4, 1);
+  CHECK(static_cast<uint32_t>(op.ints[0]) == 0xFFDDDDDDu);
+  CHECK(static_cast<uint32_t>(op.ints[1]) == 0xFFFF0000u);
+  CHECK(op.floats[1] == 20.0f);
+  CHECK(op.floats[5] == 2.0f);
+  CHECK(indexOf(rig.batch, 4, 1) < indexOf(rig.batch, 6, 1));
+}
+
+TEST_CASE("an image that drops its background gets a view style that clears it") {
+  Rig rig;
+  rig.bind(styledImage({{"backgroundColor", V("#ddd")}}));
+  rig.bind(styledImage({}));
+  CHECK(firstOp(rig.batch, 4, 1).ints[0] == 0);
+}
+
+TEST_CASE("a bordered image rounds its bitmap at its radii less the border, as React Native's iOS Image does") {
+  Rig rig;
+  rig.bind(styledImage({{"borderWidth", V(3)}, {"borderTopLeftRadius", V(2)}, {"padding", V(6)}}));
+  auto image = firstOp(rig.batch, 6, 1);
+  CHECK(std::vector<float>(image.floats.begin() + 2, image.floats.begin() + 6) == std::vector<float>{0, 17, 17, 17});
+  CHECK(firstOp(rig.batch, 4, 1).floats[2] == 20.0f);
+  rig.bind(styledImage({{"borderWidth", V(5)}, {"borderTopLeftRadius", V(2)}, {"padding", V(6)}}));
+  CHECK(firstOp(rig.batch, 6, 1).floats[3] == 15.0f);
+}
+
+TEST_CASE("an image that drops its paint leaves its box unclipped, so a later radius is the bitmap's alone") {
+  Rig rig;
+  rig.bind(styledImage({{"backgroundColor", V("#ddd")}}));
+  rig.bind(styledImage({}));
+  auto cleared = firstOp(rig.batch, 4, 1);
+  CHECK(std::vector<float>(cleared.floats.begin() + 1, cleared.floats.begin() + 5) == std::vector<float>{0, 0, 0, 0});
+  rig.bind(styledImage({{"borderRadius", V(8)}}));
+  CHECK(indexOf(rig.batch, 4, 1) == -1);
+  CHECK(firstOp(rig.batch, 6, 1).floats[2] == 8.0f);
+}
+
+TEST_CASE("an image's content insets are its padding and border, sent after layout when they change") {
+  Rig rig;
+  rig.bind(styledImage({{"borderWidth", V(2)}, {"padding", V(3)}, {"paddingLeft", V(5)}}));
+  auto op = firstOp(rig.batch, 10, 1);
+  CHECK(op.floats == std::vector<float>{7, 5, 5, 5});
+  CHECK(indexOf(rig.batch, 10, 1) > indexOf(rig.batch, 3, 1));
+  rig.bind(styledImage({}));
+  CHECK(firstOp(rig.batch, 10, 1).floats == std::vector<float>{0, 0, 0, 0});
+  rig.bind(styledImage({}));
+  CHECK(indexOf(rig.batch, 10, 1) == -1);
+}
+
+TEST_CASE("a text's background, border and radius reach it as a view style") {
+  Rig rig;
+  rig.bind(rowCell(obj({{"type", V("text")},
+                        {"text", V("tag")},
+                        {"style", obj({{"backgroundColor", V("#e8f0ff")}, {"borderRadius", V(6)},
+                                       {"borderWidth", V(1)}, {"paddingHorizontal", V(8)}})}}),
+                   {}));
+  auto op = firstOp(rig.batch, 4, 1);
+  CHECK(static_cast<uint32_t>(op.ints[0]) == 0xFFE8F0FFu);
+  CHECK(op.floats[1] == 6.0f);
+  CHECK(op.floats[5] == 1.0f);
+}
+
 TEST_CASE("a view styled with a shadow only gets a view style") {
   Rig rig;
   rig.bind(obj({{"type", V("view")}, {"style", obj({{"shadowOpacity", V(0.3)}, {"shadowRadius", V(6)}})}}));

@@ -4,12 +4,13 @@
 
 #include "adapter/CellTree.h"
 
-// A cell image: loads its URI, and shows only the image it asked for last.
-@interface FLMImageView : UIImageView <FLMShaped>
+// A cell image: loads its URI, shows only the image it asked for last, inside its padding and border.
+@interface FLMImageView : UIView <FLMShaped>
 
 @property (nonatomic) std::array<float, 4> radii;
 @property (nonatomic) BOOL opaqueShadow;
 
 - (void)setSpec:(const flume::ImageSpec &)spec;
+- (void)setInsets:(UIEdgeInsets)insets;
 
 @end

@@ -17,6 +17,7 @@ class FLMCellViews final : public flume::CellViews {
   void viewStyle(flume::ViewHandle view, const flume::ViewStyleSpec &style) override;
   void text(flume::ViewHandle view, const flume::TextSpec &text, float insetLeft, float insetTop) override;
   void image(flume::ViewHandle view, const flume::ImageSpec &image) override;
+  void imageInsets(flume::ViewHandle view, float left, float top, float right, float bottom) override;
   void pressable(flume::ViewHandle view, const std::string &pressId, float pressedOpacity) override;
   void accessibility(flume::ViewHandle view, const std::optional<std::string> &label,
                      const std::optional<std::string> &testID, int role, int accessible) override;

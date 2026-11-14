@@ -10,6 +10,8 @@ class FakeView(val kind: Int) {
   val children = mutableListOf<FakeView>()
   var text: TextSpec? = null
   var insetPx: Pair<Float, Float>? = null
+  var imageInsetsPx: List<Float>? = null
+  var pressId: String? = null
 }
 
 class FakeViews : CellViews<FakeView> {
@@ -31,7 +33,10 @@ class FakeViews : CellViews<FakeView> {
     view.insetPx = insetLeftPx to insetTopPx
   }
   override fun image(view: FakeView, spec: ImageSpec) = Unit
-  override fun pressable(view: FakeView, id: String, pressedOpacity: Float) = Unit
+  override fun imageInsets(view: FakeView, leftPx: Float, topPx: Float, rightPx: Float, bottomPx: Float) {
+    view.imageInsetsPx = listOf(leftPx, topPx, rightPx, bottomPx)
+  }
+  override fun pressable(view: FakeView, id: String, pressedOpacity: Float) { view.pressId = id }
   override fun accessibility(view: FakeView, label: String?, testId: String?, role: Int, accessible: Int) = Unit
 }
 
@@ -41,6 +46,20 @@ private fun batch(ints: IntArray, floats: FloatArray = FloatArray(0), first: Boo
 class CellTreeTest {
   private val views = FakeViews()
   private val tree = CellTree(views, 2f)
+
+  @Test
+  fun imageInsetsArriveInPixelsAndTheOpAfterThemStillApplies() {
+    tree.apply(
+      batch(
+        intArrayOf(1, 1, 2, 0, 0, 10, 1, 7, 1, 0),
+        floatArrayOf(7f, 5f, 4f, 3f, 0.5f),
+        first = true,
+        strings = arrayOf("after"),
+      ),
+    )
+    assertEquals(listOf(14f, 10f, 8f, 6f), views.created[0].imageInsetsPx)
+    assertEquals("after", views.created[0].pressId)
+  }
 
   @Test
   fun buildsATreeFromCreateOps() {

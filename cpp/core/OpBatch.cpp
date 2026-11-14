@@ -1,5 +1,7 @@
 #include "core/OpBatch.h"
 
+#include <algorithm>
+
 namespace flume {
 
 namespace {
@@ -7,6 +9,8 @@ namespace {
 int32_t code(Op op) { return static_cast<int32_t>(op); }
 int32_t color(std::optional<uint32_t> c, uint32_t fallback) { return static_cast<int32_t>(c.value_or(fallback)); }
 float radius(const Style& s, size_t corner) { return s.borderRadii[corner].value_or(0); }
+// React Native's iOS Image rounds the bitmap at the box radius less the border, whatever the padding.
+float bitmapRadius(const Style& s, size_t corner) { return std::max(0.f, radius(s, corner) - s.borderWidth.value_or(0)); }
 
 }  // namespace
 
@@ -51,8 +55,8 @@ void OpBatch::image(int id, const std::string& uri, const Style& s, ResizeMode m
   ints.insert(ints.end(), {code(Op::Image), id, addString(uri), static_cast<int32_t>(mode), tint ? 1 : 0, color(tint, 0),
                            static_cast<int32_t>(headers.size())});
   for (const auto& [key, value] : headers) ints.insert(ints.end(), {addString(key), addString(value)});
-  floats.insert(floats.end(), {s.width.pointsOr(0), s.height.pointsOr(0), radius(s, 0), radius(s, 1), radius(s, 2),
-                               radius(s, 3)});
+  floats.insert(floats.end(), {s.width.pointsOr(0), s.height.pointsOr(0), bitmapRadius(s, 0), bitmapRadius(s, 1),
+                               bitmapRadius(s, 2), bitmapRadius(s, 3)});
   count_++;
 }
 
@@ -71,6 +75,12 @@ void OpBatch::accessibility(int id, const std::string& label, const std::string&
 
 void OpBatch::move(int id, int index) {
   ints.insert(ints.end(), {code(Op::Move), id, index});
+  count_++;
+}
+
+void OpBatch::imageInsets(int id, float left, float top, float right, float bottom) {
+  ints.insert(ints.end(), {code(Op::ImageInsets), id});
+  floats.insert(floats.end(), {left, top, right, bottom});
   count_++;
 }
 

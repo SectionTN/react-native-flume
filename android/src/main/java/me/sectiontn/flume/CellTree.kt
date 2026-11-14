@@ -93,6 +93,11 @@ class CellTree<V : Any>(private val views: CellViews<V>, private val density: Fl
           i += 7 + 2 * headerCount
           f += 6
         }
+        10 -> {
+          target(id)?.let { views.imageInsets(it, floats[f] * density, floats[f + 1] * density, floats[f + 2] * density, floats[f + 3] * density) }
+          i += 2
+          f += 4
+        }
         7 -> {
           target(id)?.let { views.pressable(it, strings[ints[i + 2]], floats[f]) }
           i += 3

@@ -20,6 +20,8 @@ interface CellViews<V : Any> {
 
   fun image(view: V, spec: ImageSpec)
 
+  fun imageInsets(view: V, leftPx: Float, topPx: Float, rightPx: Float, bottomPx: Float)
+
   fun pressable(view: V, id: String, pressedOpacity: Float)
 
   fun accessibility(view: V, label: String?, testId: String?, role: Int, accessible: Int)

@@ -20,7 +20,8 @@ enum class Op : int32_t {
   Image = 6,
   Pressable = 7,
   Accessibility = 8,
-  Move = 9
+  Move = 9,
+  ImageInsets = 10
 };
 enum class ViewKind : int32_t { View = 0, Text = 1, Image = 2, Pressable = 3 };
 using Headers = std::vector<std::pair<std::string, std::string>>;
@@ -31,10 +32,11 @@ using Headers = std::vector<std::pair<std::string, std::string>>;
 // Frame 3: ints [3, id]; floats [x, y, w, h]
 // ViewStyle 4: ints [4, id, backgroundColor, borderColor, shadowColor]; floats [opacity, rTL, rTR, rBR, rBL, borderWidth, elevation, shadowOpacity, shadowRadius, shadowOffsetX, shadowOffsetY]
 // Text 5: ints [5, id, textIdx, color, weight, lines, familyIdx (-1 none), italic, align, decoration, fontScaling]; floats [fontSize, maxWidth, lineHeight (0 none), letterSpacing, insetLeft, insetTop]
-// Image 6: ints [6, id, uriIdx, resizeMode, hasTint, tint, headerCount, (keyIdx, valueIdx)...]; floats [w, h, rTL, rTR, rBR, rBL]
+// Image 6: ints [6, id, uriIdx, resizeMode, hasTint, tint, headerCount, (keyIdx, valueIdx)...]; floats [w, h, rTL, rTR, rBR, rBL] (the bitmap's radii, the box's less the border)
 // Pressable 7: ints [7, id, pressIdIdx]; floats [pressedOpacity]
 // Accessibility 8: ints [8, id, labelIdx (-1 none), testIdIdx (-1 none), role (0 none, 1 button), accessible (-1 unset, 0, 1)]
 // Move 9: ints [9, id, index]
+// ImageInsets 10: ints [10, id]; floats [left, top, right, bottom], the padding and border around an image's bitmap
 struct OpBatch {
   std::vector<int32_t> ints;
   std::vector<float> floats;
@@ -56,6 +58,7 @@ struct OpBatch {
   void pressable(int id, const std::string& pressId, float pressedOpacity);
   void accessibility(int id, const std::string& label, const std::string& testID, int role, std::optional<bool> accessible);
   void move(int id, int index);
+  void imageInsets(int id, float left, float top, float right, float bottom);
   int opCount() const { return count_; }
   void clear();
 

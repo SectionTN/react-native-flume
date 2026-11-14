@@ -6,6 +6,7 @@ import android.graphics.PorterDuffColorFilter
 import android.net.Uri
 import com.facebook.drawee.backends.pipeline.Fresco
 import com.facebook.drawee.drawable.ScalingUtils
+import com.facebook.drawee.generic.GenericDraweeHierarchy
 import com.facebook.drawee.generic.GenericDraweeHierarchyBuilder
 import com.facebook.drawee.generic.RoundingParams
 import com.facebook.drawee.view.SimpleDraweeView
@@ -14,17 +15,26 @@ import com.facebook.imagepipeline.request.ImageRequestBuilder
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.modules.fresco.ReactNetworkImageRequest
 
+// The bitmap fills the padding, set to the content insets, so a border draws beside it as in React Native's iOS Image.
+class FlumeImageView(context: Context, hierarchy: GenericDraweeHierarchy) : SimpleDraweeView(context, hierarchy) {
+  fun setInsets(left: Int, top: Int, right: Int, bottom: Int) {
+    if (left != paddingLeft || top != paddingTop || right != paddingRight || bottom != paddingBottom) {
+      setPadding(left, top, right, bottom)
+    }
+  }
+}
+
 // Same Fresco pipeline and caches as <Image>; no fade on load, for parity with iOS.
 object FlumeImages {
-  fun create(context: Context): SimpleDraweeView {
+  fun create(context: Context): FlumeImageView {
     val hierarchy = GenericDraweeHierarchyBuilder(context.resources)
       .setFadeDuration(0)
       .setActualImageScaleType(ScalingUtils.ScaleType.CENTER_CROP)
       .build()
-    return SimpleDraweeView(context, hierarchy)
+    return FlumeImageView(context, hierarchy)
   }
 
-  fun bind(view: SimpleDraweeView, spec: ImageSpec) {
+  fun bind(view: FlumeImageView, spec: ImageSpec) {
     val hierarchy = view.hierarchy
     hierarchy.actualImageScaleType = when (spec.resizeMode) {
       1 -> ScalingUtils.ScaleType.FIT_CENTER

@@ -67,6 +67,7 @@ class CellViews {
   virtual void viewStyle(ViewHandle view, const ViewStyleSpec& style) = 0;
   virtual void text(ViewHandle view, const TextSpec& text, float insetLeft, float insetTop) = 0;
   virtual void image(ViewHandle view, const ImageSpec& image) = 0;
+  virtual void imageInsets(ViewHandle view, float left, float top, float right, float bottom) = 0;
   virtual void pressable(ViewHandle view, const std::string& pressId, float pressedOpacity) = 0;
   virtual void accessibility(ViewHandle view, const std::optional<std::string>& label,
                              const std::optional<std::string>& testID, int role, int accessible) = 0;

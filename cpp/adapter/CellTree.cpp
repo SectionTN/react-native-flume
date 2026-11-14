@@ -118,6 +118,12 @@ void CellTree::apply(const OpBatch& batch) {
         f += 6;
         break;
       }
+      case Op::ImageInsets: {
+        if (ViewHandle view = target(id)) views_.imageInsets(view, floats[f], floats[f + 1], floats[f + 2], floats[f + 3]);
+        i += 2;
+        f += 4;
+        break;
+      }
       case Op::Pressable: {
         if (ViewHandle view = target(id)) views_.pressable(view, string(ints[i + 2]), floats[f]);
         i += 3;

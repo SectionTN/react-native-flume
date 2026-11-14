@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Button
-import com.facebook.drawee.view.SimpleDraweeView
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -101,7 +100,11 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
   }
 
   override fun image(view: View, spec: ImageSpec) {
-    (view as? SimpleDraweeView)?.let { FlumeImages.bind(it, spec) }
+    (view as? FlumeImageView)?.let { FlumeImages.bind(it, spec) }
+  }
+
+  override fun imageInsets(view: View, leftPx: Float, topPx: Float, rightPx: Float, bottomPx: Float) {
+    (view as? FlumeImageView)?.setInsets(leftPx.roundToInt(), topPx.roundToInt(), rightPx.roundToInt(), bottomPx.roundToInt())
   }
 
   override fun pressable(view: View, id: String, pressedOpacity: Float) {
