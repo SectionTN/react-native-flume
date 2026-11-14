@@ -4,6 +4,6 @@
 @interface FLMCollectionView : UICollectionView
 
 @property (nonatomic, copy, nullable) void (^didLayout)(void);
-@property (nonatomic, copy, nullable) void (^touchDown)(void);
+@property (nonatomic, copy, nullable) void (^touchDown)(UIView *_Nullable hit);
 
 @end

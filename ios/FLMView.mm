@@ -226,8 +226,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     _collectionView.didLayout = ^{
       [weakSelf listDidLayout];
     };
-    _collectionView.touchDown = ^{
-      [weakSelf listTouchedDown];
+    _collectionView.touchDown = ^(UIView *hit) {
+      [weakSelf listTouchedDown:hit];
     };
     _refresh = [[FLMRefresh alloc] initWithScrollView:_collectionView
                                             onRefresh:^{
@@ -1059,7 +1059,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 }
 
 // A touch that stops a fling or a glide, or that never mode spends on the keyboard, never reaches JS, as ScrollView claims it.
-- (void)listTouchedDown
+- (void)listTouchedDown:(UIView *)hit
 {
   BOOL stops = NO;
   if (_collectionView.scrollEnabled) {
@@ -1071,7 +1071,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     }
     _gliding = NO;
   }
-  if (stops || [self swallowsTaps]) {
+  if (stops || [self swallowsTapsOn:hit]) {
     FLMWithholdJSTouch(self);
   }
 }
@@ -1359,20 +1359,22 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   return NO;
 }
 
-// In never mode the first tap with the keyboard up only closes it.
-- (BOOL)swallowsTaps
+// In never mode the first tap with the keyboard up only closes it, unless it lands on a text input.
+- (BOOL)swallowsTapsOn:(UIView *)hit
 {
-  return flume::decideTap(_keyboardTaps.mode, _keyboardTaps.keyboardUp, true).swallow;
+  return flume::decideTap(_keyboardTaps.mode, _keyboardTaps.keyboardUp, true, FLMIsTextInput(hit, _collectionView))
+      .swallow;
 }
 
+// Worklet cells hold no inputs.
 - (BOOL)collectionView:(UICollectionView *)collectionView shouldHighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
-  return ![self swallowsTaps];
+  return ![self swallowsTapsOn:nil];
 }
 
 - (BOOL)collectionView:(UICollectionView *)collectionView shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
 {
-  return ![self swallowsTaps];
+  return ![self swallowsTapsOn:nil];
 }
 
 // A React row presses through its own React handlers, so it never emits a row press, as on Android.
