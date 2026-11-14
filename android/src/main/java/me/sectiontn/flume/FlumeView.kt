@@ -267,13 +267,6 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   val rows: ListRows get() = adapter.rows
 
-  // Data indices; the pinned copy and the grid work in adapter positions.
-  var stickyHeaderIndices = IntArray(0)
-    set(value) {
-      field = value
-      applySpans()
-    }
-
   var listHeader = false
     set(value) {
       field = value

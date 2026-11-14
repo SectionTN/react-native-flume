@@ -65,7 +65,6 @@ export interface NativeProps extends ViewProps {
   separatorColor?: ColorValue;
   separatorInsetStart?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   separatorInsetEnd?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
-  stickyHeaderIndices?: ReadonlyArray<CodegenTypes.Int32>;
   scrollEventThrottle?: CodegenTypes.WithDefault<CodegenTypes.Double, 16>;
   // Scroll events reach JS only when a handler is set; drag and momentum events are per gesture.
   emitScrollEvents?: CodegenTypes.WithDefault<boolean, false>;
