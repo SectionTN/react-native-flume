@@ -13,7 +13,11 @@ class ScrollEventsTest {
   fun transitionsFollowTheScrollView() {
     assertEquals(listOf(ScrollKind.BEGIN_DRAG), ScrollStateMachine.transition(SCROLL_STATE_IDLE, SCROLL_STATE_DRAGGING))
     assertEquals(listOf(ScrollKind.END_DRAG, ScrollKind.MOMENTUM_BEGIN), ScrollStateMachine.transition(SCROLL_STATE_DRAGGING, SCROLL_STATE_SETTLING))
-    assertEquals(listOf(ScrollKind.END_DRAG), ScrollStateMachine.transition(SCROLL_STATE_DRAGGING, SCROLL_STATE_IDLE))
+    // ScrollView runs its momentum pair after every release, also when no fling follows.
+    assertEquals(
+      listOf(ScrollKind.END_DRAG, ScrollKind.MOMENTUM_BEGIN, ScrollKind.MOMENTUM_END),
+      ScrollStateMachine.transition(SCROLL_STATE_DRAGGING, SCROLL_STATE_IDLE),
+    )
     assertEquals(listOf(ScrollKind.MOMENTUM_END), ScrollStateMachine.transition(SCROLL_STATE_SETTLING, SCROLL_STATE_IDLE))
     assertEquals(listOf(ScrollKind.MOMENTUM_END, ScrollKind.BEGIN_DRAG), ScrollStateMachine.transition(SCROLL_STATE_SETTLING, SCROLL_STATE_DRAGGING))
     assertEquals(listOf(ScrollKind.MOMENTUM_BEGIN), ScrollStateMachine.transition(SCROLL_STATE_IDLE, SCROLL_STATE_SETTLING))
