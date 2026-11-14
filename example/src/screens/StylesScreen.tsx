@@ -17,6 +17,9 @@ const ROWS: Showcase[] = [
 
 const PHOTO = 'https://picsum.photos/id/1015/300/200';
 const ICON = 'https://reactnative.dev/img/tiny_logo.png';
+const FACE = 'https://i.pravatar.cc/128?img=5';
+// Never loads, so only the image's own background shows.
+const NEVER = 'https://invalid.invalid/image.png';
 const LONG =
   'A paragraph long enough to need more than two lines on a phone, so the tail of it is cut with an ellipsis instead of growing the row.';
 
@@ -70,6 +73,17 @@ function margins(): CellNode {
 function text(): CellNode {
   'worklet';
   return cell.view({ gap: 8 }, [
+    cell.text('A tag with its own box', {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: '#0066ff',
+      backgroundColor: '#e8f0ff',
+      color: '#0066ff',
+      fontSize: 13,
+    }),
     cell.text('Serif, italic and centered', {
       fontFamily: 'serif',
       fontStyle: 'italic',
@@ -132,6 +146,40 @@ function images(): CellNode {
         height: 64,
         borderTopLeftRadius: 24,
         borderBottomRightRadius: 24,
+      }),
+    ]),
+    cell.view({ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, [
+      cell.image({
+        source: NEVER,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#dddddd',
+      }),
+      cell.image({
+        source: FACE,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        borderWidth: 3,
+        borderColor: '#0066ff',
+      }),
+      cell.image({
+        source: FACE,
+        width: 56,
+        height: 56,
+        padding: 6,
+        borderRadius: 12,
+        backgroundColor: '#ffcc00',
+      }),
+      cell.image({ source: FACE, width: 56, height: 56, borderRadius: 12, opacity: 0.4 }),
+      cell.image({
+        source: FACE,
+        width: 56,
+        height: 56,
+        borderRadius: 12,
+        backgroundColor: '#ffffff',
+        elevation: 6,
       }),
     ]),
   ]);

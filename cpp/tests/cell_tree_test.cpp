@@ -59,6 +59,10 @@ class FakeViews : public CellViews {
     lastImage = i;
     log.push_back("image " + name(view));
   }
+  void imageInsets(ViewHandle view, float left, float top, float right, float bottom) override {
+    log.push_back("insets " + name(view) + " " + number(left) + " " + number(top) + " " + number(right) + " " +
+                  number(bottom));
+  }
   void pressable(ViewHandle view, const std::string& pressId, float pressedOpacity) override {
     log.push_back("pressable " + name(view) + " " + pressId + " " + number(pressedOpacity));
   }
@@ -152,6 +156,18 @@ TEST_CASE("a view style decodes every field") {
   CHECK(views.lastStyle.shadowRadius == 5);
   CHECK(views.lastStyle.shadowOffsetX == 1);
   CHECK(views.lastStyle.shadowOffsetY == -1);
+}
+
+TEST_CASE("image insets decode and the op after them still applies") {
+  OpBatch batch;
+  batch.create(1, ViewKind::Image, 0, 0);
+  batch.imageInsets(1, 7, 5, 4, 3);
+  batch.pressable(1, "after", 0.5f);
+  FakeViews views;
+  CellTree tree(views);
+  tree.apply(batch);
+  CHECK(views.log[2] == "insets v1 7 5 4 3");
+  CHECK(views.log[3] == "pressable v1 after 0.5");
 }
 
 TEST_CASE("text and image ops decode their specs") {

@@ -16,16 +16,19 @@ ViewKind kindOf(NodeType type) {
   }
 }
 
-bool isContainer(NodeType type) { return type == NodeType::View || type == NodeType::Pressable; }
-
 bool anyRadius(const Style& s) {
   return std::any_of(s.borderRadii.begin(), s.borderRadii.end(), [](const auto& r) { return r.has_value(); });
 }
 
-bool hasVisual(const Style& s) {
-  return s.backgroundColor.has_value() || s.opacity.has_value() || anyRadius(s) || s.borderWidth.has_value() ||
+bool hasPaint(const Style& s) {
+  return s.backgroundColor.has_value() || s.opacity.has_value() || s.borderWidth.has_value() ||
          s.borderColor.has_value() || s.elevation.has_value() || s.shadowColor.has_value() ||
          s.shadowOpacity.has_value() || s.shadowRadius.has_value() || s.shadowOffset.has_value();
+}
+
+// Every node draws its own box. An image's radii travel in its Image op, so a radius alone sends it no ViewStyle.
+bool drawsBox(NodeType type, const Style& s) {
+  return hasPaint(s) || (type != NodeType::Image && anyRadius(s));
 }
 
 bool visualChanged(const Style& a, const Style& b) {
@@ -43,7 +46,7 @@ bool textStyleChanged(const Style& a, const Style& b) {
 }
 
 bool imageStyleChanged(const Style& a, const Style& b) {
-  return a.width != b.width || a.height != b.height || a.borderRadii != b.borderRadii;
+  return a.width != b.width || a.height != b.height || a.borderRadii != b.borderRadii || a.borderWidth != b.borderWidth;
 }
 
 bool imageChanged(const Mounted& m, const Node& n) {
@@ -118,7 +121,7 @@ std::unique_ptr<Mounted> Reconciler::mountNew(Holder& holder, Node& fresh, int v
   mounted->yoga = layout_.createNode(*mounted);
   layout_.applyStyle(mounted->yoga, mounted->style);
   if (viewId != 0) out.create(viewId, kindOf(mounted->type), parentId, index);
-  if (isContainer(mounted->type) && hasVisual(mounted->style)) emitViewStyle(*mounted, out);
+  if (drawsBox(mounted->type, mounted->style)) emitViewStyle(*mounted, out);
   if (mounted->type == NodeType::Image) emitImage(*mounted, out);
   if (mounted->type == NodeType::Pressable) emitPressable(*mounted, out);
   if (hasAccessibility(*mounted)) emitAccessibility(holder, *mounted, out);
@@ -135,12 +138,13 @@ std::unique_ptr<Mounted> Reconciler::mountNew(Holder& holder, Node& fresh, int v
 void Reconciler::reconcileNode(Holder& holder, Mounted& mounted, Node& fresh, OpBatch& out) {
   bool imageEmitted = false;
   if (mounted.style != fresh.style) {
-    bool visual = visualChanged(mounted.style, fresh.style);
+    bool visual = visualChanged(mounted.style, fresh.style) &&
+                  (drawsBox(mounted.type, mounted.style) || drawsBox(mounted.type, fresh.style));
     bool textStyle = textStyleChanged(mounted.style, fresh.style);
     bool imageStyle = imageStyleChanged(mounted.style, fresh.style);
     mounted.style = fresh.style;
     layout_.applyStyle(mounted.yoga, mounted.style);
-    if (isContainer(mounted.type) && visual) emitViewStyle(mounted, out);
+    if (visual) emitViewStyle(mounted, out);
     if (mounted.type == NodeType::Text && textStyle) {
       mounted.textDirty = true;
       layout_.markTextDirty(mounted.yoga);
@@ -258,12 +262,12 @@ void Reconciler::freeTree(Mounted& mounted) {
 
 void Reconciler::emitAfterLayout(Holder& holder, OpBatch& out) {
   if (holder.root == nullptr) return;
-  emitTextOf(*holder.root, out);
+  emitContentOf(*holder.root, out);
   emitRootLabel(holder, out);
   emitPressableLabels(*holder.root, out);
 }
 
-void Reconciler::emitTextOf(Mounted& node, OpBatch& out) {
+void Reconciler::emitContentOf(Mounted& node, OpBatch& out) {
   if (node.type == NodeType::Text) {
     float maxWidth = node.measuredMaxWidth > 0 ? node.measuredMaxWidth : YGNodeLayoutGetWidth(node.yoga);
     float insetLeft = YGNodeLayoutGetPadding(node.yoga, YGEdgeLeft) + YGNodeLayoutGetBorder(node.yoga, YGEdgeLeft);
@@ -277,7 +281,18 @@ void Reconciler::emitTextOf(Mounted& node, OpBatch& out) {
       node.emittedInsetTop = insetTop;
     }
   }
-  for (auto& child : node.children) emitTextOf(*child, out);
+  if (node.type == NodeType::Image) {
+    std::array<float, 4> insets{};
+    const std::array<YGEdge, 4> edges{YGEdgeLeft, YGEdgeTop, YGEdgeRight, YGEdgeBottom};
+    for (size_t i = 0; i < edges.size(); i++) {
+      insets[i] = YGNodeLayoutGetPadding(node.yoga, edges[i]) + YGNodeLayoutGetBorder(node.yoga, edges[i]);
+    }
+    if (insets != node.emittedImageInsets) {
+      out.imageInsets(node.viewId, insets[0], insets[1], insets[2], insets[3]);
+      node.emittedImageInsets = insets;
+    }
+  }
+  for (auto& child : node.children) emitContentOf(*child, out);
 }
 
 // Without an explicit label the cell reads as its texts in order; sent only when that string changes.
@@ -304,7 +319,16 @@ void Reconciler::emitPressableLabels(Mounted& node, OpBatch& out) {
   for (auto& child : node.children) emitPressableLabels(*child, out);
 }
 
-void Reconciler::emitViewStyle(const Mounted& node, OpBatch& out) { out.viewStyle(node.viewId, node.style); }
+// An image without paint draws no box, so its box keeps no radii and the bitmap's own radii alone round it.
+void Reconciler::emitViewStyle(const Mounted& node, OpBatch& out) {
+  if (node.type == NodeType::Image && !hasPaint(node.style)) {
+    Style bare = node.style;
+    bare.borderRadii = {};
+    out.viewStyle(node.viewId, bare);
+    return;
+  }
+  out.viewStyle(node.viewId, node.style);
+}
 
 void Reconciler::emitImage(const Mounted& node, OpBatch& out) {
   out.image(node.viewId, node.imageUri, node.style, node.resizeMode, node.tintColor, node.imageHeaders);

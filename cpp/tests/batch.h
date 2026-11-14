@@ -40,6 +40,7 @@ inline std::vector<DecodedOp> decode(const flume::OpBatch& batch) {
       case 7: takeInts(op, 1); takeFloats(op, 1); break;
       case 8: takeInts(op, 4); break;
       case 9: takeInts(op, 1); break;
+      case 10: takeFloats(op, 4); break;
       default: return ops;
     }
     ops.push_back(std::move(op));

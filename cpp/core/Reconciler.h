@@ -16,7 +16,7 @@ class Reconciler {
   explicit Reconciler(Layout& layout) : layout_(layout) {}
 
   void reconcile(Holder& holder, std::unique_ptr<Node> fresh, OpBatch& out);  // null fresh unmounts everything
-  void emitAfterLayout(Holder& holder, OpBatch& out);  // Text ops for dirty or rewrapped texts, then derived labels
+  void emitAfterLayout(Holder& holder, OpBatch& out);  // Text and image inset ops that changed, then derived labels
   void release(Holder& holder);                        // destroys the mounted tree and its Yoga nodes, no ops
 
  private:
@@ -25,7 +25,7 @@ class Reconciler {
   void reconcileChildren(Holder& holder, Mounted& mounted, Node& fresh, OpBatch& out);
   void unmount(Mounted& mounted, OpBatch& out);
   void freeTree(Mounted& mounted);
-  void emitTextOf(Mounted& node, OpBatch& out);
+  void emitContentOf(Mounted& node, OpBatch& out);
   void emitRootLabel(Holder& holder, OpBatch& out);
   void emitPressableLabels(Mounted& node, OpBatch& out);
   void emitViewStyle(const Mounted& node, OpBatch& out);

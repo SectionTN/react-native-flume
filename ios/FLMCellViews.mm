@@ -87,7 +87,8 @@ void FLMCellViews::viewStyle(flume::ViewHandle handle, const flume::ViewStyleSpe
   }
   UIView<FLMShaped> *view = (UIView<FLMShaped> *)plain;
   CALayer *layer = view.layer;
-  view.backgroundColor = style.backgroundColor == 0 ? nil : FLMColor(style.backgroundColor);
+  // On the layer, as React Native does: a drawRect view would paint backgroundColor into contents the radii don't clip.
+  layer.backgroundColor = style.backgroundColor == 0 ? nil : FLMColor(style.backgroundColor).CGColor;
   view.alpha = style.opacity;
   layer.borderWidth = style.borderWidth;
   layer.borderColor = style.borderWidth > 0 ? FLMColor(style.borderColor).CGColor : nil;
@@ -119,6 +120,14 @@ void FLMCellViews::image(flume::ViewHandle handle, const flume::ImageSpec &image
   UIView *view = FLMUIView(handle);
   if ([view isKindOfClass:FLMImageView.class]) {
     [(FLMImageView *)view setSpec:image];
+  }
+}
+
+void FLMCellViews::imageInsets(flume::ViewHandle handle, float left, float top, float right, float bottom)
+{
+  UIView *view = FLMUIView(handle);
+  if ([view isKindOfClass:FLMImageView.class]) {
+    [(FLMImageView *)view setInsets:UIEdgeInsetsMake(top, left, bottom, right)];
   }
 }
 
