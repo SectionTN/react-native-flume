@@ -403,6 +403,29 @@ TEST_CASE("a text's background, border and radius reach it as a view style") {
   CHECK(op.floats[5] == 1.0f);
 }
 
+TEST_CASE("a fixed-size text Yoga never measures wraps inside its padding and border") {
+  Rig rig;
+  rig.bind(rowCell(obj({{"type", V("text")},
+                        {"text", V("9")},
+                        {"style", obj({{"width", V(24)}, {"height", V(24)}, {"borderWidth", V(2)},
+                                       {"paddingHorizontal", V(1)}, {"textAlign", V("center")}})}}),
+                   {}));
+  auto op = textOp(rig.batch, 1);
+  CHECK(op.floats[1] == 18.0f);
+  CHECK(op.floats[4] == 3.0f);
+}
+
+TEST_CASE("a measured text that gets a fixed size drops the width it was measured at") {
+  Rig rig;
+  rig.bind(rowCell(obj({{"type", V("text")}, {"text", V("9")}, {"style", obj({{"textAlign", V("center")}})}}), {}));
+  rig.bind(rowCell(obj({{"type", V("text")},
+                        {"text", V("9")},
+                        {"style", obj({{"width", V(24)}, {"height", V(24)}, {"borderWidth", V(2)},
+                                       {"paddingHorizontal", V(1)}, {"textAlign", V("center")}})}}),
+                   {}));
+  CHECK(textMaxWidth(rig.batch, 1) == 18.0f);
+}
+
 TEST_CASE("a view styled with a shadow only gets a view style") {
   Rig rig;
   rig.bind(obj({{"type", V("view")}, {"style", obj({{"shadowOpacity", V(0.3)}, {"shadowRadius", V(6)}})}}));
