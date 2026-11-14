@@ -27,6 +27,9 @@ object FlumeJni {
 
   @JvmStatic external fun keyAt(storeId: Int, position: Int): String
 
+  // The sticky header indices of the data the store applied.
+  @JvmStatic external fun stickyIndices(storeId: Int): IntArray
+
   // Null when the store is gone.
   @JvmStatic external fun bind(storeId: Int, holderId: Int, index: Int, widthDp: Float, heightDp: Float): FlumeBatch?
 

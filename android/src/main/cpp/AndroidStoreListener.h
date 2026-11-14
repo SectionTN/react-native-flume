@@ -33,14 +33,14 @@ inline jni::local_ref<jni::JArrayInt> pairArray(const std::vector<std::pair<int,
 struct JFlumeStoreListener : jni::JavaClass<JFlumeStoreListener> {
   static constexpr auto kJavaDescriptor = "Lme/sectiontn/flume/FlumeStoreListener;";
 
-  // Ranges and moves travel as flat int pairs: (index, count) and (from, to).
+  // Ranges and moves travel as flat int pairs: (index, count) and (from, to), then the data's sticky indices.
   void onListChanged(const ListOps& ops, int count) const {
     static const auto method =
         javaClassStatic()
             ->getMethod<void(jboolean, jni::JArrayInt::javaobject, jni::JArrayInt::javaobject, jni::JArrayInt::javaobject,
-                             jni::JArrayInt::javaobject, jint)>("onListChanged");
+                             jni::JArrayInt::javaobject, jint, jni::JArrayInt::javaobject)>("onListChanged");
     method(self(), ops.reset, rangeArray(ops.removed).get(), rangeArray(ops.inserted).get(), pairArray(ops.moved).get(),
-           intArray(ops.changed).get(), count);
+           intArray(ops.changed).get(), count, intArray(ops.sticky).get());
   }
 };
 
