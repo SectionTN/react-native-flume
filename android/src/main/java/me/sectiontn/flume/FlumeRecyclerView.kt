@@ -10,6 +10,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import androidx.recyclerview.widget.RecyclerView
 import com.facebook.react.bridge.ReactContext
+import com.facebook.react.uimanager.TouchTargetHelper
 import com.facebook.react.uimanager.events.NativeGestureUtil
 
 // decelerationRate scales the fling velocity: RecyclerView exposes no friction, so fast halves it.
@@ -83,22 +84,10 @@ class NativeGestureTracker {
   }
 }
 
-// ScrollView looks at the touch target: the topmost view under the point, down to an EditText, in local coordinates.
+// ScrollView looks at the JS touch target, found as JSTouchDispatcher finds it (z-index, transforms, pointerEvents).
 object TextInputHit {
-  fun at(view: View, x: Float, y: Float): Boolean {
-    if (view.visibility != View.VISIBLE || x < 0 || y < 0 || x >= view.width || y >= view.height) return false
-    if (view is EditText) return true
-    val group = view as? ViewGroup ?: return false
-    for (i in group.childCount - 1 downTo 0) {
-      val child = group.getChildAt(i)
-      val childX = x + group.scrollX - child.left - child.translationX
-      val childY = y + group.scrollY - child.top - child.translationY
-      if (child.visibility == View.VISIBLE && childX >= 0 && childY >= 0 && childX < child.width && childY < child.height) {
-        return at(child, childX, childY)
-      }
-    }
-    return false
-  }
+  fun at(group: ViewGroup, x: Float, y: Float): Boolean =
+    group.findViewById<View>(TouchTargetHelper.findTargetTagForTouch(x, y, group)) is EditText
 }
 
 // ScrollView's rule: a focused input with the keyboard shown; before API 30 the IME's visibility is unknown and counts as shown.
