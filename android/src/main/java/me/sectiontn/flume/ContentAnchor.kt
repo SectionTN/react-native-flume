@@ -48,12 +48,13 @@ object AnchorPolicy {
     return if (anchorLost) restore else AnchorDecision()
   }
 
-  // Data indices of the laid-out rows, -1 for the list components (they outlive any data change); removed holds
-  // (index, count) pairs in the old indices.
-  fun losesEveryRow(laidOutDataIndices: IntArray, removed: IntArray): Boolean =
-    laidOutDataIndices.isNotEmpty() && laidOutDataIndices.all { index ->
-      index >= 0 && (removed.indices step 2).any { i -> index >= removed[i] && index < removed[i] + removed[i + 1] }
+  // Only data rows count, since RecyclerView anchors on an off-screen list component (-1). removed holds (index, count).
+  fun losesEveryRow(laidOutDataIndices: IntArray, removed: IntArray): Boolean {
+    val rows = laidOutDataIndices.filter { it >= 0 }
+    return rows.isNotEmpty() && rows.all { index ->
+      (removed.indices step 2).any { i -> index >= removed[i] && index < removed[i] + removed[i + 1] }
     }
+  }
 }
 
 // The index and viewPosition that put a visual edge in view: the content start is the visual bottom when inverted.
