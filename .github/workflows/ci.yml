@@ -1,0 +1,102 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  js:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Typecheck
+        run: yarn typecheck
+
+      - name: Unit tests
+        run: yarn test
+
+      - name: Build package
+        run: yarn prepare
+
+  cpp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Clang, as in the NDK and Xcode. The jsi suite needs macOS Hermes and is skipped here.
+    env:
+      CC: clang
+      CXX: clang++
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: C++ core tests
+        run: yarn test:cpp
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Install JDK
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Accept Android SDK licenses
+        # A fresh bash without pipefail, since yes exits on SIGPIPE.
+        run: /bin/bash -c 'yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null'
+
+      - name: Prebuild the example
+        run: yarn example expo prebuild --platform android --no-install
+
+      - name: Cache Gradle
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/wrapper
+            ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('example/android/gradle/wrapper/gradle-wrapper.properties', 'yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # One ABI compiles every native source and keeps the build short on 2 cores.
+      - name: JUnit tests and the example build
+        working-directory: example/android
+        run: >-
+          ./gradlew --console=plain
+          :react-native-flume:testReleaseUnitTest
+          :app:assembleDebug
+          -PreactNativeArchitectures=arm64-v8a
