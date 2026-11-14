@@ -82,6 +82,10 @@ class StickyHeaderHost(
   // Whether a touch in the host's coordinates lands on a pinned copy where it is drawn.
   fun contains(x: Float, y: Float): Boolean = drawnAt(pinnedView, x, y) || drawnAt(reactPinned, x, y)
 
+  fun textInputAt(x: Float, y: Float): Boolean =
+    drawnAt(reactPinned, x, y) &&
+      TextInputHit.at(reactPinned, x - reactPinned.left - reactPinned.translationX, y - reactPinned.top - reactPinned.translationY)
+
   // A React copy handles its own taps; a worklet copy does where it is pressable.
   fun pressableAt(x: Float, y: Float): Boolean {
     if (drawnAt(reactPinned, x, y)) return true

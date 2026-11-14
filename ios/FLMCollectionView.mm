@@ -13,10 +13,11 @@
 // The hit test runs before a touch stops a glide or a deceleration, so the list's motion still shows here.
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
+  UIView *hit = [super hitTest:point withEvent:event];
   if (_touchDown != nil && event != nil && event.type == UIEventTypeTouches && [self pointInside:point withEvent:event]) {
-    _touchDown();
+    _touchDown(hit);
   }
-  return [super hitTest:point withEvent:event];
+  return hit;
 }
 
 @end

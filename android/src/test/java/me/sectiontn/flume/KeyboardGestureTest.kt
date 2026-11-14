@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KeyboardGestureTest {
-  private val never = KeyboardTapPolicy.decide(KeyboardTaps.NEVER, keyboardUp = true, pressableHit = false)
+  private val never = KeyboardTapPolicy.decide(KeyboardTaps.NEVER, keyboardUp = true, pressableHit = false, textInputHit = false)
 
   // A drag that starts while the keyboard is up scrolls the list and leaves the keyboard open, as in a ScrollView.
   @Test fun aDragKeepsTheKeyboard() {

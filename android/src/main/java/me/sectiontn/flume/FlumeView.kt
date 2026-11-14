@@ -742,7 +742,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
         downOnPinned = sticky.contains(e.x, e.y)
         downX = e.x
         downY = e.y
-        pinnedTap.down(if (downOnPinned) recycler.keyboardDecision(sticky.pressableAt(e.x, e.y)) else TapDecision(dismiss = false, swallow = false))
+        pinnedTap.down(if (downOnPinned) recycler.keyboardDecision(sticky.pressableAt(e.x, e.y), sticky.textInputAt(e.x, e.y)) else TapDecision(dismiss = false, swallow = false))
         if (pinnedTap.swallowing) {
           swallowingPinned = true
           NativeGestureUtil.notifyNativeGestureStarted(this, e)

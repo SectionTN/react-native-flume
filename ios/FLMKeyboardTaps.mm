@@ -3,6 +3,16 @@
 // The keyboard's end frame in screen coordinates, kept for the whole app so a list mounted under the keyboard sees it.
 static CGRect FLMKeyboardEnd = CGRectZero;
 
+BOOL FLMIsTextInput(UIView *view, UIView *container)
+{
+  for (UIView *at = view; at != nil && at != container; at = at.superview) {
+    if ([at isKindOfClass:UITextField.class] || [at isKindOfClass:UITextView.class]) {
+      return YES;
+    }
+  }
+  return NO;
+}
+
 @interface FLMKeyboardTaps () <UIGestureRecognizerDelegate>
 @end
 
@@ -68,7 +78,8 @@ static CGRect FLMKeyboardEnd = CGRectZero;
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)recognizer shouldReceiveTouch:(UITouch *)touch
 {
-  const flume::TapDecision decision = flume::decideTap(_mode, self.keyboardUp, _pressableAt(touch));
+  const flume::TapDecision decision =
+      flume::decideTap(_mode, self.keyboardUp, _pressableAt(touch), FLMIsTextInput(touch.view, _scrollView));
   return recognizer == _swallow ? decision.swallow : decision.dismiss && !decision.swallow;
 }
 
