@@ -23,7 +23,7 @@ enum class VisualEdge { TOP, BOTTOM }
 data class AnchorDecision(val restore: Pair<Int, Int>? = null, val scrollTo: VisualEdge? = null, val animated: Boolean = false)
 
 // disabled keeps the first visible index where it was; otherwise an insert at a near edge scrolls to that edge. RecyclerView
-// starts over from the first row when no laid-out row survives a change; FlatList and FlashList keep the offset, so that
+// starts over from the first row when no laid-out data row survives a change; FlatList and FlashList keep the offset, so that
 // change keeps the first visible index too.
 object AnchorPolicy {
   fun decide(
@@ -36,19 +36,21 @@ object AnchorPolicy {
     if (before == null) return AnchorDecision()
     val restore = AnchorDecision(restore = before.firstVisiblePosition to before.firstVisibleOffsetPx)
     if (config.disabled) return restore
+    // An autoscroll after a change that lost every row starts from the kept position, not from where RecyclerView lands.
+    val kept = if (anchorLost) restore.restore else null
     val bottom = config.autoscrollToBottomThreshold
     if (bottom != null && insertedAtVisualBottom && before.distanceToVisualBottomPx <= bottom * before.viewportPx) {
-      return AnchorDecision(scrollTo = VisualEdge.BOTTOM, animated = config.animateAutoScrollToBottom)
+      return AnchorDecision(restore = kept, scrollTo = VisualEdge.BOTTOM, animated = config.animateAutoScrollToBottom)
     }
     // React Native's ScrollView always animates to the top.
     val top = config.autoscrollToTopThreshold
     if (top != null && insertedAtVisualTop && before.distanceToVisualTopPx <= top * before.viewportPx) {
-      return AnchorDecision(scrollTo = VisualEdge.TOP, animated = true)
+      return AnchorDecision(restore = kept, scrollTo = VisualEdge.TOP, animated = true)
     }
     return if (anchorLost) restore else AnchorDecision()
   }
 
-  // Only data rows count, since RecyclerView anchors on an off-screen list component (-1). removed holds (index, count).
+  // List components (-1) never keep the anchor. removed holds (index, count) pairs in the old indices.
   fun losesEveryRow(laidOutDataIndices: IntArray, removed: IntArray): Boolean {
     val rows = laidOutDataIndices.filter { it >= 0 }
     return rows.isNotEmpty() && rows.all { index ->
