@@ -74,6 +74,11 @@ describe('gridCellWidth', () => {
     expect(gridCellWidth({ width: 360, cellWidth: 168 }, 3, padding)).toBe(112);
   });
 
+  it('never goes below zero when the padding is wider than the list', () => {
+    expect(gridCellWidth({ width: 20, cellWidth: 0 }, 2, padding)).toBe(0);
+    expect(gridCellWidth({ width: 24.2, cellWidth: -0.1 }, 2, padding)).toBe(0);
+  });
+
   it('is unknown until the list is laid out', () => {
     expect(gridCellWidth({ width: -1, cellWidth: -1 }, 2, padding)).toBe(-1);
   });
