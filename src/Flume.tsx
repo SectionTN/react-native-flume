@@ -19,7 +19,7 @@ import { createSerializable } from 'react-native-worklets';
 import { cellKinds, type ResolvedCell, resolveCell } from './cells';
 import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './data';
 import { FlumeSlot } from './FlumeSlot';
-import { contentPadding, nativeProps } from './props';
+import { contentPadding, nativeProps, stickyIndicesOf } from './props';
 import {
   applySnapshot,
   gridCellWidth,
@@ -175,6 +175,13 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     return { kinds: latest.current.kinds, diff, missing, first: base === undefined, diffMs };
   }, [storeId, signature, data, keyExtractor, getItemType]);
 
+  // The sticky indices go to native with the data they index, or alone when only they changed.
+  const stickyIndices = useMemo(() => stickyIndicesOf(stickyHeaderIndices), [stickyHeaderIndices]);
+  const stickyKey = stickyIndices.join(',');
+  const latestSticky = useRef(stickyIndices);
+  latestSticky.current = stickyIndices;
+  const sentSticky = useRef<{ storeId: number; key: string } | null>(null);
+
   useLayoutEffect(() => {
     const { kinds, diff, missing } = commit;
     if (prev.current.storeId !== storeId || prev.current.signature !== kinds.signature) {
@@ -200,7 +207,9 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       diff.changedItems,
       diff.stableKeys,
       !commit.first && prerendering.current,
+      latestSticky.current,
     );
+    sentSticky.current = { storeId, key: latestSticky.current.join(',') };
     if (timed && commit.diffMs !== null)
       logSetData(
         diff.keys.length,
@@ -209,6 +218,13 @@ function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         performance.now() - start,
       );
   }, [host, storeId, commit, report]);
+
+  useLayoutEffect(() => {
+    const sent = sentSticky.current;
+    if (sent !== null && sent.storeId === storeId && sent.key === stickyKey) return;
+    host.setStickyHeaderIndices(storeId, latestSticky.current);
+    sentSticky.current = { storeId, key: stickyKey };
+  }, [host, storeId, stickyKey]);
 
   // Every slot native holds or keeps for scroll-back, plus the pre-rendered ones it has not registered yet;
   // each renders as one React cell.

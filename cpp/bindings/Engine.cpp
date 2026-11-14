@@ -93,12 +93,17 @@ std::shared_ptr<const FlumeRuntime> Engine::flumeOf(int session) {
 
 void Engine::setData(int storeId, std::vector<std::string> keys, std::vector<std::string> types,
                      std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys,
-                     bool deferred) {
+                     bool deferred, std::vector<int> sticky) {
   auto store = find(storeId);
   if (store == nullptr) return;
   store->list.setPending(std::move(keys), std::move(types), std::move(changedIndices), std::move(changedItems),
-                         stableKeys, deferred);
+                         stableKeys, deferred, std::move(sticky));
   if (!deferred) scheduleRefresh(store, false);
+}
+
+void Engine::setStickyHeaderIndices(int storeId, std::vector<int> sticky) {
+  auto store = find(storeId);
+  if (store != nullptr && store->list.setSticky(std::move(sticky))) scheduleRefresh(store, false);
 }
 
 void Engine::refresh(int storeId) {
@@ -134,6 +139,7 @@ void Engine::scheduleRefresh(const std::shared_ptr<Store>& store, bool always) {
     if (s->listener == nullptr || (!ops && !always)) return;
     ListOps reset;
     reset.reset = true;
+    reset.sticky = s->list.sticky();
     s->listener->onListChanged(always ? reset : *ops, s->list.count());
   });
 }
@@ -359,6 +365,11 @@ std::string Engine::keyAt(int storeId, int position) {
   auto store = find(storeId);
   if (store == nullptr || position < 0 || position >= store->list.count()) return "";
   return store->list.keyAt(position);
+}
+
+std::vector<int> Engine::stickyIndices(int storeId) {
+  auto store = find(storeId);
+  return store == nullptr ? std::vector<int>{} : store->list.sticky();
 }
 
 void Engine::setReporter(int session, jsi::Function reporter) {

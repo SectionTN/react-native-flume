@@ -147,6 +147,11 @@ function decelerationRate(rate: 'normal' | 'fast' | number | undefined): number 
   return rate;
 }
 
+// Each index once, none negative, ascending.
+export function stickyIndicesOf(indices: readonly number[] | undefined): number[] {
+  return [...new Set(indices ?? [])].filter((index) => index >= 0).sort((a, b) => a - b);
+}
+
 export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
   const horizontal = props.horizontal === true;
   let numColumns = props.numColumns ?? 1;
@@ -182,9 +187,7 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     separatorColor: props.separator?.color,
     separatorInsetStart: props.separator?.insetStart ?? 0,
     separatorInsetEnd: props.separator?.insetEnd ?? 0,
-    stickyHeaderIndices: [...new Set(props.stickyHeaderIndices ?? [])]
-      .filter((index) => index >= 0)
-      .sort((a, b) => a - b),
+    stickyHeaderIndices: stickyIndicesOf(props.stickyHeaderIndices),
     scrollEventThrottle: props.scrollEventThrottle ?? 16,
     emitScrollEvents:
       props.onScroll !== undefined ||

@@ -137,3 +137,47 @@ TEST_CASE("a second install on the same runtime keeps its one session") {
   CHECK(flume::Engine::instance().count(id) == 2);
   CHECK_FALSE(flume.expired());
 }
+
+namespace {
+
+struct RecordingListener : flume::StoreListener {
+  std::vector<flume::ListOps> calls;
+  void onListChanged(const flume::ListOps& ops, int) override { calls.push_back(ops); }
+};
+
+// An attached store of three rows whose data said row 1 is sticky.
+int stickyStore(ReactSide& side, flume::StoreListener& listener) {
+  int id = static_cast<int>(
+      side.rig
+          .eval("__flume.setScheduler({});"
+                "var id = __flume.createStore();"
+                "__flume.setData(id, ['a', 'b', 'c'], ['row'], new Int32Array([0, 0, 0]), [], [], true, false, [1]);"
+                "id")
+          .asNumber());
+  REQUIRE(flume::Engine::instance().attach(id, &listener, std::make_unique<FakeMeasurer>(), 1) == 3);
+  return id;
+}
+
+}  // namespace
+
+TEST_CASE("the reset of a cell kinds change carries the applied sticky indices") {
+  ReactSide side;
+  RecordingListener listener;
+  int id = stickyStore(side, listener);
+  CHECK(flume::Engine::instance().stickyIndices(id) == std::vector<int>{1});
+  side.rig.eval("__flume.setCellKinds(id, true, [])");
+  REQUIRE_FALSE(listener.calls.empty());
+  CHECK(listener.calls.back().reset);
+  CHECK(listener.calls.back().sticky == std::vector<int>{1});
+}
+
+TEST_CASE("a sticky-only change reaches the listener as empty ops") {
+  ReactSide side;
+  RecordingListener listener;
+  int id = stickyStore(side, listener);
+  side.rig.eval("__flume.setStickyHeaderIndices(id, [0, 2])");
+  REQUIRE_FALSE(listener.calls.empty());
+  CHECK_FALSE(listener.calls.back().reset);
+  CHECK(listener.calls.back().sticky == std::vector<int>{0, 2});
+  CHECK(flume::Engine::instance().stickyIndices(id) == std::vector<int>{0, 2});
+}

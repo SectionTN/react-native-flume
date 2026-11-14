@@ -23,12 +23,16 @@ export type FlumeHost = {
     stableKeys: boolean,
     // Native applies the change once it has registered the pre-rendered cells of the same commit.
     deferred: boolean,
+    // The sticky header indices of this data, applied with it.
+    sticky: number[],
   ): void;
   setCell(
     storeId: number,
     renderCell: SerializableRef<(item: never, index: number) => CellNode>,
   ): void;
   setCellKinds(storeId: number, reactByDefault: boolean, reactTypes: string[]): void;
+  // Sticky indices for the data native holds, applied with any pending data or alone.
+  setStickyHeaderIndices(storeId: number, sticky: number[]): void;
   setReporter(reporter: (level: number, message: string) => void): void;
 };
 
@@ -67,6 +71,7 @@ export function getHost(): FlumeHost {
     setData: host.setData,
     setCell: host.setCell,
     setCellKinds: host.setCellKinds,
+    setStickyHeaderIndices: host.setStickyHeaderIndices,
     setReporter: host.setReporter,
   };
   return state.host;
