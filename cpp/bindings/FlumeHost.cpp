@@ -14,8 +14,8 @@ namespace jsi = facebook::jsi;
 
 namespace {
 
-const char* const kNames[] = {"install", "setScheduler", "createStore", "releaseStore",
-                              "setData", "setCell", "setCellKinds", "setReporter"};
+const char* const kNames[] = {"install", "setScheduler", "createStore", "releaseStore", "setData",
+                              "setCell", "setCellKinds", "setStickyHeaderIndices", "setReporter"};
 
 std::vector<std::string> stringsOf(jsi::Runtime& rt, const jsi::Value& value) {
   std::vector<std::string> out;
@@ -128,13 +128,22 @@ jsi::Value FlumeHost::get(jsi::Runtime& rt, const jsi::PropNameID& nameId) {
                         });
   }
   if (name == "setData") {
-    return hostFunction(rt, "setData", 8,
+    return hostFunction(rt, "setData", 9,
                         [&engine](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args, size_t count) {
                           if (count < 7) throw jsi::JSError(rt, "setData needs seven arguments");
                           engine.setData(static_cast<int>(args[0].asNumber()), stringsOf(rt, args[1]),
                                          typesOf(rt, args[2], args[3]), intsOf(rt, args[4]),
                                          valuesOf(rt, args[5], engine), args[6].getBool(),
-                                         count > 7 && args[7].getBool());
+                                         count > 7 && args[7].getBool(),
+                                         count > 8 ? intsOf(rt, args[8]) : std::vector<int>{});
+                          return jsi::Value::undefined();
+                        });
+  }
+  if (name == "setStickyHeaderIndices") {
+    return hostFunction(rt, "setStickyHeaderIndices", 2,
+                        [&engine](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args, size_t count) {
+                          if (count < 2) throw jsi::JSError(rt, "setStickyHeaderIndices needs a store id and indices");
+                          engine.setStickyHeaderIndices(static_cast<int>(args[0].asNumber()), intsOf(rt, args[1]));
                           return jsi::Value::undefined();
                         });
   }

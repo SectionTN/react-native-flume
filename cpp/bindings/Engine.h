@@ -36,7 +36,10 @@ class Engine {
   void releaseStore(int storeId);
   // Deferred data waits for refresh(), which the platform calls once it has the commit's pre-rendered cells.
   void setData(int storeId, std::vector<std::string> keys, std::vector<std::string> types,
-               std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys, bool deferred);
+               std::vector<int> changedIndices, std::vector<Value> changedItems, bool stableKeys, bool deferred,
+               std::vector<int> sticky);
+  // A sticky-only change: it joins pending data, or applies alone.
+  void setStickyHeaderIndices(int storeId, std::vector<int> sticky);
   void setCell(int storeId, std::shared_ptr<worklets::Serializable> renderCell);
   void setCellKinds(int storeId, bool reactByDefault, std::vector<std::string> reactTypes);
   void setReporter(int session, facebook::jsi::Function reporter);  // a function on the React runtime, development only
@@ -54,6 +57,7 @@ class Engine {
   bool hasReactKinds(int storeId);             // some item type renders as a React row
   int64_t itemId(int storeId, int position);   // -1 for an unknown position
   std::string keyAt(int storeId, int position);
+  std::vector<int> stickyIndices(int storeId);  // UI thread, the applied data's sticky indices
   bool bind(int storeId, int holderId, int index, float widthDp, float heightDp, OpBatch& out);
   void releaseHolder(int storeId, int holderId);
   void invalidateMeasures(int storeId);  // clears the text measure cache

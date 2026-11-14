@@ -34,9 +34,11 @@ type DataCall = {
   deferred: boolean;
   typeTable: string[];
   typeIds: number[];
+  sticky: number[];
 };
 type CellCall = { storeId: number; alive: boolean };
 type KindsCall = { storeId: number; reactByDefault: boolean; reactTypes: string[] };
+type StickyCall = { storeId: number; sticky: number[] };
 
 // Records what reaches the native host, in order, and whether the store was still alive when it did.
 function installHost() {
@@ -44,6 +46,7 @@ function installHost() {
   const data: DataCall[] = [];
   const cells: CellCall[] = [];
   const kinds: KindsCall[] = [];
+  const stickies: StickyCall[] = [];
   const log: string[] = [];
   let reporter: ((level: number, message: string) => void) | undefined;
   let next = 1;
@@ -67,6 +70,7 @@ function installHost() {
       changedItems,
       _stableKeys,
       deferred,
+      sticky,
     ) => {
       data.push({
         storeId,
@@ -77,6 +81,7 @@ function installHost() {
         changedItems,
         alive: alive.has(storeId),
         deferred,
+        sticky: [...sticky],
       });
       log.push(`data [${changedIndices.join(',')}]`);
     },
@@ -86,6 +91,10 @@ function installHost() {
     setCellKinds: (storeId, reactByDefault, reactTypes) => {
       kinds.push({ storeId, reactByDefault, reactTypes });
       log.push(`kinds ${reactByDefault} [${reactTypes.join(',')}]`);
+    },
+    setStickyHeaderIndices: (storeId, sticky) => {
+      stickies.push({ storeId, sticky: [...sticky] });
+      log.push(`sticky [${sticky.join(',')}]`);
     },
     setReporter: (fn) => {
       reporter = fn;
@@ -97,6 +106,7 @@ function installHost() {
     data,
     cells,
     kinds,
+    stickies,
     log,
     report: (level: number, message: string) => reporter?.(level, message),
     hasReporter: () => reporter !== undefined,
@@ -193,6 +203,7 @@ describe('Flume store lifecycle', () => {
       changedItems: [item],
       alive: true,
       deferred: false,
+      sticky: [],
     });
   });
 
@@ -705,6 +716,35 @@ describe('Flume native calls', () => {
       tree.update(createElement(Flume, props()));
     });
     expect(data).toHaveLength(1);
+  });
+
+  it('setData carries the normalized sticky indices', async () => {
+    const { data } = installHost();
+    const { Flume } = await import('../Flume');
+    const list = Array.from({ length: 10 }, (_, n) => ({ id: `k${n}` }));
+    await mount(
+      createElement(Flume, { data: list, renderCell, stickyHeaderIndices: [8, 0, 4, 4, -1] }),
+    );
+    expect(data.at(-1)?.sticky).toEqual([0, 4, 8]);
+  });
+
+  it('a sticky-only change calls setStickyHeaderIndices once', async () => {
+    const { data, stickies } = installHost();
+    const { Flume } = await import('../Flume');
+    const list = [item, { id: 'b' }, { id: 'c' }];
+    const tree = await mount(
+      createElement(Flume, { data: list, renderCell, stickyHeaderIndices: [0] }),
+    );
+    await act(async () => {
+      tree.update(createElement(Flume, { data: list, renderCell, stickyHeaderIndices: [2] }));
+    });
+    expect(data).toHaveLength(1);
+    expect(stickies).toEqual([{ storeId: data[0]?.storeId, sticky: [2] }]);
+    await act(async () => {
+      tree.update(createElement(Flume, { data: list, renderCell, stickyHeaderIndices: [2] }));
+    });
+    expect(data).toHaveLength(1);
+    expect(stickies).toHaveLength(1);
   });
 
   it('skips setData when React items change but keys and types do not', async () => {
