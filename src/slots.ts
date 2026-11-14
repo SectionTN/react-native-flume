@@ -66,8 +66,10 @@ export function gridCellWidth(
   padding: { left: number; right: number },
 ): number {
   if (table.width < 0) return -1;
-  const computed = (table.width - padding.left - padding.right) / numColumns;
-  return Math.abs(table.cellWidth - computed) * numColumns < 1 ? table.cellWidth : computed;
+  const computed = Math.max(0, table.width - padding.left - padding.right) / numColumns;
+  return Math.abs(table.cellWidth - computed) * numColumns < 1
+    ? Math.max(0, table.cellWidth)
+    : computed;
 }
 
 // A pending slot stays until native has registered it (jsSeen reaches its id); one native has not bound yet keeps
