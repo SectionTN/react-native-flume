@@ -26,8 +26,19 @@ class AnchorPolicyTest {
 
   @Test fun aChangeThatRemovesEveryLaidOutRowKeepsThePosition() {
     assertEquals(AnchorDecision(restore = 3 to -12), AnchorPolicy.decide(AnchorConfig(), before, true, false, anchorLost = true))
+  }
+
+  @Test fun aThresholdThatFiresAfterEveryRowIsLostScrollsFromTheKeptPosition() {
     val bottom = AnchorConfig(autoscrollToBottomThreshold = 0.2)
-    assertEquals(AnchorDecision(scrollTo = VisualEdge.BOTTOM, animated = true), AnchorPolicy.decide(bottom, before, false, true, anchorLost = true))
+    assertEquals(
+      AnchorDecision(restore = 3 to -12, scrollTo = VisualEdge.BOTTOM, animated = true),
+      AnchorPolicy.decide(bottom, before, false, true, anchorLost = true),
+    )
+    val top = AnchorConfig(autoscrollToTopThreshold = 1.0)
+    assertEquals(
+      AnchorDecision(restore = 3 to -12, scrollTo = VisualEdge.TOP, animated = true),
+      AnchorPolicy.decide(top, before, true, false, anchorLost = true),
+    )
   }
 
   @Test fun theAnchorIsLostOnlyWhenNoLaidOutRowSurvives() {
