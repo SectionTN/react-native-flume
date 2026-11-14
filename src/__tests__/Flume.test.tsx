@@ -533,6 +533,16 @@ describe('Flume host props', () => {
       horizontal: true,
     });
   });
+
+  it('FlumeView gets no stickyHeaderIndices prop', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const tree = await mount(
+      createElement(Flume, { data: [item], renderCell, stickyHeaderIndices: [0] }),
+    );
+    const native = tree.root.find((node) => String(node.type) === 'FlumeView');
+    expect(native.props).not.toHaveProperty('stickyHeaderIndices');
+  });
 });
 
 describe('Flume viewability', () => {

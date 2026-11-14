@@ -32,7 +32,6 @@ export type FlatProps = Pick<
   | 'separatorColor'
   | 'separatorInsetStart'
   | 'separatorInsetEnd'
-  | 'stickyHeaderIndices'
   | 'scrollEventThrottle'
   | 'emitScrollEvents'
   | 'emitViewabilityEvents'
@@ -187,7 +186,6 @@ export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
     separatorColor: props.separator?.color,
     separatorInsetStart: props.separator?.insetStart ?? 0,
     separatorInsetEnd: props.separator?.insetEnd ?? 0,
-    stickyHeaderIndices: stickyIndicesOf(props.stickyHeaderIndices),
     scrollEventThrottle: props.scrollEventThrottle ?? 16,
     emitScrollEvents:
       props.onScroll !== undefined ||

@@ -136,11 +136,6 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
   @ReactProp(name = "separatorInsetEnd")
   override fun setSeparatorInsetEnd(view: FlumeView, value: Double) = view.setSeparator(insetEndDp = value)
 
-  @ReactProp(name = "stickyHeaderIndices")
-  override fun setStickyHeaderIndices(view: FlumeView, value: ReadableArray?) {
-    view.stickyHeaderIndices = IntArray(value?.size() ?: 0) { value!!.getInt(it) }
-  }
-
   @ReactProp(name = "scrollEventThrottle", defaultDouble = 16.0)
   override fun setScrollEventThrottle(view: FlumeView, value: Double) {
     view.scrollEventThrottleMs = value.toLong()

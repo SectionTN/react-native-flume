@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { contentPadding, nativeProps } from '../props';
+import { contentPadding, nativeProps, stickyIndicesOf } from '../props';
 
 describe('contentPadding', () => {
   it('resolves the padding shorthands like React Native', () => {
@@ -75,12 +75,13 @@ describe('nativeProps separator', () => {
   });
 });
 
-describe('nativeProps sticky headers', () => {
+describe('stickyIndicesOf', () => {
   it('sorts and dedups sticky header indices', () => {
-    const warn = vi.fn();
-    expect(
-      nativeProps({ data: [], stickyHeaderIndices: [8, 0, 4, 4] }, warn).stickyHeaderIndices,
-    ).toEqual([0, 4, 8]);
+    expect(stickyIndicesOf([8, 0, 4, 4])).toEqual([0, 4, 8]);
+  });
+
+  it('drops negative sticky indices', () => {
+    expect(stickyIndicesOf([-1, 2, 0])).toEqual([0, 2]);
   });
 });
 
@@ -217,11 +218,5 @@ describe('nativeProps list components', () => {
     );
     expect(flags).toMatchObject({ listHeader: true, listFooter: false, listEmpty: true });
     expect(nativeProps({ data: [] }, warn)).toMatchObject({ listHeader: false, listEmpty: false });
-  });
-
-  it('drops negative sticky indices', () => {
-    expect(
-      nativeProps({ data: [], stickyHeaderIndices: [-1, 2, 0] }, vi.fn()).stickyHeaderIndices,
-    ).toEqual([0, 2]);
   });
 });
