@@ -142,6 +142,11 @@ void Reconciler::reconcileNode(Holder& holder, Mounted& mounted, Node& fresh, Op
                   (drawsBox(mounted.type, mounted.style) || drawsBox(mounted.type, fresh.style));
     bool textStyle = textStyleChanged(mounted.style, fresh.style);
     bool imageStyle = imageStyleChanged(mounted.style, fresh.style);
+    // A text that becomes sized in both axes skips Yoga's measure, so the width it was measured at goes stale.
+    if (mounted.type == NodeType::Text &&
+        (mounted.style.width != fresh.style.width || mounted.style.height != fresh.style.height)) {
+      mounted.measuredMaxWidth = 0;
+    }
     mounted.style = fresh.style;
     layout_.applyStyle(mounted.yoga, mounted.style);
     if (visual) emitViewStyle(mounted, out);
@@ -269,9 +274,12 @@ void Reconciler::emitAfterLayout(Holder& holder, OpBatch& out) {
 
 void Reconciler::emitContentOf(Mounted& node, OpBatch& out) {
   if (node.type == NodeType::Text) {
-    float maxWidth = node.measuredMaxWidth > 0 ? node.measuredMaxWidth : YGNodeLayoutGetWidth(node.yoga);
     float insetLeft = YGNodeLayoutGetPadding(node.yoga, YGEdgeLeft) + YGNodeLayoutGetBorder(node.yoga, YGEdgeLeft);
     float insetTop = YGNodeLayoutGetPadding(node.yoga, YGEdgeTop) + YGNodeLayoutGetBorder(node.yoga, YGEdgeTop);
+    float insetRight = YGNodeLayoutGetPadding(node.yoga, YGEdgeRight) + YGNodeLayoutGetBorder(node.yoga, YGEdgeRight);
+    // Yoga skips the measure of a text sized in both axes, so it wraps inside its padding and border.
+    float maxWidth = node.measuredMaxWidth > 0 ? node.measuredMaxWidth
+                                               : std::max(0.f, YGNodeLayoutGetWidth(node.yoga) - insetLeft - insetRight);
     if (node.textDirty || maxWidth != node.emittedMaxWidth || insetLeft != node.emittedInsetLeft ||
         insetTop != node.emittedInsetTop) {
       out.text(node.viewId, node.text, node.style, maxWidth, node.allowFontScaling, insetLeft, insetTop);
