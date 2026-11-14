@@ -33,10 +33,16 @@ class AnchorPolicyTest {
   @Test fun theAnchorIsLostOnlyWhenNoLaidOutRowSurvives() {
     val everything = intArrayOf(0, 500)
     assertEquals(true, AnchorPolicy.losesEveryRow(intArrayOf(30, 31, 32), everything))
-    assertEquals(false, AnchorPolicy.losesEveryRow(intArrayOf(-1, 0, 1), everything))
     assertEquals(false, AnchorPolicy.losesEveryRow(intArrayOf(30, 31, 32), intArrayOf(32, 1, 30, 1)))
     assertEquals(true, AnchorPolicy.losesEveryRow(intArrayOf(30, 31, 32), intArrayOf(32, 1, 30, 2)))
     assertEquals(false, AnchorPolicy.losesEveryRow(intArrayOf(), everything))
+  }
+
+  @Test fun aLaidOutHeaderOrFooterDoesNotKeepTheAnchor() {
+    val everything = intArrayOf(0, 500)
+    assertEquals(true, AnchorPolicy.losesEveryRow(intArrayOf(-1, 0, 1), everything))
+    assertEquals(true, AnchorPolicy.losesEveryRow(intArrayOf(-1, 0, 1, -1), everything))
+    assertEquals(false, AnchorPolicy.losesEveryRow(intArrayOf(-1, -1), everything))
   }
 
   @Test fun nothingHappensWithoutAState() =
