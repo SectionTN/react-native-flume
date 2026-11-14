@@ -55,17 +55,37 @@ class SessionEnd : public jsi::HostObject {
  public:
   explicit SessionEnd(int session) : session_(session) {}
   ~SessionEnd() override { Engine::instance().endSession(session_); }
+  int session() const { return session_; }
 
  private:
   const int session_;
 };
 
+// Read-only, hidden and permanent, as jsi.cpp defines its own runtime data global, so JS cannot end the session.
+void defineSessionGlobal(jsi::Runtime& rt, int session) {
+  jsi::Object global = rt.global();
+  jsi::Object descriptor(rt);
+  descriptor.setProperty(rt, "value", jsi::Object::createFromHostObject(rt, std::make_shared<SessionEnd>(session)));
+  descriptor.setProperty(rt, "writable", false);
+  descriptor.setProperty(rt, "enumerable", false);
+  descriptor.setProperty(rt, "configurable", false);
+  global.getPropertyAsObject(rt, "Object")
+      .getPropertyAsFunction(rt, "defineProperty")
+      .call(rt, global, jsi::String::createFromAscii(rt, "__flumeSession"), descriptor);
+}
+
 }  // namespace
 
+// A second install on the same runtime keeps its session: the global cannot be redefined.
 void FlumeHost::install(jsi::Runtime& rt, std::shared_ptr<facebook::react::CallInvoker> invoker) {
-  int session = Engine::instance().beginSession(std::move(invoker));
-  rt.global().setProperty(rt, "__flumeSession",
-                          jsi::Object::createFromHostObject(rt, std::make_shared<SessionEnd>(session)));
+  const jsi::Value existing = rt.global().getProperty(rt, "__flumeSession");
+  int session;
+  if (existing.isObject() && existing.getObject(rt).isHostObject<SessionEnd>(rt)) {
+    session = existing.getObject(rt).getHostObject<SessionEnd>(rt)->session();
+  } else {
+    session = Engine::instance().beginSession(std::move(invoker));
+    defineSessionGlobal(rt, session);
+  }
   rt.global().setProperty(rt, "__flume", jsi::Object::createFromHostObject(rt, std::make_shared<FlumeHost>(session)));
 }
 

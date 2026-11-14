@@ -23,9 +23,10 @@ int64_t nowNs() {
 
 }  // namespace
 
+// Never destroyed: a runtime torn down during static destruction at exit still ends its session on a live engine.
 Engine& Engine::instance() {
-  static Engine engine;
-  return engine;
+  static Engine* const engine = new Engine();
+  return *engine;
 }
 
 int Engine::beginSession(std::shared_ptr<facebook::react::CallInvoker> invoker) {
