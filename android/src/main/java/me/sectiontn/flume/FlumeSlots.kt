@@ -41,6 +41,8 @@ class FlumeSlots(private val host: FlumeView) {
   private val recorded = HashMap<Int, Int>()
   var cellWidthDp = -1f
   private var sentCellWidthDp = Float.NaN
+  var widthDp = -1f
+  private var sentWidthDp = Float.NaN
   private var flushPosted = false
   // The main looper, not the host's queue: a mount batch ends while the list is detached too.
   private val mainLoop = Handler(Looper.getMainLooper())
@@ -176,9 +178,10 @@ class FlumeSlots(private val host: FlumeView) {
     flushPosted = true
     host.post {
       flushPosted = false
-      if (!pool.dirty && cellWidthDp == sentCellWidthDp) return@post
+      if (!pool.dirty && cellWidthDp == sentCellWidthDp && widthDp == sentWidthDp) return@post
       sentCellWidthDp = cellWidthDp
-      host.dispatch(FlumeSlotsEvent(UIManagerHelper.getSurfaceId(host), host.id, pool.snapshot(), pool.jsSeen, cellWidthDp))
+      sentWidthDp = widthDp
+      host.dispatch(FlumeSlotsEvent(UIManagerHelper.getSurfaceId(host), host.id, pool.snapshot(), pool.jsSeen, cellWidthDp, widthDp))
     }
   }
 
@@ -224,6 +227,7 @@ class FlumeSlotsEvent(
   private val entries: List<SlotEntry>,
   private val jsSeen: Int,
   private val cellWidthDp: Float,
+  private val widthDp: Float,
 ) : Event<FlumeSlotsEvent>(surfaceId, viewTag) {
   override fun getEventName(): String = NAME
 
@@ -247,6 +251,7 @@ class FlumeSlotsEvent(
     )
     putInt("jsSeen", jsSeen)
     putDouble("cellWidth", cellWidthDp.toDouble())
+    putDouble("width", widthDp.toDouble())
   }
 
   companion object {

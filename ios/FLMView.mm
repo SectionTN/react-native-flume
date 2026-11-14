@@ -564,7 +564,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   [self requestSlotsFlush];
 }
 
-// One slot table per main run loop turn, and only when it or the grid cell width changed.
+// One slot table per main run loop turn, and only when it, the grid cell width or the list width changed.
 - (void)requestSlotsFlush
 {
   if (_slotsFlushPending) {
@@ -580,7 +580,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     view->_slotsFlushPending = NO;
     auto emitter = std::static_pointer_cast<const FlumeViewEventEmitter>(view->_eventEmitter);
     if (emitter != nullptr) {
-      [view->_slots flushTo:*emitter cellWidth:[view->_layout gridCellWidth]];
+      const CGFloat width = view->_collectionView.bounds.size.width;
+      [view->_slots flushTo:*emitter cellWidth:[view->_layout gridCellWidth] width:width > 0 ? width : -1];
     }
   });
 }

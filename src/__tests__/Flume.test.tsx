@@ -1,4 +1,4 @@
-import { createElement, createRef, Fragment, StrictMode, useState } from 'react';
+import { createElement, createRef, Fragment, StrictMode, useEffect, useState } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FlumeHost } from '../store';
@@ -139,10 +139,16 @@ const rowEntry = (slot: number, key: string, index: number): Entry => ({
 
 // Delivers a native slot table the way the host's onSlotsChanged event does; React Native releases the pooled
 // event once the handler returns.
-async function sendSlots(tree: ReactTestRenderer, slots: Entry[], cellWidth = -1, jsSeen = 0) {
+async function sendSlots(
+  tree: ReactTestRenderer,
+  slots: Entry[],
+  cellWidth = -1,
+  jsSeen = 0,
+  width = -1,
+) {
   const native = tree.root.find((node) => String(node.type) === 'FlumeView');
   await act(async () => {
-    const event: { nativeEvent: unknown } = { nativeEvent: { slots, jsSeen, cellWidth } };
+    const event: { nativeEvent: unknown } = { nativeEvent: { slots, jsSeen, cellWidth, width } };
     native.props.onSlotsChanged(event);
     event.nativeEvent = null;
   });
@@ -411,6 +417,32 @@ describe('Flume React cells', () => {
     const [view] = slotViews(tree, 7);
     expect(view?.props.style).toEqual({ position: 'absolute', left: 0, right: 0 });
     expect(infos).toContainEqual({ item, index: 0, target: 'StickyHeader', extraData: undefined });
+  });
+
+  it('keeps a React cell mounted at its new width when numColumns changes', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    let unmounts = 0;
+    const Cell = () => {
+      useEffect(
+        () => () => {
+          unmounts++;
+        },
+        [],
+      );
+      return createElement('Row');
+    };
+    const renderItem = () => createElement(Cell);
+    const contentContainerStyle = { paddingLeft: 16, paddingRight: 8 };
+    const props = { data: [item], renderItem, contentContainerStyle };
+    const tree = await mount(createElement(Flume, props));
+    await sendSlots(tree, [rowEntry(1, 'a', 0)], -1, -1, 360);
+    unmounts = 0;
+    await act(async () => {
+      tree.update(createElement(Flume, { ...props, numColumns: 2 }));
+    });
+    expect(unmounts).toBe(0);
+    expect(slotViews(tree, 1)[0]?.props.style).toEqual({ position: 'absolute', width: 168 });
   });
 
   it('a cell under handled closes the keyboard when no child takes the tap', async () => {

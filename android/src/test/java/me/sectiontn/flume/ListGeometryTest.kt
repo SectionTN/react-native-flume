@@ -26,6 +26,14 @@ class ListGeometryTest {
   }
 
   @Test
+  fun theListWidthIsInDpOnceLaidOut() {
+    val g = ListGeometry(2f)
+    assertEquals(-1f, g.widthDp, 0f)
+    g.update(1080, 500, 1f)
+    assertEquals(540f, g.widthDp, 0f)
+  }
+
+  @Test
   fun aZeroBindAxisIsIgnored() {
     val g = ListGeometry(2f)
     assertFalse(g.update(0, 500, 1f))

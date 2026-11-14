@@ -24,7 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)takeRegisteredPrerendered;  // YES once per transaction that registered a pre-rendered slot
 - (nullable FLMSlotCell *)cellForSlot:(int)slot;  // the cell bound to the slot
 // The whole table when it changed, since Fabric replaces a queued unique event of the same type.
-- (void)flushTo:(const facebook::react::FlumeViewEventEmitter &)emitter cellWidth:(CGFloat)cellWidth;
+- (void)flushTo:(const facebook::react::FlumeViewEventEmitter &)emitter cellWidth:(CGFloat)cellWidth width:(CGFloat)width;
 
 - (void)bindCell:(FLMSlotCell *)cell group:(flume::SlotGroup)group kind:(int)kind key:(NSString *)key index:(int)index;
 - (void)releaseCell:(FLMSlotCell *)cell;  // idempotent, the view leaves only the cell that holds it
