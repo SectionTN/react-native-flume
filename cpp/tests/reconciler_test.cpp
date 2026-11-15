@@ -367,6 +367,18 @@ TEST_CASE("a bordered image rounds its bitmap at its radii less the border, as R
   CHECK(firstOp(rig.batch, 6, 1).floats[3] == 15.0f);
 }
 
+TEST_CASE("an image that changes its source and its border in one bind gets the new source") {
+  Rig rig;
+  auto image = [](const char* uri, int border) {
+    return rowCell(obj({{"type", V("image")}, {"source", V(uri)},
+                        {"style", obj({{"width", V(40)}, {"height", V(40)}, {"borderWidth", V(border)}})}}),
+                   {});
+  };
+  rig.bind(image("u", 2));
+  rig.bind(image("v", 4));
+  CHECK(rig.batch.strings[firstOp(rig.batch, 6, 1).ints[0]] == "v");
+}
+
 TEST_CASE("an image that drops its paint leaves its box unclipped, so a later radius is the bitmap's alone") {
   Rig rig;
   rig.bind(styledImage({{"backgroundColor", V("#ddd")}}));
