@@ -136,12 +136,12 @@ std::unique_ptr<Mounted> Reconciler::mountNew(Holder& holder, Node& fresh, int v
 }
 
 void Reconciler::reconcileNode(Holder& holder, Mounted& mounted, Node& fresh, OpBatch& out) {
-  bool imageEmitted = false;
+  bool imageStyle = false;
   if (mounted.style != fresh.style) {
     bool visual = visualChanged(mounted.style, fresh.style) &&
                   (drawsBox(mounted.type, mounted.style) || drawsBox(mounted.type, fresh.style));
     bool textStyle = textStyleChanged(mounted.style, fresh.style);
-    bool imageStyle = imageStyleChanged(mounted.style, fresh.style);
+    imageStyle = imageStyleChanged(mounted.style, fresh.style);
     // A text that becomes sized in both axes skips Yoga's measure, so the width it was measured at goes stale.
     if (mounted.type == NodeType::Text &&
         (mounted.style.width != fresh.style.width || mounted.style.height != fresh.style.height)) {
@@ -154,10 +154,6 @@ void Reconciler::reconcileNode(Holder& holder, Mounted& mounted, Node& fresh, Op
       mounted.textDirty = true;
       layout_.markTextDirty(mounted.yoga);
     }
-    if (mounted.type == NodeType::Image && imageStyle) {
-      emitImage(mounted, out);
-      imageEmitted = true;
-    }
   }
   if (mounted.type == NodeType::Text && mounted.text != fresh.text) {
     mounted.text = std::move(fresh.text);
@@ -169,13 +165,15 @@ void Reconciler::reconcileNode(Holder& holder, Mounted& mounted, Node& fresh, Op
     mounted.textDirty = true;
     layout_.markTextDirty(mounted.yoga);
   }
-  if (mounted.type == NodeType::Image && imageChanged(mounted, fresh)) {
+  bool imageProps = mounted.type == NodeType::Image && imageChanged(mounted, fresh);
+  if (imageProps) {
     mounted.imageUri = std::move(fresh.imageUri);
     mounted.resizeMode = fresh.resizeMode;
     mounted.tintColor = fresh.tintColor;
     mounted.imageHeaders = std::move(fresh.imageHeaders);
-    if (!imageEmitted) emitImage(mounted, out);
   }
+  // One Image op after the source is copied, so a style change in the same bind never sends the old source.
+  if (mounted.type == NodeType::Image && (imageStyle || imageProps)) emitImage(mounted, out);
   if (mounted.type == NodeType::Pressable && pressableChanged(mounted, fresh)) {
     mounted.pressId = std::move(fresh.pressId);
     mounted.pressedOpacity = fresh.pressedOpacity;
