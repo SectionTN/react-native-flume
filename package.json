@@ -157,7 +157,8 @@
           "name": "angular"
         },
         "parserOpts": {
-          "headerPattern": "^(\\w*)(?:\\((.*)\\))?!?: (.*)$"
+          "headerPattern": "^(\\w*)(?:\\((.*)\\))?!?: (.*)$",
+          "breakingHeaderPattern": "^(\\w*)(?:\\((.*)\\))?!: (.*)$"
         }
       }
     }
