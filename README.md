@@ -30,12 +30,14 @@ module.exports = {
 Requirements:
 
 - React Native 0.83+
-- react-native-worklets 0.9+
+- react-native-worklets 0.9+, in the version its [compatibility table](https://docs.swmansion.com/react-native-worklets/docs/guides/compatibility/) lists for your React Native
 - iOS 15.1+
 - Android 7.0+ (API 24)
 - Expo: a development build (Expo Go isn't supported)
 
 ## Usage
+
+The example uses `SafeAreaView` from `react-native-safe-area-context`, which new React Native apps already include:
 
 ```tsx
 import { type CellNode, cell, Flume } from 'react-native-flume';
