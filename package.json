@@ -22,6 +22,7 @@
     "react-native.config.js",
     "!android/build",
     "!android/.cxx",
+    "!android/src/test",
     "!cpp/tests",
     "!**/__tests__",
     "!**/.*"

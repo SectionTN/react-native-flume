@@ -3,5 +3,6 @@
   "compilerOptions": {
     "types": ["node"]
   },
+  "include": ["src"],
   "exclude": ["example", "lib", "build", "vitest.config.ts"]
 }
