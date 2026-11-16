@@ -36,12 +36,15 @@ object FlumeImages {
 
   fun bind(view: FlumeImageView, spec: ImageSpec) {
     val hierarchy = view.hierarchy
-    hierarchy.actualImageScaleType = when (spec.resizeMode) {
-      1 -> ScalingUtils.ScaleType.FIT_CENTER
-      2 -> ScalingUtils.ScaleType.FIT_XY
-      3 -> ScalingUtils.ScaleType.CENTER
-      else -> ScalingUtils.ScaleType.CENTER_CROP
-    }
+    // Kotlin 2.2 reads actualImageScaleType as a val, so the setter is called directly.
+    hierarchy.setActualImageScaleType(
+      when (spec.resizeMode) {
+        1 -> ScalingUtils.ScaleType.FIT_CENTER
+        2 -> ScalingUtils.ScaleType.FIT_XY
+        3 -> ScalingUtils.ScaleType.CENTER
+        else -> ScalingUtils.ScaleType.CENTER_CROP
+      },
+    )
     hierarchy.setActualImageColorFilter(spec.tintColor?.let { PorterDuffColorFilter(it, PorterDuff.Mode.SRC_IN) })
     val r = spec.radiiPx
     hierarchy.roundingParams = if (r.any { it > 0f }) RoundingParams.fromCornersRadii(r[0], r[1], r[2], r[3]) else null
