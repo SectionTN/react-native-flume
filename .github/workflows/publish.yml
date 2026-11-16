@@ -31,7 +31,7 @@ jobs:
         run: yarn prepare
 
       # The staged version goes live once approved on npmjs.com. A version already on npm is skipped.
-      # npm rejects a prerelease without --tag, so 1.0.0-beta.2 goes out under the beta tag.
+      # npm rejects a prerelease without --tag, so 1.0.0-beta.2 goes out under beta and 0.2.0-0 under next.
       - name: Stage with provenance
         run: |
           name=$(node -p "require('./package.json').name")
@@ -41,5 +41,6 @@ jobs:
           else
             tag=latest
             case "$version" in *-*) tag="${version#*-}"; tag="${tag%%.*}" ;; esac
+            case "$tag" in [0-9]*) tag=next ;; esac
             npm stage publish --provenance --access public --ignore-scripts --tag "$tag"
           fi
