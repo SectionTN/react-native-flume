@@ -200,18 +200,18 @@ export type CellInfo<T> = {
 export type ReactCell<T> = (info: CellInfo<T>) => ReactElement | null;
 
 export type FlumeProps<T> = {
-  data: readonly T[];
-  renderCell?: (item: T, index: number) => CellNode;
+  data: readonly T[] | null | undefined;
+  renderCell?: ((item: T, index: number) => CellNode) | null;
   // The React renderer for every type without a worklet cell or a reactCells entry.
-  renderItem?: ReactCell<T>;
+  renderItem?: ReactCell<T> | null;
   // React renderers by item type; they take precedence over renderCell.
   reactCells?: Record<string, ReactCell<T>>;
-  keyExtractor?: (item: T, index: number) => string;
-  getItemType?: (item: T, index: number) => string;
+  keyExtractor?: ((item: T, index: number) => string) | null;
+  getItemType?: ((item: T, index: number) => string) | null;
   extraData?: unknown;
   itemAnimations?: boolean;
-  onPress?: (info: PressInfo<T>) => void;
-  onLongPress?: (info: PressInfo<T>) => void;
+  onPress?: ((info: PressInfo<T>) => void) | null;
+  onLongPress?: ((info: PressInfo<T>) => void) | null;
   style?: StyleProp<ViewStyle>;
   horizontal?: boolean;
   numColumns?: number;
@@ -232,23 +232,22 @@ export type FlumeProps<T> = {
   ListFooterComponent?: ComponentType<object> | ReactElement | null;
   ListEmptyComponent?: ComponentType<object> | ReactElement | null;
   // The ScrollView events with the ScrollView payload; contentOffset counts from the content start.
-  onScroll?: ScrollHandler;
-  onScrollBeginDrag?: ScrollHandler;
-  onScrollEndDrag?: ScrollHandler;
-  onMomentumScrollBegin?: ScrollHandler;
-  onMomentumScrollEnd?: ScrollHandler;
+  onScroll?: ScrollHandler | null;
+  onScrollBeginDrag?: ScrollHandler | null;
+  onScrollEndDrag?: ScrollHandler | null;
+  onMomentumScrollBegin?: ScrollHandler | null;
+  onMomentumScrollEnd?: ScrollHandler | null;
   scrollEventThrottle?: number;
-  onViewableItemsChanged?: (info: {
-    viewableItems: ViewToken<T>[];
-    changed: ViewToken<T>[];
-  }) => void;
+  onViewableItemsChanged?:
+    | ((info: { viewableItems: ViewToken<T>[]; changed: ViewToken<T>[] }) => void)
+    | null;
   viewabilityConfig?: ViewabilityConfig;
-  onEndReached?: (info: { distanceFromEnd: number }) => void;
+  onEndReached?: ((info: { distanceFromEnd: number }) => void) | null;
   onEndReachedThreshold?: number;
-  onStartReached?: (info: { distanceFromStart: number }) => void;
+  onStartReached?: ((info: { distanceFromStart: number }) => void) | null;
   onStartReachedThreshold?: number;
   refreshing?: boolean;
-  onRefresh?: () => void;
+  onRefresh?: (() => void) | null;
   // tintColor is iOS, colors are Android; progressViewOffset moves the spinner on both.
   refreshControl?: { tintColor?: string; colors?: string[]; progressViewOffset?: number };
   scrollEnabled?: boolean;
@@ -267,7 +266,7 @@ export type FlumeProps<T> = {
   keyboardDismissMode?: 'none' | 'on-drag' | 'interactive';
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
   maintainVisibleContentPosition?: MaintainVisibleContentPosition;
-  onLayout?: (event: LayoutChangeEvent) => void;
+  onLayout?: ((event: LayoutChangeEvent) => void) | null;
   testID?: string;
   accessibilityLabel?: string;
 };

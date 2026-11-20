@@ -151,7 +151,46 @@ export function stickyIndicesOf(indices: readonly number[] | undefined): number[
   return [...new Set(indices ?? [])].filter((index) => index >= 0).sort((a, b) => a - b);
 }
 
-export function nativeProps<T>(props: FlumeProps<T>, warn: Warn): FlatProps {
+// FlashList and LegendList type these as nullable, where null means not given.
+const NULLABLE = [
+  'renderCell',
+  'renderItem',
+  'keyExtractor',
+  'getItemType',
+  'onPress',
+  'onLongPress',
+  'onScroll',
+  'onScrollBeginDrag',
+  'onScrollEndDrag',
+  'onMomentumScrollBegin',
+  'onMomentumScrollEnd',
+  'onViewableItemsChanged',
+  'onEndReached',
+  'onStartReached',
+  'onRefresh',
+  'onLayout',
+] as const;
+
+type Nullable = (typeof NULLABLE)[number];
+
+export type SettledProps<T> = Omit<FlumeProps<T>, 'data' | Nullable> & {
+  data: readonly T[];
+} & { [K in Nullable]?: NonNullable<FlumeProps<T>[K]> };
+
+const EMPTY: readonly never[] = [];
+
+// The props with data defaulted and null callbacks removed, the same object when nothing is null.
+export function withoutNulls<T>(props: FlumeProps<T>): SettledProps<T> {
+  if (props.data != null && NULLABLE.every((key) => props[key] !== null)) {
+    return props as SettledProps<T>;
+  }
+  const settled: Record<string, unknown> = { ...props, data: props.data ?? EMPTY };
+  for (const key of NULLABLE) if (settled[key] === null) delete settled[key];
+  return settled as SettledProps<T>;
+}
+
+export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
+  const props = withoutNulls(given);
   const horizontal = props.horizontal === true;
   let numColumns = props.numColumns ?? 1;
   if (horizontal && numColumns > 1) {
