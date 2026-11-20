@@ -227,15 +227,15 @@ export type FlumeOwnProps<T> = {
   // React renderers by item type; they take precedence over renderCell.
   reactCells?: Record<string, ReactCell<T>>;
   keyExtractor?: ((item: T, index: number) => string) | null;
-  getItemType?: ((item: T, index: number) => string | number | undefined) | null;
+  getItemType?: ((item: T, index: number) => string | number | null | undefined) | null;
   extraData?: unknown;
   itemAnimations?: boolean;
   onPress?: ((info: PressInfo<T>) => void) | null;
   onLongPress?: ((info: PressInfo<T>) => void) | null;
   style?: StyleProp<ViewStyle>;
-  horizontal?: boolean;
+  horizontal?: boolean | null;
   numColumns?: number;
-  inverted?: boolean;
+  inverted?: boolean | null;
   // Padding only, as the spec says; other keys warn in development.
   contentContainerStyle?: StyleProp<ViewStyle>;
   // React cells only: the length in dp a cell takes until it measures; else the mean of its type, at least 50.
@@ -265,12 +265,12 @@ export type FlumeOwnProps<T> = {
   onViewableItemsChanged?:
     | ((info: { viewableItems: ViewToken<T>[]; changed: ViewToken<T>[] }) => void)
     | null;
-  viewabilityConfig?: ViewabilityConfig;
+  viewabilityConfig?: ViewabilityConfig | null;
   onEndReached?: ((info: { distanceFromEnd: number }) => void) | null;
-  onEndReachedThreshold?: number;
+  onEndReachedThreshold?: number | null;
   onStartReached?: ((info: { distanceFromStart: number }) => void) | null;
-  onStartReachedThreshold?: number;
-  refreshing?: boolean;
+  onStartReachedThreshold?: number | null;
+  refreshing?: boolean | null;
   onRefresh?: (() => void) | null;
   // A RefreshControl element, or the spinner style alone (tintColor on iOS, colors on Android).
   refreshControl?:

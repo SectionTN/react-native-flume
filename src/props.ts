@@ -141,14 +141,17 @@ type AnchoringFields = {
 // Codegen structs read an unset member as 0 on iOS, so every field goes out, and -1 means no threshold.
 function anchoring<T>(
   given: FlumeProps<T>['maintainVisibleContentPosition'],
+  inverted: boolean,
 ): NonNullable<FlatProps['maintainVisibleContentPosition']> {
   const config: AnchoringFields = typeof given === 'object' && given !== null ? given : {};
+  // FlatList measures its top threshold from the content start, the visual bottom of an inverted list.
+  const flatListInverted = inverted && 'minIndexForVisible' in config;
   return {
     disabled:
       given === false ||
       config.disabled === true ||
       (config.data === false && config.size === false),
-    autoscrollToTopThreshold: config.autoscrollToTopThreshold ?? -1,
+    autoscrollToTopThreshold: flatListInverted ? -1 : (config.autoscrollToTopThreshold ?? -1),
     autoscrollToBottomThreshold: config.autoscrollToBottomThreshold ?? -1,
     animateAutoScrollToBottom: config.animateAutoScrollToBottom !== false,
     startRenderingFromBottom: config.startRenderingFromBottom === true,
@@ -215,6 +218,12 @@ const NULLABLE = [
   'onRefresh',
   'onLayout',
   'stickyHeaderIndices',
+  'horizontal',
+  'inverted',
+  'viewabilityConfig',
+  'onEndReachedThreshold',
+  'onStartReachedThreshold',
+  'refreshing',
 ] as const;
 
 type Nullable = (typeof NULLABLE)[number];
@@ -314,6 +323,9 @@ export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
     keyboardDismissMode: props.keyboardDismissMode ?? 'none',
     keyboardShouldPersistTaps: props.keyboardShouldPersistTaps ?? 'never',
     rowsPressable: props.onPress !== undefined || props.onLongPress !== undefined,
-    maintainVisibleContentPosition: anchoring(props.maintainVisibleContentPosition),
+    maintainVisibleContentPosition: anchoring(
+      props.maintainVisibleContentPosition,
+      props.inverted === true,
+    ),
   };
 }
