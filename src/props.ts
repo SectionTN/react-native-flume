@@ -176,6 +176,8 @@ export type Refresh = {
   colors?: ReadonlyArray<ColorValue>;
   tintColor?: ColorValue;
   progressViewOffset: number;
+  // RefreshControl's enabled, which turns pull to refresh off on Android.
+  enabled: boolean;
 };
 
 // As in VirtualizedList, a RefreshControl element replaces the list's own, so its props win.
@@ -189,6 +191,7 @@ export function refreshOf<T>(props: FlumeProps<T>): Refresh {
       colors: given.colors,
       tintColor: given.tintColor,
       progressViewOffset: given.progressViewOffset ?? 0,
+      enabled: given.enabled !== false,
     };
   }
   return {
@@ -197,6 +200,7 @@ export function refreshOf<T>(props: FlumeProps<T>): Refresh {
     colors: control?.colors,
     tintColor: control?.tintColor,
     progressViewOffset: control?.progressViewOffset ?? 0,
+    enabled: true,
   };
 }
 // Props that FlashList and LegendList type as nullable, where null means not given.
@@ -304,7 +308,7 @@ export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
     viewabilityConfig: viewability(props.viewabilityConfig, warn),
     endReachedThreshold: props.onEndReachedThreshold ?? 2,
     startReachedThreshold: props.onStartReachedThreshold ?? 2,
-    refreshEnabled: refresh.onRefresh !== undefined,
+    refreshEnabled: refresh.enabled && refresh.onRefresh !== undefined,
     refreshing: refresh.refreshing,
     refreshColors: refresh.colors,
     refreshProgressViewOffset: refresh.progressViewOffset,
