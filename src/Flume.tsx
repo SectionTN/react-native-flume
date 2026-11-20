@@ -19,7 +19,7 @@ import { createSerializable } from 'react-native-worklets';
 import { cellKinds, type ResolvedCell, resolveCell } from './cells';
 import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './data';
 import { FlumeSlot } from './FlumeSlot';
-import { contentPadding, nativeProps, stickyIndicesOf, withoutNulls } from './props';
+import { contentPadding, nativeProps, refreshOf, stickyIndicesOf, withoutNulls } from './props';
 import {
   applySnapshot,
   gridCellWidth,
@@ -80,9 +80,10 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     onViewableItemsChanged,
     onEndReached,
     onStartReached,
-    onRefresh,
     keyboardShouldPersistTaps,
   } = props;
+  const refresh = refreshOf(props);
+  const { onRefresh } = refresh;
   const host = getHost();
   // StrictMode calls a state initializer twice and drops one result, so the first store is reused.
   const firstStore = useRef<number | null>(null);
@@ -95,7 +96,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const warned = useRef({ duplicates: false, messages: new Set<string>() });
   const nativeRef = useRef<ComponentRef<typeof FlumeViewNativeComponent>>(null);
   // React Native's RefreshControl rule: a pull starts native refreshing, so an unchanged prop is sent back.
-  const wantsRefreshing = props.refreshing === true;
+  const wantsRefreshing = refresh.refreshing;
   const nativeRefreshing = useRef(wantsRefreshing);
   const lastRefreshing = useRef(wantsRefreshing);
   const [, afterRefresh] = useReducer((n: number) => n + 1, 0);

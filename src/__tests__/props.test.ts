@@ -1,5 +1,10 @@
+import { createElement } from 'react';
+import type { RefreshControlProps } from 'react-native';
 import { describe, expect, it, vi } from 'vitest';
-import { contentPadding, nativeProps, stickyIndicesOf } from '../props';
+import { contentPadding, nativeProps, refreshOf, stickyIndicesOf } from '../props';
+
+// Stands in for React Native's RefreshControl.
+const RefreshControlStub = (_props: RefreshControlProps) => null;
 
 describe('contentPadding', () => {
   it('resolves the padding shorthands like React Native', () => {
@@ -125,6 +130,31 @@ describe('nativeProps refresh', () => {
       refreshEnabled: false,
       emitScrollEvents: false,
     });
+  });
+
+  it('reads refresh from a RefreshControl element, which wins over onRefresh', () => {
+    const fromElement = () => {};
+    const element = createElement(RefreshControlStub, {
+      refreshing: true,
+      onRefresh: fromElement,
+      colors: ['red'],
+      tintColor: 'blue',
+      progressViewOffset: 20,
+    });
+    expect(refreshOf({ data: [], onRefresh: () => {}, refreshControl: element })).toEqual({
+      onRefresh: fromElement,
+      refreshing: true,
+      colors: ['red'],
+      tintColor: 'blue',
+      progressViewOffset: 20,
+    });
+  });
+
+  it('reads the config object of 0.1 with the top-level props', () => {
+    const onRefresh = () => {};
+    expect(
+      refreshOf({ data: [], onRefresh, refreshing: false, refreshControl: { colors: ['red'] } }),
+    ).toEqual({ onRefresh, refreshing: false, colors: ['red'], progressViewOffset: 0 });
   });
 
   it('enables refresh only with onRefresh', () => {
