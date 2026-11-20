@@ -87,12 +87,12 @@ Data and rows:
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `data` | `readonly T[]` | Required | Sets the items the list shows. |
+| `data` | `readonly T[] \| null` | Required | Sets the items the list shows. `null` and `undefined` show an empty list. |
 | `renderCell` | `(item, index) => CellNode` | | Builds each row from a worklet that returns [cell nodes](#cells). |
-| `renderItem` | `({ item, index, target, extraData }) => ReactElement` | | Renders each row as a React element when `renderCell` isn't set. |
+| `renderItem` | `({ item, index, target, extraData, data, type }) => ReactNode` | | Renders each row with React when `renderCell` isn't set. |
 | `reactCells` | `Record<string, ReactCell<T>>` | | Renders the item types it names as React elements, in place of `renderCell`. |
 | `keyExtractor` | `(item, index) => string` | `item.id`, then `item.key`, then the index | Returns a unique key for each item. |
-| `getItemType` | `(item, index) => string` | `'default'` | Returns each item's type. Rows are reused within a type, and `reactCells` picks a renderer by it. |
+| `getItemType` | `(item, index) => string \| number` | `'default'` | Returns each item's type. Rows are reused within a type, and `reactCells` picks a renderer by it. A number counts as its text, so `1` and `'1'` are one type. |
 | `extraData` | `unknown` | | Re-renders the React rows when it changes. |
 | `itemAnimations` | `boolean` | `true` | Animates rows that are added, removed or moved when `data` changes. |
 | `onPress` | `({ item, index, id }) => void` | | Called when a worklet row or a `cell.pressable` is tapped. `id` is the pressable's `id`, or `undefined` for the row. |
@@ -107,13 +107,13 @@ Layout:
 | `inverted` | `boolean` | `false` | Flips the list so the first item shows at the bottom, as in a chat. |
 | `contentContainerStyle` | `StyleProp<ViewStyle>` | | Adds padding around the rows. Other style keys are ignored. |
 | `separator` | `{ size, color?, insetStart?, insetEnd? }` | | Adds a line `size` dp thick between rows, inset from the start and end edges. |
-| `stickyHeaderIndices` | `number[]` | | Pins the items at these indices to the top while their section scrolls. |
+| `stickyHeaderIndices` | `readonly number[]` | | Pins the items at these indices to the top while their section scrolls. |
 | `ListHeaderComponent` | `ComponentType \| ReactElement` | | Renders a row before the first item. |
 | `ListFooterComponent` | `ComponentType \| ReactElement` | | Renders a row after the last item. |
 | `ListEmptyComponent` | `ComponentType \| ReactElement` | | Renders in place of the rows while `data` is empty, filling the list. |
 | `estimatedItemSize` | `number` | The mean of the item's type, at least 50 | Sets the length in dp that a React row takes until it's measured. |
 | `drawDistance` | `number` | One screen | Sets how far past the screen edges, in dp, rows are prepared ahead of scrolling. |
-| `initialScrollIndex` | `number` | | Opens the list at this item. |
+| `initialScrollIndex` | `number \| { index }` | | Opens the list at this item. |
 | `maintainVisibleContentPosition` | `boolean \| MaintainVisibleContentPosition` | On | Keeps the visible rows in place when items are added above them. Pass `false` to turn it off. |
 
 `maintainVisibleContentPosition` takes these options:
@@ -162,7 +162,7 @@ Visibility, loading and refresh:
 | `onStartReachedThreshold` | `number` | `2` | Sets the distance from the start, in screens, that calls `onStartReached`. |
 | `onRefresh` | `() => void` | | Adds pull to refresh and is called when the user pulls. |
 | `refreshing` | `boolean` | `false` | Shows the refresh spinner while it's `true`. |
-| `refreshControl` | `{ tintColor?, colors?, progressViewOffset? }` | | Colors and moves the refresh spinner. `tintColor` works on iOS and `colors` on Android. |
+| `refreshControl` | `ReactElement \| { tintColor?, colors?, progressViewOffset? }` | | Takes a `RefreshControl` element, as on FlatList, or only the spinner style. `tintColor` works on iOS and `colors` on Android. |
 
 The list view:
 
@@ -210,7 +210,7 @@ Then rename `<FlatList>` to `<Flume>`. `renderItem`, `keyExtractor`, the list co
 
 - `ItemSeparatorComponent` becomes `separator`, a line with a size and a color.
 - `stickyHeaderIndices` counts items only. With a `ListHeaderComponent`, subtract 1 from FlatList's indices.
-- `contentContainerStyle` takes padding only, and `refreshControl` takes the spinner colors as an object.
+- `contentContainerStyle` takes padding only.
 - Rows animate when `data` changes and stay in place when items load above them. `itemAnimations` and `maintainVisibleContentPosition` turn this off.
 
 ## Roadmap
