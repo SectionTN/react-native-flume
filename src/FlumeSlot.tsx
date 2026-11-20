@@ -1,4 +1,4 @@
-import { memo, type ReactElement, useRef } from 'react';
+import { memo, type ReactElement, useLayoutEffect, useRef } from 'react';
 import { Keyboard } from 'react-native';
 import { SlotKind, type SlotLayout, slotStyle } from './slots';
 import FlumeSlotViewNativeComponent from './specs/FlumeSlotViewNativeComponent';
@@ -50,23 +50,26 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
     type?: string;
     data?: readonly unknown[];
   }>({});
-  // A row that left the data renders its exit with what it had, type and data included.
-  if (item !== undefined && render !== undefined) {
-    last.current = { item, render, type, data: dataRef.current };
-  }
+  // A row that left the data renders its exit with what it last committed, type and data included.
+  const live = item !== undefined && render !== undefined;
+  const shown = live ? { item, render, type, data: dataRef.current } : last.current;
+  // Written after the commit, so a render React discards cannot change the snapshot.
+  useLayoutEffect(() => {
+    if (live) last.current = shown;
+  });
   const entry = { slot, kind, key: itemKey, index, bound: true, minMain };
   const style = slotStyle(entry, fullSpan, layout);
   if (style === null) return null;
   const cell = kind === SlotKind.row || kind === SlotKind.sticky;
   const handled = keyboardTaps === 'handled';
   const content = cell
-    ? (last.current.render?.({
-        item: last.current.item,
+    ? (shown.render?.({
+        item: shown.item,
         index,
         target: kind === SlotKind.sticky ? 'StickyHeader' : 'Cell',
         extraData,
-        data: last.current.data ?? dataRef.current,
-        type: last.current.type ?? type,
+        data: shown.data ?? dataRef.current,
+        type: shown.type ?? type,
       }) ?? null)
     : element;
   return (
