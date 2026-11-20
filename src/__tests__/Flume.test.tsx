@@ -115,6 +115,8 @@ function installHost() {
 
 const item = { id: 'a' };
 const renderCell = () => ({ type: 'view' as const });
+// Stands in for React Native's RefreshControl, which the react-native mock does not provide.
+const RefreshControlStub = (_props: { refreshing: boolean; onRefresh?: () => void }) => null;
 
 // Host refs resolve to a stub, as a native view would, so the ref commands have a target.
 async function mount(element: Parameters<typeof create>[0]): Promise<ReactTestRenderer> {
@@ -840,6 +842,38 @@ describe('Flume refresh', () => {
     await act(async () => {
       native.props.onRefresh();
     });
+    expect(Commands.setNativeRefreshing).toHaveBeenCalledWith(expect.anything(), false);
+  });
+
+  it('drives refresh from a RefreshControl element', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const fromElement = vi.fn();
+    const fromProp = vi.fn();
+    const control = (refreshing: boolean) =>
+      createElement(RefreshControlStub, { refreshing, onRefresh: fromElement });
+    const tree = await mount(
+      createElement(Flume, {
+        data: [item],
+        renderCell,
+        onRefresh: fromProp,
+        refreshControl: control(true),
+      }),
+    );
+    const native = () => tree.root.find((node) => String(node.type) === 'FlumeView');
+    expect(native().props).toMatchObject({ refreshEnabled: true, refreshing: true });
+    await act(async () => {
+      tree.update(
+        createElement(Flume, { data: [item], renderCell, refreshControl: control(false) }),
+      );
+    });
+    expect(native().props.refreshing).toBe(false);
+    await act(async () => {
+      native().props.onRefresh();
+    });
+    expect(fromElement).toHaveBeenCalledTimes(1);
+    expect(fromProp).not.toHaveBeenCalled();
     expect(Commands.setNativeRefreshing).toHaveBeenCalledWith(expect.anything(), false);
   });
 

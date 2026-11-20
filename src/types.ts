@@ -1,9 +1,11 @@
 import type { ComponentType, ReactElement } from 'react';
 import type {
+  ColorValue,
   Insets,
   LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  RefreshControlProps,
   StyleProp,
   ViewStyle,
 } from 'react-native';
@@ -248,8 +250,11 @@ export type FlumeProps<T> = {
   onStartReachedThreshold?: number;
   refreshing?: boolean;
   onRefresh?: (() => void) | null;
-  // tintColor is iOS, colors are Android; progressViewOffset moves the spinner on both.
-  refreshControl?: { tintColor?: string; colors?: string[]; progressViewOffset?: number };
+  // A RefreshControl element, or the spinner style alone (tintColor on iOS, colors on Android).
+  refreshControl?:
+    | ReactElement<RefreshControlProps>
+    | { tintColor?: ColorValue; colors?: ReadonlyArray<ColorValue>; progressViewOffset?: number }
+    | null;
   scrollEnabled?: boolean;
   nestedScrollEnabled?: boolean;
   overScrollMode?: 'auto' | 'always' | 'never';

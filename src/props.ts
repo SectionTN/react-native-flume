@@ -1,4 +1,5 @@
-import type { StyleProp, ViewStyle } from 'react-native';
+import { isValidElement } from 'react';
+import type { ColorValue, RefreshControlProps, StyleProp, ViewStyle } from 'react-native';
 import type { NativeProps } from './specs/FlumeViewNativeComponent';
 import type { FlumeProps, ViewabilityConfig } from './types';
 
@@ -151,6 +152,35 @@ export function stickyIndicesOf(indices: readonly number[] | undefined): number[
   return [...new Set(indices ?? [])].filter((index) => index >= 0).sort((a, b) => a - b);
 }
 
+export type Refresh = {
+  onRefresh?: () => void;
+  refreshing: boolean;
+  colors?: ReadonlyArray<ColorValue>;
+  tintColor?: ColorValue;
+  progressViewOffset: number;
+};
+
+// As in VirtualizedList, a RefreshControl element replaces the list's own, so its props win.
+export function refreshOf<T>(props: FlumeProps<T>): Refresh {
+  const control = props.refreshControl;
+  if (isValidElement<RefreshControlProps>(control)) {
+    const given = control.props;
+    return {
+      onRefresh: given.onRefresh ?? undefined,
+      refreshing: given.refreshing === true,
+      colors: given.colors,
+      tintColor: given.tintColor,
+      progressViewOffset: given.progressViewOffset ?? 0,
+    };
+  }
+  return {
+    onRefresh: props.onRefresh ?? undefined,
+    refreshing: props.refreshing === true,
+    colors: control?.colors,
+    tintColor: control?.tintColor,
+    progressViewOffset: control?.progressViewOffset ?? 0,
+  };
+}
 // FlashList and LegendList type these as nullable, where null means not given.
 const NULLABLE = [
   'renderCell',
@@ -191,6 +221,7 @@ export function withoutNulls<T>(props: FlumeProps<T>): SettledProps<T> {
 
 export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
   const props = withoutNulls(given);
+  const refresh = refreshOf(props);
   const horizontal = props.horizontal === true;
   let numColumns = props.numColumns ?? 1;
   if (horizontal && numColumns > 1) {
@@ -236,10 +267,10 @@ export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
     viewabilityConfig: viewability(props.viewabilityConfig, warn),
     endReachedThreshold: props.onEndReachedThreshold ?? 2,
     startReachedThreshold: props.onStartReachedThreshold ?? 2,
-    refreshEnabled: props.onRefresh !== undefined,
-    refreshing: props.refreshing === true,
-    refreshColors: props.refreshControl?.colors,
-    refreshProgressViewOffset: props.refreshControl?.progressViewOffset ?? 0,
+    refreshEnabled: refresh.onRefresh !== undefined,
+    refreshing: refresh.refreshing,
+    refreshColors: refresh.colors,
+    refreshProgressViewOffset: refresh.progressViewOffset,
     scrollEnabled: props.scrollEnabled !== false,
     nestedScrollEnabled: props.nestedScrollEnabled === true,
     overScrollMode: props.overScrollMode ?? 'auto',
@@ -251,7 +282,7 @@ export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
     contentInsetAdjustmentBehavior: props.contentInsetAdjustmentBehavior ?? 'never',
     bounces: props.bounces !== false,
     alwaysBounceVertical: props.alwaysBounceVertical ?? !horizontal,
-    refreshTintColor: props.refreshControl?.tintColor,
+    refreshTintColor: refresh.tintColor,
     keyboardDismissMode: props.keyboardDismissMode ?? 'none',
     keyboardShouldPersistTaps: props.keyboardShouldPersistTaps ?? 'never',
     rowsPressable: props.onPress !== undefined || props.onLongPress !== undefined,
