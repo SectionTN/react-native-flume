@@ -44,7 +44,7 @@ object AnchorPolicy {
     }
     // React Native's ScrollView always animates to the top.
     val top = config.autoscrollToTopThresholdPx
-    if (top != null && insertedAtVisualTop && before.distanceToVisualTopPx <= top) {
+    if (top != null && top >= 0 && insertedAtVisualTop && before.distanceToVisualTopPx <= top) {
       return AnchorDecision(restore = kept, scrollTo = VisualEdge.TOP, animated = true)
     }
     return if (anchorLost) restore else AnchorDecision()
