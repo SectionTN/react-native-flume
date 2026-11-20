@@ -148,14 +148,30 @@ describe('nativeProps refresh', () => {
       colors: ['red'],
       tintColor: 'blue',
       progressViewOffset: 20,
+      enabled: true,
     });
+  });
+
+  it('keeps refresh off when the RefreshControl element is disabled', () => {
+    const element = createElement(RefreshControlStub, {
+      refreshing: false,
+      onRefresh: () => {},
+      enabled: false,
+    });
+    expect(nativeProps({ data: [], refreshControl: element }, vi.fn()).refreshEnabled).toBe(false);
   });
 
   it('reads the config object of 0.1 with the top-level props', () => {
     const onRefresh = () => {};
     expect(
       refreshOf({ data: [], onRefresh, refreshing: false, refreshControl: { colors: ['red'] } }),
-    ).toEqual({ onRefresh, refreshing: false, colors: ['red'], progressViewOffset: 0 });
+    ).toEqual({
+      onRefresh,
+      refreshing: false,
+      colors: ['red'],
+      progressViewOffset: 0,
+      enabled: true,
+    });
   });
 
   it('enables refresh only with onRefresh', () => {
