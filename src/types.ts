@@ -207,7 +207,7 @@ export type FlumeProps<T> = {
   // React renderers by item type; they take precedence over renderCell.
   reactCells?: Record<string, ReactCell<T>>;
   keyExtractor?: ((item: T, index: number) => string) | null;
-  getItemType?: ((item: T, index: number) => string) | null;
+  getItemType?: ((item: T, index: number) => string | number | undefined) | null;
   extraData?: unknown;
   itemAnimations?: boolean;
   onPress?: ((info: PressInfo<T>) => void) | null;

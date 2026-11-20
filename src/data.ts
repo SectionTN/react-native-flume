@@ -1,5 +1,5 @@
 export type KeyExtractor<T> = (item: T, index: number) => string;
-export type TypeExtractor<T> = (item: T, index: number) => string;
+export type TypeExtractor<T> = (item: T, index: number) => string | number | undefined;
 
 // Index-aligned arrays plus one key-to-index map; look up by key through itemOf and typeOf.
 export type DataState<T> = {
@@ -116,7 +116,8 @@ function scan<T>(
     }
     index.set(key, i);
     keys[i] = key;
-    const type = getItemType?.(item, i) ?? 'default';
+    const raw = getItemType?.(item, i);
+    const type = raw === undefined ? 'default' : typeof raw === 'string' ? raw : String(raw);
     types[i] = type;
     // Lists switch type often and have few types: a short table is searched in place, a long one through the map.
     if (type !== idType) {

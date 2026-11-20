@@ -141,6 +141,17 @@ describe('diffData types for native', () => {
     expect([...d.typeIds]).toEqual([0, 1, 0]);
     expect(d.typeIds).toBeInstanceOf(Int32Array);
   });
+
+  it('turns numeric item types into strings', () => {
+    const items = [
+      { id: 'a', t: 1 },
+      { id: 'b', t: '1' },
+      { id: 'c', t: undefined },
+    ];
+    const d = diffData(undefined, items, undefined, (i) => i.t);
+    expect(d.typeTable).toEqual(['1', 'default']);
+    expect([...d.typeIds]).toEqual([0, 0, 1]);
+  });
 });
 
 describe('diffData with many types', () => {
