@@ -508,6 +508,21 @@ describe('Flume React cells', () => {
     expect(infos.every((info) => info.item !== undefined)).toBe(true);
   });
 
+  it('keeps the type and data of a row that left the data', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { infos, renderItem } = recordingCell();
+    const photo = { id: 'a', kind: 'photo' };
+    const getItemType = (i: unknown) => (i as { kind: string }).kind;
+    const tree = await mount(createElement(Flume, { data: [photo], renderItem, getItemType }));
+    await sendSlots(tree, [rowEntry(1, 'a', 0)]);
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [], renderItem, getItemType }));
+    });
+    expect(infos.map((info) => info.type)).not.toContain('default');
+    expect(infos.at(-1)?.data).toEqual([photo]);
+  });
+
   it('renders the list components in their slots', async () => {
     installHost();
     const { Flume } = await import('../Flume');
