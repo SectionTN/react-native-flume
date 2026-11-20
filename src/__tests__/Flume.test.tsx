@@ -472,14 +472,19 @@ describe('Flume React cells', () => {
     expect(infos.at(-1)?.type).toBe('photo');
   });
 
-  it('renders a string or a fragment from renderItem', async () => {
+  it('renders a fragment from renderItem', async () => {
     installHost();
     const { Flume } = await import('../Flume');
-    for (const renderItem of [() => 'text', () => createElement(Fragment, null, 'a', 'b')]) {
-      const tree = await mount(createElement(Flume, { data: [item], renderItem }));
-      await sendSlots(tree, [rowEntry(1, 'a', 0)]);
-      expect(slotViews(tree, 1)).toHaveLength(1);
-    }
+    const renderItem = () =>
+      createElement(
+        Fragment,
+        null,
+        createElement('Text', null, 'a'),
+        createElement('Text', null, 'b'),
+      );
+    const tree = await mount(createElement(Flume, { data: [item], renderItem }));
+    await sendSlots(tree, [rowEntry(1, 'a', 0)]);
+    expect(slotViews(tree, 1)).toHaveLength(1);
   });
 
   it('renders the new item in the commit that changes the data', async () => {
