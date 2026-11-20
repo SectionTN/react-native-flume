@@ -32,6 +32,11 @@ class AnchorPolicyTest {
     assertEquals(AnchorDecision(), AnchorPolicy.decide(AnchorConfig(autoscrollToTopThresholdPx = 899.0), before, true, false))
   }
 
+  @Test fun aNegativeTopThresholdIsOff() {
+    val config = AnchorConfig(autoscrollToTopThresholdPx = -2.625)
+    assertEquals(AnchorDecision(), AnchorPolicy.decide(config, before.copy(distanceToVisualTopPx = -5), true, false))
+  }
+
   @Test fun aChangeThatRemovesEveryLaidOutRowKeepsThePosition() {
     assertEquals(AnchorDecision(restore = 3 to -12), AnchorPolicy.decide(AnchorConfig(), before, true, false, anchorLost = true))
   }
