@@ -237,6 +237,39 @@ describe('nativeProps anchoring', () => {
     ).toBe(0);
   });
 
+  it('drops the FlatList top threshold on an inverted list, where FlatList measures it at the bottom', () => {
+    const flatList = { minIndexForVisible: 0, autoscrollToTopThreshold: 10 };
+    const sent = (inverted: boolean) =>
+      nativeProps({ data: [], inverted, maintainVisibleContentPosition: flatList }, vi.fn())
+        .maintainVisibleContentPosition?.autoscrollToTopThreshold;
+    expect(sent(false)).toBe(10);
+    expect(sent(true)).toBe(-1);
+  });
+
+  it('treats the nullable props of FlatList and FlashList as not given', () => {
+    expect(
+      nativeProps(
+        {
+          data: [],
+          horizontal: null,
+          inverted: null,
+          viewabilityConfig: null,
+          onEndReachedThreshold: null,
+          onStartReachedThreshold: null,
+          refreshing: null,
+        },
+        vi.fn(),
+      ),
+    ).toMatchObject({
+      horizontal: false,
+      inverted: false,
+      viewabilityConfig: undefined,
+      endReachedThreshold: 2,
+      startReachedThreshold: 2,
+      refreshing: false,
+    });
+  });
+
   it('accepts the anchoring shapes of FlatList and LegendList', () => {
     const anchoring = (value: FlumeProps<unknown>['maintainVisibleContentPosition']) =>
       nativeProps({ data: [], maintainVisibleContentPosition: value }, vi.fn())

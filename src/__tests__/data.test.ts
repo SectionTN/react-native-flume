@@ -147,10 +147,11 @@ describe('diffData types for native', () => {
       { id: 'a', t: 1 },
       { id: 'b', t: '1' },
       { id: 'c', t: undefined },
+      { id: 'd', t: null },
     ];
     const d = diffData(undefined, items, undefined, (i) => i.t);
     expect(d.typeTable).toEqual(['1', 'default']);
-    expect([...d.typeIds]).toEqual([0, 0, 1]);
+    expect([...d.typeIds]).toEqual([0, 0, 1, 1]);
   });
 });
 
