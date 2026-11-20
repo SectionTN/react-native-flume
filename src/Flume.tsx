@@ -19,7 +19,8 @@ import { createSerializable } from 'react-native-worklets';
 import { cellKinds, type ResolvedCell, resolveCell } from './cells';
 import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './data';
 import { FlumeSlot } from './FlumeSlot';
-import { contentPadding, nativeProps, refreshOf, stickyIndicesOf, withoutNulls } from './props';
+import { hostProps } from './foreign';
+import { contentPadding, nativeProps, refreshOf, settleProps, stickyIndicesOf } from './props';
 import {
   applySnapshot,
   gridCellWidth,
@@ -49,7 +50,7 @@ function componentElement(
 }
 
 function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
-  const props = withoutNulls(given);
+  const props = settleProps(given);
   const {
     data,
     renderCell,
@@ -392,6 +393,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
 
   return (
     <FlumeViewNativeComponent
+      {...hostProps(given)}
       {...nativeProps(props, warn)}
       ref={nativeRef}
       storeId={storeId}

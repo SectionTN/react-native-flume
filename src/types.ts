@@ -7,8 +7,10 @@ import type {
   NativeSyntheticEvent,
   RefreshControlProps,
   StyleProp,
+  ViewProps,
   ViewStyle,
 } from 'react-native';
+import type { IgnoredProps } from './foreign';
 
 export type CellDimension = number | `${number}%`;
 // Yoga takes auto on these keys only, as React Native does.
@@ -217,7 +219,7 @@ export type CellInfo<T> = {
 
 export type ReactCell<T> = (info: CellInfo<T>) => ReactNode;
 
-export type FlumeProps<T> = {
+export type FlumeOwnProps<T> = {
   data: readonly T[] | null | undefined;
   renderCell?: ((item: T, index: number) => CellNode) | null;
   // The React renderer for every type without a worklet cell or a reactCells entry.
@@ -240,11 +242,15 @@ export type FlumeProps<T> = {
   estimatedItemSize?: number;
   // How far past the viewport, in dp, cells are bound ahead; the default is one viewport.
   drawDistance?: number;
-  initialScrollIndex?: number;
+  // LegendList's object form opens at its index. Its offsets are not read yet.
+  initialScrollIndex?:
+    | number
+    | { index: number; viewOffset?: number; viewPosition?: number }
+    | null;
   // A native line between consecutive rows, inset along the cross axis from the start and end edges.
   separator?: { size: number; color?: string; insetStart?: number; insetEnd?: number };
   // Data indices, as FlashList counts them; FlatList counts the header too.
-  stickyHeaderIndices?: number[];
+  stickyHeaderIndices?: readonly number[] | null;
   // Rows around the data; the empty one shows instead of the data while it is empty, filling the viewport.
   ListHeaderComponent?: ComponentType<object> | ReactElement | null;
   ListFooterComponent?: ComponentType<object> | ReactElement | null;
@@ -297,3 +303,10 @@ export type FlumeProps<T> = {
   testID?: string;
   accessibilityLabel?: string;
 };
+
+export type FlumeProps<T> = FlumeOwnProps<T> &
+  IgnoredProps<T> &
+  Omit<ViewProps, keyof FlumeOwnProps<T> | keyof IgnoredProps<T> | 'children'>;
+
+export type ListRenderItem<T> = ReactCell<T>;
+export type ListRenderItemInfo<T> = CellInfo<T>;
