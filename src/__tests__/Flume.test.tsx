@@ -391,7 +391,41 @@ describe('Flume React cells', () => {
     await sendSlots(tree, [rowEntry(1, 'a', 0)]);
     const [view] = slotViews(tree, 1);
     expect(view?.props.style).toEqual({ position: 'absolute', left: 0, right: 0 });
-    expect(infos.at(-1)).toEqual({ item, index: 0, target: 'Cell', extraData: undefined });
+    expect(infos.at(-1)).toEqual({
+      item,
+      index: 0,
+      target: 'Cell',
+      extraData: undefined,
+      data: [item],
+      type: 'default',
+    });
+  });
+
+  it('gives renderItem the data and the item type', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { infos, renderItem } = recordingCell();
+    const data = [{ id: 'a', kind: 'photo' }];
+    const tree = await mount(
+      createElement(Flume, {
+        data,
+        renderItem,
+        getItemType: (i: unknown) => (i as { kind: string }).kind,
+      }),
+    );
+    await sendSlots(tree, [rowEntry(1, 'a', 0)]);
+    expect(infos.at(-1)?.data).toBe(data);
+    expect(infos.at(-1)?.type).toBe('photo');
+  });
+
+  it('renders a string or a fragment from renderItem', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    for (const renderItem of [() => 'text', () => createElement(Fragment, null, 'a', 'b')]) {
+      const tree = await mount(createElement(Flume, { data: [item], renderItem }));
+      await sendSlots(tree, [rowEntry(1, 'a', 0)]);
+      expect(slotViews(tree, 1)).toHaveLength(1);
+    }
   });
 
   it('renders the new item in the commit that changes the data', async () => {
@@ -488,7 +522,14 @@ describe('Flume React cells', () => {
     await sendSlots(tree, [{ ...rowEntry(7, 'a', 0), kind: 4 }], 180);
     const [view] = slotViews(tree, 7);
     expect(view?.props.style).toEqual({ position: 'absolute', left: 0, right: 0 });
-    expect(infos).toContainEqual({ item, index: 0, target: 'StickyHeader', extraData: undefined });
+    expect(infos).toContainEqual({
+      item,
+      index: 0,
+      target: 'StickyHeader',
+      extraData: undefined,
+      data: [item],
+      type: 'default',
+    });
   });
 
   it('keeps a React cell mounted at its new width when numColumns changes', async () => {
