@@ -278,6 +278,30 @@ describe('Flume props', () => {
     expect(new Set(host.data.map((call) => call.storeId)).size).toBe(1);
   });
 
+  it('turns anchoring off and on again without a remount', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const tree = await mount(
+      createElement(Flume, { data: [item], renderCell, maintainVisibleContentPosition: {} }),
+    );
+    const disabled = () =>
+      tree.root.find((node) => String(node.type) === 'FlumeView').props
+        .maintainVisibleContentPosition.disabled;
+    const id = renderedStoreId(tree);
+    for (const [value, expected] of [
+      [false, true],
+      [{ autoscrollToBottomThreshold: 0.2 }, false],
+    ] as const) {
+      await act(async () => {
+        tree.update(
+          createElement(Flume, { data: [item], renderCell, maintainVisibleContentPosition: value }),
+        );
+      });
+      expect(disabled()).toBe(expected);
+    }
+    expect(renderedStoreId(tree)).toBe(id);
+  });
+
   it('treats null callbacks as not given', async () => {
     installHost();
     const { Flume } = await import('../Flume');

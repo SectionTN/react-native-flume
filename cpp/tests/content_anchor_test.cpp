@@ -40,7 +40,7 @@ TEST_CASE("an insert at the bottom within the threshold scrolls there") {
 
 TEST_CASE("an insert at the top within the threshold scrolls there, always animated") {
   AnchorConfig config;
-  config.autoscrollToTopThreshold = 0.2;
+  config.autoscrollToTopThreshold = 100;
   config.animateAutoScrollToBottom = false;
   const AnchorDecision decision = decideAnchor(config, at(100, 500), true, false);
   CHECK(decision.outcome == AnchorOutcome::ScrollToEdge);
@@ -50,7 +50,7 @@ TEST_CASE("an insert at the top within the threshold scrolls there, always anima
 
 TEST_CASE("the bottom wins when both edges qualify") {
   AnchorConfig config;
-  config.autoscrollToTopThreshold = 0.2;
+  config.autoscrollToTopThreshold = 100;
   config.autoscrollToBottomThreshold = 0.2;
   const AnchorDecision decision = decideAnchor(config, at(0, 0), true, true);
   CHECK(decision.outcome == AnchorOutcome::ScrollToEdge);
@@ -88,4 +88,12 @@ TEST_CASE("edge inserts follow content order") {
   atEnd.inserted = {{8, 2}};
   CHECK(insertedAtEdges(atEnd, 10, false).visualBottom);
   CHECK_FALSE(insertedAtEdges(atEnd, 10, false).visualTop);
+}
+
+TEST_CASE("the top threshold is in points") {
+  AnchorConfig config;
+  config.autoscrollToTopThreshold = 100;
+  CHECK(decideAnchor(config, at(100, 500), true, false).outcome == AnchorOutcome::ScrollToEdge);
+  config.autoscrollToTopThreshold = 99;
+  CHECK(decideAnchor(config, at(100, 500), true, false).outcome == AnchorOutcome::KeepAnchor);
 }

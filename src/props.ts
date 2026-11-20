@@ -127,16 +127,31 @@ function viewability(
   return rest;
 }
 
-// Codegen structs read an unset member as 0 on iOS, so every field goes out; -1 is no threshold.
-function anchoring(
-  config: FlumeProps<unknown>['maintainVisibleContentPosition'],
+// Every field the three anchoring shapes can carry. The others are ignored.
+type AnchoringFields = {
+  disabled?: boolean;
+  autoscrollToTopThreshold?: number | null;
+  autoscrollToBottomThreshold?: number;
+  animateAutoScrollToBottom?: boolean;
+  startRenderingFromBottom?: boolean;
+  data?: boolean;
+  size?: boolean;
+};
+
+// Codegen structs read an unset member as 0 on iOS, so every field goes out, and -1 means no threshold.
+function anchoring<T>(
+  given: FlumeProps<T>['maintainVisibleContentPosition'],
 ): NonNullable<FlatProps['maintainVisibleContentPosition']> {
+  const config: AnchoringFields = typeof given === 'object' && given !== null ? given : {};
   return {
-    disabled: config?.disabled === true,
-    autoscrollToTopThreshold: config?.autoscrollToTopThreshold ?? -1,
-    autoscrollToBottomThreshold: config?.autoscrollToBottomThreshold ?? -1,
-    animateAutoScrollToBottom: config?.animateAutoScrollToBottom !== false,
-    startRenderingFromBottom: config?.startRenderingFromBottom === true,
+    disabled:
+      given === false ||
+      config.disabled === true ||
+      (config.data === false && config.size === false),
+    autoscrollToTopThreshold: config.autoscrollToTopThreshold ?? -1,
+    autoscrollToBottomThreshold: config.autoscrollToBottomThreshold ?? -1,
+    animateAutoScrollToBottom: config.animateAutoScrollToBottom !== false,
+    startRenderingFromBottom: config.startRenderingFromBottom === true,
   };
 }
 

@@ -180,13 +180,26 @@ export type FlumeRef = {
   getAnimatableRef(): unknown;
 };
 
-// FlashList v2 shape: thresholds are fractions of the viewport at the visual edges; enabled by default.
+// FlashList v2 shape, on by default. The top threshold is in points, the bottom one in viewports.
 export type MaintainVisibleContentPosition = {
   disabled?: boolean;
   autoscrollToTopThreshold?: number;
   autoscrollToBottomThreshold?: number;
   animateAutoScrollToBottom?: boolean;
   startRenderingFromBottom?: boolean;
+};
+
+// FlatList's shape. Flume anchors on the first visible row whatever minIndexForVisible says.
+export type FlatListAnchoring = {
+  minIndexForVisible: number;
+  autoscrollToTopThreshold?: number | null;
+};
+
+// LegendList's shape. Flume has one switch for both, and does not call shouldRestorePosition.
+export type LegendListAnchoring<T> = {
+  data?: boolean;
+  size?: boolean;
+  shouldRestorePosition?: (item: T, index: number, data: readonly T[]) => boolean;
 };
 
 export type ScrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
@@ -270,7 +283,13 @@ export type FlumeProps<T> = {
   // interactive is iOS only.
   keyboardDismissMode?: 'none' | 'on-drag' | 'interactive';
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
-  maintainVisibleContentPosition?: MaintainVisibleContentPosition;
+  // false turns anchoring off. FlatList and LegendList objects map onto the same switch and top threshold.
+  maintainVisibleContentPosition?:
+    | boolean
+    | MaintainVisibleContentPosition
+    | FlatListAnchoring
+    | LegendListAnchoring<T>
+    | null;
   onLayout?: ((event: LayoutChangeEvent) => void) | null;
   testID?: string;
   accessibilityLabel?: string;

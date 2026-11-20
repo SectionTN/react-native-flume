@@ -20,8 +20,16 @@ class AnchorPolicyTest {
   }
 
   @Test fun anInsertAtTheTopWithinTheThresholdScrollsThereAlwaysAnimated() {
-    val config = AnchorConfig(autoscrollToTopThreshold = 1.0, animateAutoScrollToBottom = false)
+    val config = AnchorConfig(autoscrollToTopThresholdPx = 900.0, animateAutoScrollToBottom = false)
     assertEquals(AnchorDecision(scrollTo = VisualEdge.TOP, animated = true), AnchorPolicy.decide(config, before, true, false))
+  }
+
+  @Test fun aTopThresholdIsInPixels() {
+    assertEquals(
+      AnchorDecision(scrollTo = VisualEdge.TOP, animated = true),
+      AnchorPolicy.decide(AnchorConfig(autoscrollToTopThresholdPx = 900.0), before, true, false),
+    )
+    assertEquals(AnchorDecision(), AnchorPolicy.decide(AnchorConfig(autoscrollToTopThresholdPx = 899.0), before, true, false))
   }
 
   @Test fun aChangeThatRemovesEveryLaidOutRowKeepsThePosition() {
@@ -34,7 +42,7 @@ class AnchorPolicyTest {
       AnchorDecision(restore = 3 to -12, scrollTo = VisualEdge.BOTTOM, animated = true),
       AnchorPolicy.decide(bottom, before, false, true, anchorLost = true),
     )
-    val top = AnchorConfig(autoscrollToTopThreshold = 1.0)
+    val top = AnchorConfig(autoscrollToTopThresholdPx = 900.0)
     assertEquals(
       AnchorDecision(restore = 3 to -12, scrollTo = VisualEdge.TOP, animated = true),
       AnchorPolicy.decide(top, before, true, false, anchorLost = true),

@@ -4,6 +4,7 @@ import android.view.View
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.module.annotations.ReactModule
+import com.facebook.react.uimanager.PixelUtil
 import com.facebook.react.uimanager.ReactStylesDiffMap
 import com.facebook.react.uimanager.StateWrapper
 import com.facebook.react.uimanager.ThemedReactContext
@@ -173,7 +174,7 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
   override fun setMaintainVisibleContentPosition(view: FlumeView, value: ReadableMap?) {
     view.anchorConfig = AnchorConfig(
       disabled = value.boolOr("disabled", false),
-      autoscrollToTopThreshold = value.doubleOrNull("autoscrollToTopThreshold"),
+      autoscrollToTopThresholdPx = value.doubleOrNull("autoscrollToTopThreshold")?.let { PixelUtil.toPixelFromDIP(it).toDouble() },
       autoscrollToBottomThreshold = value.doubleOrNull("autoscrollToBottomThreshold"),
       animateAutoScrollToBottom = value.boolOr("animateAutoScrollToBottom", true),
       startRenderingFromBottom = value.boolOr("startRenderingFromBottom", false),

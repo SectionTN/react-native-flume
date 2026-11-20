@@ -114,14 +114,14 @@ Layout:
 | `estimatedItemSize` | `number` | The mean of the item's type, at least 50 | Sets the length in dp that a React row takes until it's measured. |
 | `drawDistance` | `number` | One screen | Sets how far past the screen edges, in dp, rows are prepared ahead of scrolling. |
 | `initialScrollIndex` | `number` | | Opens the list at this item. |
-| `maintainVisibleContentPosition` | `MaintainVisibleContentPosition` | On | Keeps the visible rows in place when items are added above them. |
+| `maintainVisibleContentPosition` | `boolean \| MaintainVisibleContentPosition` | On | Keeps the visible rows in place when items are added above them. Pass `false` to turn it off. |
 
 `maintainVisibleContentPosition` takes these options:
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
 | `disabled` | `boolean` | `false` | Turns the behavior off. |
-| `autoscrollToTopThreshold` | `number` | | Scrolls to new items at the top when the list is this many screens from the top. |
+| `autoscrollToTopThreshold` | `number` | | Scrolls to new items at the top when the list is within this many points of the top. |
 | `autoscrollToBottomThreshold` | `number` | | Scrolls to new items at the bottom when the list is this many screens from the bottom. |
 | `animateAutoScrollToBottom` | `boolean` | `true` | Animates the scroll to new items at the bottom. |
 | `startRenderingFromBottom` | `boolean` | `false` | Opens the list at its last item. |

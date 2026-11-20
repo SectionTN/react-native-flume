@@ -10,8 +10,8 @@ namespace flume {
 // maintainVisibleContentPosition, sent complete by the wrapper.
 struct AnchorConfig {
   bool disabled = false;
-  double autoscrollToTopThreshold = -1;  // in viewports; negative for none
-  double autoscrollToBottomThreshold = -1;
+  double autoscrollToTopThreshold = -1;  // in points, negative for none
+  double autoscrollToBottomThreshold = -1;  // in viewports, negative for none
   bool animateAutoScrollToBottom = true;
 };
 
