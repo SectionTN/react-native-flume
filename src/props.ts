@@ -196,7 +196,7 @@ export function refreshOf<T>(props: FlumeProps<T>): Refresh {
     progressViewOffset: control?.progressViewOffset ?? 0,
   };
 }
-// FlashList and LegendList type these as nullable, where null means not given.
+// Props that FlashList and LegendList type as nullable, where null means not given.
 const NULLABLE = [
   'renderCell',
   'renderItem',
@@ -214,28 +214,41 @@ const NULLABLE = [
   'onStartReached',
   'onRefresh',
   'onLayout',
+  'stickyHeaderIndices',
 ] as const;
 
 type Nullable = (typeof NULLABLE)[number];
 
-export type SettledProps<T> = Omit<FlumeProps<T>, 'data' | Nullable> & {
+export type SettledProps<T> = Omit<FlumeProps<T>, 'data' | 'initialScrollIndex' | Nullable> & {
   data: readonly T[];
+  initialScrollIndex?: number;
 } & { [K in Nullable]?: NonNullable<FlumeProps<T>[K]> };
 
 const EMPTY: readonly never[] = [];
 
-// The props with data defaulted and null callbacks removed, the same object when nothing is null.
-export function withoutNulls<T>(props: FlumeProps<T>): SettledProps<T> {
-  if (props.data != null && NULLABLE.every((key) => props[key] !== null)) {
+// The props in one shape: data defaulted, nulls removed, initialScrollIndex as a number. Unchanged props pass as is.
+export function settleProps<T>(props: FlumeProps<T>): SettledProps<T> {
+  const initial = props.initialScrollIndex;
+  if (
+    props.data != null &&
+    (initial === undefined || typeof initial === 'number') &&
+    NULLABLE.every((key) => props[key] !== null)
+  ) {
     return props as SettledProps<T>;
   }
-  const settled: Record<string, unknown> = { ...props, data: props.data ?? EMPTY };
-  for (const key of NULLABLE) if (settled[key] === null) delete settled[key];
+  const settled: Record<string, unknown> = {
+    ...props,
+    data: props.data ?? EMPTY,
+    initialScrollIndex: typeof initial === 'object' && initial !== null ? initial.index : initial,
+  };
+  for (const key of [...NULLABLE, 'initialScrollIndex']) {
+    if (settled[key] == null) delete settled[key];
+  }
   return settled as SettledProps<T>;
 }
 
 export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
-  const props = withoutNulls(given);
+  const props = settleProps(given);
   const refresh = refreshOf(props);
   const horizontal = props.horizontal === true;
   let numColumns = props.numColumns ?? 1;

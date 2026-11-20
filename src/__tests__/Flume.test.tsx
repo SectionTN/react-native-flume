@@ -302,6 +302,60 @@ describe('Flume props', () => {
     expect(renderedStoreId(tree)).toBe(id);
   });
 
+  it('passes host view props to the native view', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const tree = await mount(
+      createElement(Flume, {
+        data: [item],
+        renderCell,
+        nativeID: 'list',
+        pointerEvents: 'box-none',
+        accessibilityRole: 'list',
+      }),
+    );
+    expect(tree.root.find((node) => String(node.type) === 'FlumeView').props).toMatchObject({
+      nativeID: 'list',
+      pointerEvents: 'box-none',
+      accessibilityRole: 'list',
+    });
+  });
+
+  it('keeps ignored props off the native view', async () => {
+    installHost();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { Flume } = await import('../Flume');
+    const tree = await mount(
+      createElement(Flume, {
+        data: [item],
+        renderCell,
+        windowSize: 5,
+        getItemLayout: () => ({ length: 10, offset: 0, index: 0 }),
+        removeClippedSubviews: true,
+      }),
+    );
+    const props = tree.root.find((node) => String(node.type) === 'FlumeView').props;
+    expect(props).not.toHaveProperty('windowSize');
+    expect(props).not.toHaveProperty('getItemLayout');
+    expect(props).not.toHaveProperty('removeClippedSubviews');
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('scrolls to the index of an initialScrollIndex object', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const tree = await mount(
+      createElement(Flume, {
+        data: [item, item, item, item],
+        renderCell,
+        initialScrollIndex: { index: 3, viewOffset: 10 },
+      }),
+    );
+    expect(
+      tree.root.find((node) => String(node.type) === 'FlumeView').props.initialScrollIndex,
+    ).toBe(3);
+  });
+
   it('treats null callbacks as not given', async () => {
     installHost();
     const { Flume } = await import('../Flume');
