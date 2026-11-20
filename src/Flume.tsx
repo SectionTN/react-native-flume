@@ -112,6 +112,8 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const lastViewable = useRef(new Map<string, T>());
   const count = useRef(data.length);
   count.current = data.length;
+  const dataRef = useRef<readonly unknown[]>(data);
+  dataRef.current = data;
 
   // Each distinct message reports once per mount, in development only.
   const report = useCallback((level: 'warn' | 'error', message: string) => {
@@ -328,6 +330,8 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         layout={layout}
         item={itemOf(next, entry.key)}
         render={resolved?.kind === 'react' ? (resolved.render as ReactCell<unknown>) : undefined}
+        type={type ?? 'default'}
+        dataRef={dataRef}
         element={elementFor(entry.kind)}
         extraData={extraData}
         keyboardTaps={keyboardShouldPersistTaps ?? 'never'}

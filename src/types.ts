@@ -1,4 +1,4 @@
-import type { ComponentType, ReactElement } from 'react';
+import type { ComponentType, ReactElement, ReactNode } from 'react';
 import type {
   ColorValue,
   Insets,
@@ -210,9 +210,12 @@ export type CellInfo<T> = {
   index: number;
   target: 'Cell' | 'StickyHeader';
   extraData?: unknown;
+  // LegendList's fields: the data of the render that last drew the row, and the item's type.
+  data: readonly T[];
+  type: string;
 };
 
-export type ReactCell<T> = (info: CellInfo<T>) => ReactElement | null;
+export type ReactCell<T> = (info: CellInfo<T>) => ReactNode;
 
 export type FlumeProps<T> = {
   data: readonly T[] | null | undefined;

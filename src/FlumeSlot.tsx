@@ -14,6 +14,9 @@ type FlumeSlotProps = {
   layout: SlotLayout;
   item: unknown;
   render: ReactCell<unknown> | undefined;
+  type: string;
+  // One ref for the whole list, so a data change does not re-render every slot.
+  dataRef: { readonly current: readonly unknown[] };
   element: ReactElement | null;
   extraData: unknown;
   keyboardTaps: 'always' | 'never' | 'handled';
@@ -35,6 +38,8 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
     layout,
     item,
     render,
+    type,
+    dataRef,
     element,
     extraData,
     keyboardTaps,
@@ -52,6 +57,8 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
         index,
         target: kind === SlotKind.sticky ? 'StickyHeader' : 'Cell',
         extraData,
+        data: dataRef.current,
+        type,
       }) ?? null)
     : element;
   return (
