@@ -120,6 +120,13 @@ describe('nativeProps viewability', () => {
 });
 
 describe('nativeProps refresh', () => {
+  it('treats null data and null callbacks as not given', () => {
+    expect(nativeProps({ data: null, onRefresh: null, onScroll: null }, vi.fn())).toMatchObject({
+      refreshEnabled: false,
+      emitScrollEvents: false,
+    });
+  });
+
   it('enables refresh only with onRefresh', () => {
     const warn = vi.fn();
     expect(nativeProps({ data: [], refreshing: true }, warn).refreshEnabled).toBe(false);

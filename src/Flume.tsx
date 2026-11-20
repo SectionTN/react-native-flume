@@ -19,7 +19,7 @@ import { createSerializable } from 'react-native-worklets';
 import { cellKinds, type ResolvedCell, resolveCell } from './cells';
 import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './data';
 import { FlumeSlot } from './FlumeSlot';
-import { contentPadding, nativeProps, stickyIndicesOf } from './props';
+import { contentPadding, nativeProps, stickyIndicesOf, withoutNulls } from './props';
 import {
   applySnapshot,
   gridCellWidth,
@@ -48,7 +48,8 @@ function componentElement(
   return isValidElement(component) ? component : createElement(component);
 }
 
-function FlumeInner<T>(props: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
+function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
+  const props = withoutNulls(given);
   const {
     data,
     renderCell,

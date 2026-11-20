@@ -261,6 +261,41 @@ describe('Flume props', () => {
     expect(calls).toHaveLength(1);
   });
 
+  it('renders an empty list for null and undefined data', async () => {
+    const host = installHost();
+    const { Flume } = await import('../Flume');
+    const renderItem = () => null;
+    const tree = await mount(createElement(Flume, { data: null, renderItem }));
+    for (const data of [undefined, [item], null]) {
+      await act(async () => {
+        tree.update(createElement(Flume, { data, renderItem }));
+      });
+    }
+    expect(host.data.at(-1)?.keys).toEqual([]);
+    expect(host.data.some((call) => call.keys.includes('a'))).toBe(true);
+    expect(new Set(host.data.map((call) => call.storeId)).size).toBe(1);
+  });
+
+  it('treats null callbacks as not given', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const tree = await mount(
+      createElement(Flume, {
+        data: [item],
+        renderCell,
+        onEndReached: null,
+        onRefresh: null,
+        onViewableItemsChanged: null,
+        onPress: null,
+      }),
+    );
+    const native = tree.root.find((node) => String(node.type) === 'FlumeView');
+    expect(native.props.onEndReached).toBeUndefined();
+    expect(native.props.onRefresh).toBeUndefined();
+    expect(native.props.onViewableItemsChanged).toBeUndefined();
+    expect(native.props.onCellPress).toBeUndefined();
+  });
+
   it('registers a reporter in development', async () => {
     const host = installHost();
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});

@@ -1,4 +1,5 @@
-import type { FlumeProps, ReactCell } from './types';
+import type { SettledProps } from './props';
+import type { ReactCell } from './types';
 
 export type ResolvedCell<T> =
   | { kind: 'worklet' }
@@ -7,7 +8,7 @@ export type ResolvedCell<T> =
 
 export type CellKinds = { reactByDefault: boolean; reactTypes: string[]; signature: string };
 
-type Renderers<T> = Pick<FlumeProps<T>, 'renderCell' | 'renderItem' | 'reactCells'>;
+type Renderers<T> = Pick<SettledProps<T>, 'renderCell' | 'renderItem' | 'reactCells'>;
 
 function reactCellFor<T>(reactCells: Renderers<T>['reactCells'], type: string) {
   return reactCells !== undefined && Object.hasOwn(reactCells, type) ? reactCells[type] : undefined;
@@ -23,7 +24,7 @@ export function resolveCell<T>(type: string, props: Renderers<T>): ResolvedCell<
 }
 
 // What native needs to give each type a holder of the right kind; the signature keys memos on it.
-export function cellKinds<T>(props: Pick<FlumeProps<T>, 'renderCell' | 'reactCells'>): CellKinds {
+export function cellKinds<T>(props: Pick<SettledProps<T>, 'renderCell' | 'reactCells'>): CellKinds {
   const reactCells = props.reactCells ?? {};
   const reactTypes = Object.keys(reactCells)
     .filter((type) => reactCells[type] !== undefined)
