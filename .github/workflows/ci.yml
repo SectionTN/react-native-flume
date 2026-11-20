@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    # Clang, as in the NDK and Xcode. The jsi suite needs macOS Hermes and is skipped here.
+    # Clang, as in the NDK and Xcode. The jsi suite needs macOS Hermes and runs in the ios job.
     env:
       CC: clang
       CXX: clang++
@@ -106,3 +106,40 @@ jobs:
           :react-native-flume:testReleaseUnitTest
           :app:assembleDebug
           -PreactNativeArchitectures=arm64-v8a
+
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: C++ core and jsi tests
+        run: yarn test:cpp
+
+      - name: Prebuild the example
+        run: yarn example expo prebuild --platform ios --no-install
+
+      - name: Install pods
+        working-directory: example/ios
+        run: pod install
+
+      # A Debug simulator build skips the JS bundle, and one arch keeps it short.
+      - name: Build the example
+        working-directory: example/ios
+        run: >-
+          xcodebuild -quiet
+          -workspace FlumeExample.xcworkspace
+          -scheme FlumeExample
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          ARCHS=arm64
+          CODE_SIGNING_ALLOWED=NO
+          build
