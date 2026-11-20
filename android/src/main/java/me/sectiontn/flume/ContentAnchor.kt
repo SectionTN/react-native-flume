@@ -1,9 +1,9 @@
 package me.sectiontn.flume
 
-// FlashList's shape: thresholds are fractions of the viewport, measured at the visual edges.
+// FlashList's shape, measured at the visual edges: the top threshold in pixels, the bottom one in viewports.
 data class AnchorConfig(
   val disabled: Boolean = false,
-  val autoscrollToTopThreshold: Double? = null,
+  val autoscrollToTopThresholdPx: Double? = null,
   val autoscrollToBottomThreshold: Double? = null,
   val animateAutoScrollToBottom: Boolean = true,
   val startRenderingFromBottom: Boolean = false,
@@ -43,8 +43,8 @@ object AnchorPolicy {
       return AnchorDecision(restore = kept, scrollTo = VisualEdge.BOTTOM, animated = config.animateAutoScrollToBottom)
     }
     // React Native's ScrollView always animates to the top.
-    val top = config.autoscrollToTopThreshold
-    if (top != null && insertedAtVisualTop && before.distanceToVisualTopPx <= top * before.viewportPx) {
+    val top = config.autoscrollToTopThresholdPx
+    if (top != null && insertedAtVisualTop && before.distanceToVisualTopPx <= top) {
       return AnchorDecision(restore = kept, scrollTo = VisualEdge.TOP, animated = true)
     }
     return if (anchorLost) restore else AnchorDecision()

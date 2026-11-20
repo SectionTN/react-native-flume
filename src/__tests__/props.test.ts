@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import type { RefreshControlProps } from 'react-native';
 import { describe, expect, it, vi } from 'vitest';
 import { contentPadding, nativeProps, refreshOf, stickyIndicesOf } from '../props';
+import type { FlumeProps } from '../types';
 
 // Stands in for React Native's RefreshControl.
 const RefreshControlStub = (_props: RefreshControlProps) => null;
@@ -234,6 +235,25 @@ describe('nativeProps anchoring', () => {
         warn,
       ).maintainVisibleContentPosition?.autoscrollToBottomThreshold,
     ).toBe(0);
+  });
+
+  it('accepts the anchoring shapes of FlatList and LegendList', () => {
+    const anchoring = (value: FlumeProps<unknown>['maintainVisibleContentPosition']) =>
+      nativeProps({ data: [], maintainVisibleContentPosition: value }, vi.fn())
+        .maintainVisibleContentPosition;
+    expect(anchoring(false)?.disabled).toBe(true);
+    expect(anchoring({ data: false, size: false })?.disabled).toBe(true);
+    expect(anchoring({ data: true })?.disabled).toBe(false);
+    expect(anchoring(true)).toEqual(anchoring(undefined));
+    expect(anchoring(null)).toEqual(anchoring(undefined));
+    expect(anchoring({ minIndexForVisible: 0, autoscrollToTopThreshold: 10 })).toMatchObject({
+      disabled: false,
+      autoscrollToTopThreshold: 10,
+    });
+    expect(
+      anchoring({ minIndexForVisible: 0, autoscrollToTopThreshold: null })
+        ?.autoscrollToTopThreshold,
+    ).toBe(-1);
   });
 });
 

@@ -11,7 +11,7 @@ AnchorDecision decideAnchor(const AnchorConfig& config, const AnchorState& befor
   }
   // React Native's iOS ScrollView always animates to the top.
   const double top = config.autoscrollToTopThreshold;
-  if (top >= 0 && insertedAtVisualTop && before.distanceToVisualTop <= top * before.viewportLength) {
+  if (top >= 0 && insertedAtVisualTop && before.distanceToVisualTop <= top) {
     return {AnchorOutcome::ScrollToEdge, VisualEdge::Top, true};
   }
   return {AnchorOutcome::KeepAnchor};
