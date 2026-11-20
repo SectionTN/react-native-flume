@@ -1,5 +1,8 @@
 # `react-native-flume`
 
+[![npm](https://img.shields.io/npm/v/react-native-flume?style=flat-square)](https://www.npmjs.com/package/react-native-flume)
+[![license](https://img.shields.io/npm/l/react-native-flume?style=flat-square&label=license)](https://github.com/SectionTN/react-native-flume/blob/main/LICENSE)
+
 A native list for React Native. It's built on RecyclerView on Android and UICollectionView on iOS.
 
 ## Features
