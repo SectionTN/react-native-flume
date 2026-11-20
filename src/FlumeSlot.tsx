@@ -44,8 +44,16 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
     extraData,
     keyboardTaps,
   } = props;
-  const last = useRef<{ item?: unknown; render?: ReactCell<unknown> }>({});
-  if (item !== undefined && render !== undefined) last.current = { item, render };
+  const last = useRef<{
+    item?: unknown;
+    render?: ReactCell<unknown>;
+    type?: string;
+    data?: readonly unknown[];
+  }>({});
+  // A row that left the data renders its exit with what it had, type and data included.
+  if (item !== undefined && render !== undefined) {
+    last.current = { item, render, type, data: dataRef.current };
+  }
   const entry = { slot, kind, key: itemKey, index, bound: true, minMain };
   const style = slotStyle(entry, fullSpan, layout);
   if (style === null) return null;
@@ -57,8 +65,8 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
         index,
         target: kind === SlotKind.sticky ? 'StickyHeader' : 'Cell',
         extraData,
-        data: dataRef.current,
-        type,
+        data: last.current.data ?? dataRef.current,
+        type: last.current.type ?? type,
       }) ?? null)
     : element;
   return (
