@@ -181,3 +181,30 @@ TEST_CASE("a sticky-only change reaches the listener as empty ops") {
   CHECK(listener.calls.back().sticky == std::vector<int>{0, 2});
   CHECK(flume::Engine::instance().stickyIndices(id) == std::vector<int>{0, 2});
 }
+
+TEST_CASE("deferred data waits for its cells and applyNow applies it at once") {
+  ReactSide side;
+  RecordingListener listener;
+  int id = stickyStore(side, listener);
+  listener.calls.clear();
+  side.rig.eval(
+      "__flume.setData(id, ['a', 'b', 'c', 'd'], ['row'], new Int32Array([0, 0, 0, 0]), [], [], true, true, [1]);");
+  CHECK(listener.calls.empty());
+  CHECK(flume::Engine::instance().applyNow(id));
+  REQUIRE(listener.calls.size() == 1);
+  CHECK(listener.calls.back().inserted == std::vector<flume::ListOps::Range>{{3, 1}});
+  CHECK_FALSE(flume::Engine::instance().applyNow(id));
+  CHECK(listener.calls.size() == 1);
+}
+
+TEST_CASE("applyNow before the deferred data arrives reports nothing applied") {
+  ReactSide side;
+  RecordingListener listener;
+  int id = stickyStore(side, listener);
+  listener.calls.clear();
+  CHECK_FALSE(flume::Engine::instance().applyNow(id));
+  side.rig.eval(
+      "__flume.setData(id, ['a', 'b', 'c', 'd'], ['row'], new Int32Array([0, 0, 0, 0]), [], [], true, true, [1]);");
+  CHECK(flume::Engine::instance().applyNow(id));
+  CHECK(listener.calls.size() == 1);
+}

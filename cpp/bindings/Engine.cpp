@@ -133,15 +133,23 @@ void Engine::scheduleRefresh(const std::shared_ptr<Store>& store, bool always) {
   if (scheduler == nullptr) return;
   std::weak_ptr<Store> weak = store;
   worklets::scheduleOnUI(scheduler, [weak, always] {
-    auto s = weak.lock();
-    if (s == nullptr) return;
-    std::optional<ListOps> ops = s->list.applyPending();
-    if (s->listener == nullptr || (!ops && !always)) return;
-    ListOps reset;
-    reset.reset = true;
-    reset.sticky = s->list.sticky();
-    s->listener->onListChanged(always ? reset : *ops, s->list.count());
+    if (auto s = weak.lock()) applyPending(*s, always);
   });
+}
+
+bool Engine::applyPending(Store& store, bool always) {
+  std::optional<ListOps> ops = store.list.applyPending();
+  if (store.listener == nullptr || (!ops && !always)) return ops.has_value();
+  ListOps reset;
+  reset.reset = true;
+  reset.sticky = store.list.sticky();
+  store.listener->onListChanged(always ? reset : *ops, store.list.count());
+  return ops.has_value();
+}
+
+bool Engine::applyNow(int storeId) {
+  auto store = find(storeId);
+  return store != nullptr && store->list.attached() && applyPending(*store, false);
 }
 
 // The JS thread only unregisters. The UI job releases runtime handles under the runtime lock, ~Store the native parts.
