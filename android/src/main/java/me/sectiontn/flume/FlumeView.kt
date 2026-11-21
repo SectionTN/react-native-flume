@@ -14,10 +14,14 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.facebook.react.bridge.ReactContext
+import com.facebook.react.bridge.UIManager
+import com.facebook.react.bridge.UIManagerListener
+import com.facebook.react.common.annotations.UnstableReactNativeAPI
 import com.facebook.react.uimanager.StateWrapper
 import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.Event
 import com.facebook.react.uimanager.events.NativeGestureUtil
+import com.facebook.react.uimanager.common.UIManagerType
 import kotlin.math.roundToInt
 
 class FlumeView(context: Context) : FrameLayout(context) {
@@ -792,6 +796,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   override fun onDetachedFromWindow() {
+    dropMountListener()
     adapter.detach()
     super.onDetachedFromWindow()
   }
@@ -805,11 +810,37 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   private val dataRefresh = Runnable { if (storeId != 0) FlumeJni.refresh(storeId) }
+  @OptIn(UnstableReactNativeAPI::class) private var mountListener: UIManagerListener? = null
 
-  // Data JS deferred for its pre-rendered cells applies after the mount batch that registers them, once they measured.
+  // Data JS deferred for its pre-rendered cells applies right after the mount batch that registers them, in the frame
+  // that shows the rows it re-rendered with them. The post only covers a batch Fabric never reports.
+  @OptIn(UnstableReactNativeAPI::class)
   fun refreshData() {
     removeCallbacks(dataRefresh)
     post(dataRefresh)
+    if (mountListener != null) return
+    val uiManager = UIManagerHelper.getUIManager(context as ReactContext, UIManagerType.FABRIC) ?: return
+    val listener = object : UIManagerListener {
+      override fun willDispatchViewUpdates(uiManager: UIManager) = Unit
+      override fun willMountItems(uiManager: UIManager) = Unit
+      override fun didDispatchMountItems(uiManager: UIManager) = Unit
+      override fun didScheduleMountItems(uiManager: UIManager) = Unit
+      // A batch that lands before the deferred data keeps the listener and the posted fallback.
+      override fun didMountItems(uiManager: UIManager) {
+        if (storeId == 0 || !FlumeJni.applyNow(storeId)) return
+        dropMountListener()
+        removeCallbacks(dataRefresh)
+      }
+    }
+    mountListener = listener
+    uiManager.addUIManagerEventListener(listener)
+  }
+
+  @OptIn(UnstableReactNativeAPI::class)
+  private fun dropMountListener() {
+    val listener = mountListener ?: return
+    mountListener = null
+    UIManagerHelper.getUIManager(context as ReactContext, UIManagerType.FABRIC)?.removeUIManagerEventListener(listener)
   }
 
   fun setEstimatedItemSize(dp: Double) {

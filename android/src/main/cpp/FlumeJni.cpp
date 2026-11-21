@@ -95,6 +95,10 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
 
   static void refresh(jni::alias_ref<jclass>, jint storeId) { flume::Engine::instance().refresh(storeId); }
 
+  static jboolean applyNow(jni::alias_ref<jclass>, jint storeId) {
+    return flume::Engine::instance().applyNow(storeId) ? JNI_TRUE : JNI_FALSE;
+  }
+
   static void setStatsEnabled(jni::alias_ref<jclass>, jboolean enabled) {
     flume::Engine::instance().setStatsEnabled(enabled);
   }
@@ -118,6 +122,7 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
         makeNativeMethod("releaseHolder", JFlumeJni::releaseHolder),
         makeNativeMethod("invalidateMeasures", JFlumeJni::invalidateMeasures),
         makeNativeMethod("refresh", JFlumeJni::refresh),
+        makeNativeMethod("applyNow", JFlumeJni::applyNow),
         makeNativeMethod("setStatsEnabled", JFlumeJni::setStatsEnabled),
     });
   }

@@ -62,6 +62,8 @@ class Engine {
   void releaseHolder(int storeId, int holderId);
   void invalidateMeasures(int storeId);  // clears the text measure cache
   void refresh(int storeId);             // applies deferred data
+  // UI thread: applies deferred data now, in the frame of the mount that brought its cells. False when none was pending.
+  bool applyNow(int storeId);
   void setStatsEnabled(bool enabled) { statsEnabled_ = enabled; }  // any thread; binds read the clock only while on
 
  private:
@@ -85,6 +87,7 @@ class Engine {
   std::shared_ptr<worklets::UIScheduler> schedulerOf(int session);
   std::shared_ptr<const FlumeRuntime> flumeOf(int session);
   void scheduleRefresh(const std::shared_ptr<Store>& store, bool always);
+  static bool applyPending(Store& store, bool always);
   void bindOnRuntime(facebook::jsi::Runtime& rt, int index);
   void releaseOnRuntime(int storeId);
   void logLine(const std::string& message);

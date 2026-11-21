@@ -41,6 +41,9 @@ object FlumeJni {
   // Applies data JS deferred until its pre-rendered cells mounted.
   @JvmStatic external fun refresh(storeId: Int)
 
+  // UI thread: applies deferred data now, in the frame of the mount that brought its cells. False when none was pending.
+  @JvmStatic external fun applyNow(storeId: Int): Boolean
+
   // Binds read the clock and return stats only while this is on.
   @JvmStatic external fun setStatsEnabled(enabled: Boolean)
 }
