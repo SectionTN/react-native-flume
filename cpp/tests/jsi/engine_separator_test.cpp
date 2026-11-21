@@ -128,3 +128,25 @@ TEST_CASE("clearing the separator worklet binds plain rows again") {
   CHECK(out.rootHeight == 10);
   CHECK_FALSE(frameOf(out, 1).has_value());
 }
+
+namespace {
+
+struct RecordingListener : flume::StoreListener {
+  std::vector<flume::ListOps> calls;
+  void onListChanged(const flume::ListOps& ops, int) override { calls.push_back(ops); }
+};
+
+}  // namespace
+
+TEST_CASE("with a separator worklet an append lists the old last row as a neighbor") {
+  ReactSide side;
+  RecordingListener listener;
+  int id = separatedStore(side, listener, 3, "0, 0, 0");
+  listener.calls.clear();
+  side.rig.eval(
+      "__flume.setData(id, ['0', '1', '2', '3'], ['row', 'react'], new Int32Array([0, 0, 0, 0]), [3], [{n: 3}],"
+      " true, false);");
+  REQUIRE(listener.calls.size() == 1);
+  CHECK(listener.calls.back().inserted == std::vector<flume::ListOps::Range>{{3, 1}});
+  CHECK(listener.calls.back().neighbors == std::vector<int>{2});
+}

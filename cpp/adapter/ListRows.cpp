@@ -31,6 +31,7 @@ ListOps ListRows::positions(const ListOps& dataOps) const {
     to += shift;
   }
   for (int& index : ops.changed) index += shift;
+  for (int& index : ops.neighbors) index += shift;
   return ops;
 }
 

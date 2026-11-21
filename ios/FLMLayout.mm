@@ -239,11 +239,12 @@ struct FLMAnchorUpdate {
   for (int row = rows.first; row <= rows.last; row++) {
     const flume::IndexRange items = _model.itemsOfRows(row, row);
     for (int index = items.first; index <= items.last; index++) {
-      if (_model.measured(index)) {
-        continue;
-      }
       const std::optional<int> data = ops ? flume::mapIndex(*ops, index) : std::optional<int>(index);
       if (!data) {
+        continue;
+      }
+      // A row that gained or lost its separator in these ops measures again, so the batch lays it out at its length.
+      if (_model.measured(index) && !(ops != nullptr && flume::isNeighbor(*ops, *data))) {
         continue;
       }
       const CGFloat length = self.measureItem(*data);

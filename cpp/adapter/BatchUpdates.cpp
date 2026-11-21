@@ -41,7 +41,7 @@ BatchUpdates toBatchUpdates(const ListOps& ops, int previousCount) {
     }
   }
   std::sort(batch.deletes.begin(), batch.deletes.end());
-  batch.reconfigures = ops.changed;
+  batch.reconfigures = rebound(ops);
   return batch;
 }
 

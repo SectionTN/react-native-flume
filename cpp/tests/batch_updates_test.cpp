@@ -88,3 +88,10 @@ TEST_CASE("a reset reloads") {
   ops.reset = true;
   CHECK(toBatchUpdates(ops, 3).reload);
 }
+
+TEST_CASE("separator neighbors are reconfigured with the changed items") {
+  ListOps ops = diffKeys({"a", "b", "c"}, {"a", "b", "c", "d"}, {}, true);
+  ops.neighbors = {2};
+  BatchUpdates batch = toBatchUpdates(ops, 3);
+  CHECK(batch.reconfigures == std::vector<int>{2});
+}

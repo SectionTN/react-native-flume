@@ -26,6 +26,11 @@ class ListStore {
   // JS thread; the next applyPending applies it, also when no data is pending.
   void setKinds(bool reactByDefault, std::vector<std::string> reactTypes);
 
+  // JS thread: with worklet separators on, applyPending lists the rows whose separator changed.
+  void setSeparators(bool on);
+  // UI thread: the lanes a grid row holds, which decide its last row.
+  void setLanes(int lanes) { lanes_ = lanes; }
+
   // UI thread, before the attach applies the pending data, so a snapshot that saw the store detached is still applied.
   void setAttached(bool attached);
   // Any thread; a detached store needs no UI wake, its attach applies what is pending.
@@ -61,6 +66,7 @@ class ListStore {
   };
 
   void resolveKinds();
+  std::vector<int> separatorNeighbors(const ListOps& ops, const std::vector<int>& oldOf, int oldStart) const;
 
   mutable std::mutex mutex_;
   bool attached_ = false;
@@ -80,6 +86,8 @@ class ListStore {
   std::unordered_map<std::string, int64_t> idRegistry_;
   uint64_t nextVersion_ = 1;
   uint64_t keysGeneration_ = 0;
+  bool separators_ = false;  // under mutex_
+  int lanes_ = 1;
 };
 
 }  // namespace flume

@@ -42,3 +42,10 @@ TEST_CASE("full span takes the header, sticky rows, the empty row and the footer
   ListRows rows{.header = true, .dataCount = 5, .footer = true};
   CHECK(rows.fullSpanPositions({2, 4, 9}) == std::vector<int>{0, 3, 5, 6});
 }
+
+TEST_CASE("positions shift the separator neighbors past the header") {
+  ListRows rows{.header = true, .dataCount = 3, .footer = false};
+  ListOps ops;
+  ops.neighbors = {0, 2};
+  CHECK(rows.positions(ops).neighbors == std::vector<int>{1, 3});
+}
