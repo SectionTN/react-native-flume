@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import BenchScreen from './screens/BenchScreen';
 import ChatScreen from './screens/ChatScreen';
+import CompareScreen from './screens/CompareScreen';
 import GridScreen from './screens/GridScreen';
 import ReactScreen from './screens/ReactScreen';
 import ScrollScreen from './screens/ScrollScreen';
@@ -30,6 +31,7 @@ export default function App() {
           <Tab.Screen name="Scroll" component={ScrollScreen} />
           <Tab.Screen name="Styles" component={StylesScreen} />
           <Tab.Screen name="Bench" component={BenchScreen} />
+          <Tab.Screen name="Compare" component={CompareScreen} />
         </Tab.Navigator>
       </NavigationContainer>
     </GestureHandlerRootView>
