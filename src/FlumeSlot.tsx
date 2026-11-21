@@ -9,11 +9,13 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import { Keyboard, View } from 'react-native';
+import type { SeparatorLinks } from './separators';
 import { SlotKind, type SlotLayout, slotStyle } from './slots';
 import FlumeSlotViewNativeComponent from './specs/FlumeSlotViewNativeComponent';
-import type { ReactCell, SeparatorProps } from './types';
+import type { ReactCell, SeparatorProps, Separators } from './types';
 
 type FlumeSlotProps = {
   slot: number;
@@ -36,7 +38,27 @@ type FlumeSlotProps = {
   last: boolean;
   trailingItem: unknown;
   inverted: boolean;
+  links: SeparatorLinks;
 };
+
+type SeparatorCellProps = {
+  component: ComponentType<SeparatorProps<unknown>>;
+  itemKey: string;
+  links: SeparatorLinks;
+  leadingItem: unknown;
+  trailingItem: unknown;
+};
+
+// Holds what highlight and updateProps sent, so they re-render the separator alone.
+const SeparatorCell = memo(function SeparatorCell(props: SeparatorCellProps): ReactElement {
+  const { component, itemKey, links, leadingItem, trailingItem } = props;
+  const [sent, setSent] = useState<Record<string, unknown>>({});
+  useLayoutEffect(
+    () => links.register(itemKey, (update) => setSent((current) => ({ ...current, ...update }))),
+    [links, itemKey],
+  );
+  return createElement(component, { leadingItem, trailingItem, highlighted: false, ...sent });
+});
 
 type Shown = {
   item?: unknown;
@@ -77,7 +99,16 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
     last,
     trailingItem,
     inverted,
+    links,
   } = props;
+  const separators = useMemo<Separators>(
+    () => ({
+      highlight: () => links.highlight(itemKey, true),
+      unhighlight: () => links.highlight(itemKey, false),
+      updateProps: (select, newProps) => links.update(itemKey, select, newProps),
+    }),
+    [links, itemKey],
+  );
   const snapshot = useRef<Shown>({});
   // A row that left the data renders its exit with what it last committed, type and data included.
   const live = item !== undefined && render !== undefined;
@@ -103,11 +134,12 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
             index: rowIndex,
             target,
             extraData,
+            separators,
             data: shown.data ?? dataRef.current,
             type: shown.type ?? type,
           }) ?? null)
         : null,
-    [cell, shown.render, shown.item, rowIndex, target, extraData, shown.type, type],
+    [cell, shown.render, shown.item, rowIndex, target, extraData, separators, shown.type, type],
   );
   const entry = { slot, kind, key: itemKey, index: rowIndex, bound: true, minMain };
   const style = slotStyle(entry, span, layout);
@@ -119,10 +151,12 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
       separator !== null && shown.last === false
         ? isValidElement(separator)
           ? separator
-          : createElement(separator, {
+          : createElement(SeparatorCell, {
+              component: separator,
+              itemKey,
+              links,
               leadingItem: shown.item,
               trailingItem: shown.trailingItem,
-              highlighted: false,
             })
         : null;
     // Keyed, so the row keeps its state when its separator or the separator prop comes or goes.

@@ -206,12 +206,20 @@ export type LegendListAnchoring<T> = {
 
 export type ScrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 
+// FlatList's: highlight and unhighlight reach this row's separator and the one before it.
+export type Separators = {
+  highlight: () => void;
+  unhighlight: () => void;
+  updateProps: (select: 'leading' | 'trailing', newProps: Record<string, unknown>) => void;
+};
+
 // FlashList's render info; a pinned copy of a sticky row renders with the StickyHeader target.
 export type CellInfo<T> = {
   item: T;
   index: number;
   target: 'Cell' | 'StickyHeader';
   extraData?: unknown;
+  separators: Separators;
   // LegendList's fields: the data of the render that last drew the row, and the item's type.
   data: readonly T[];
   type: string;
