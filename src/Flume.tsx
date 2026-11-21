@@ -22,7 +22,7 @@ import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './da
 import { FlumeSlot } from './FlumeSlot';
 import { hostProps } from './foreign';
 import { contentPadding, nativeProps, refreshOf, settleProps, stickyIndicesOf } from './props';
-import { lastRowStart } from './separators';
+import { createSeparatorLinks, lastRowStart } from './separators';
 import {
   applySnapshot,
   gridCellWidth,
@@ -132,6 +132,12 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   count.current = data.length;
   const dataRef = useRef<readonly unknown[]>(data);
   dataRef.current = data;
+  // The keys separators.highlight reads when called, so the row before is the latest one.
+  const separatorKeys = useRef<{ keys: readonly string[]; index: ReadonlyMap<string, number> }>({
+    keys: [],
+    index: new Map(),
+  });
+  const links = useMemo(() => createSeparatorLinks(separatorKeys), []);
 
   // Each distinct message reports once per mount, in development only.
   const report = useCallback((level: 'warn' | 'error', message: string) => {
@@ -342,6 +348,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     return [...bySlot.values()].sort((a, b) => a.slot - b.slot);
   }, [fresh, table]);
   const { next } = commit.diff;
+  separatorKeys.current = next;
   const lastStart = lastRowStart(next.keys.length, horizontal ? 1 : numColumns, stickyIndices);
   const separator = (ItemSeparatorComponent ?? null) as
     | ComponentType<SeparatorProps<unknown>>
@@ -372,6 +379,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         render={resolved?.kind === 'react' ? (resolved.render as ReactCell<unknown>) : undefined}
         type={type ?? 'default'}
         dataRef={dataRef}
+        links={links}
         element={elementFor(entry.kind)}
         extraData={extraData}
         keyboardTaps={keyboardShouldPersistTaps ?? 'never'}

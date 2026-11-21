@@ -18,3 +18,45 @@ export function lastRowStart(
   const run = count - runStart;
   return count - (run % numColumns || numColumns);
 }
+
+export type SeparatorUpdate = (props: Record<string, unknown>) => void;
+
+export type SeparatorLinks = {
+  register(key: string, update: SeparatorUpdate): () => void;
+  highlight(key: string, on: boolean): void;
+  update(key: string, select: 'leading' | 'trailing', props: Record<string, unknown>): void;
+};
+
+type DataKeys = { readonly keys: readonly string[]; readonly index: ReadonlyMap<string, number> };
+
+// FlatList's separators routing by key: a row reaches its own separator and the one of the row before it, read from
+// the latest data when called. A key can have a row and a sticky copy, so each key holds a set.
+export function createSeparatorLinks(data: { readonly current: DataKeys }): SeparatorLinks {
+  const updates = new Map<string, Set<SeparatorUpdate>>();
+  const send = (key: string | undefined, props: Record<string, unknown>) => {
+    if (key === undefined) return;
+    for (const update of updates.get(key) ?? []) update(props);
+  };
+  const before = (key: string): string | undefined => {
+    const index = data.current.index.get(key);
+    return index === undefined || index === 0 ? undefined : data.current.keys[index - 1];
+  };
+  return {
+    register(key, update) {
+      const set = updates.get(key) ?? new Set<SeparatorUpdate>();
+      updates.set(key, set);
+      set.add(update);
+      return () => {
+        set.delete(update);
+        if (set.size === 0 && updates.get(key) === set) updates.delete(key);
+      };
+    },
+    highlight(key, on) {
+      send(key, { highlighted: on });
+      send(before(key), { highlighted: on });
+    },
+    update(key, select, props) {
+      send(select === 'leading' ? before(key) : key, props);
+    },
+  };
+}

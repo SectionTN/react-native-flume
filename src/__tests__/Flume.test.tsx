@@ -455,6 +455,7 @@ describe('Flume React cells', () => {
       extraData: undefined,
       data: [item],
       type: 'default',
+      separators: expect.any(Object),
     });
   });
 
@@ -606,6 +607,7 @@ describe('Flume React cells', () => {
       extraData: undefined,
       data: [item],
       type: 'default',
+      separators: expect.any(Object),
     });
   });
 
@@ -1144,10 +1146,16 @@ describe('Flume item separators', () => {
         node.props.itemKey === key &&
         node.props.kind === kind,
     );
+  const nameOf = (node: ReactTestInstance): string =>
+    typeof node.type === 'string' ? node.type : (node.type as { name: string }).name;
+  // The separator renders inside the slot's SeparatorCell, which holds its highlight state.
   const childTypes = (slot: ReactTestInstance) =>
-    (slot.children as ReactTestInstance[]).map((child) =>
-      typeof child.type === 'string' ? child.type : (child.type as { name: string }).name,
-    );
+    (slot.children as ReactTestInstance[]).map((child) => {
+      const [inner] = child.children as ReactTestInstance[];
+      return nameOf(child) === 'SeparatorCell' && inner !== undefined
+        ? nameOf(inner)
+        : nameOf(child);
+    });
   function expectSeparated(tree: ReactTestRenderer, key: string, separated: boolean) {
     const slots = slotsOfKey(tree, key);
     expect(slots.length).toBeGreaterThan(0);
@@ -1400,5 +1408,112 @@ describe('Flume item separators', () => {
       expect(slot.props.style).toEqual({ position: 'absolute', left: 0, right: 0 });
     for (const slot of slotsOfKey(tree, 'a'))
       expect(slot.props.style).toEqual({ position: 'absolute', width: 150 });
+  });
+});
+
+describe('Flume separators in the info', () => {
+  const rows = ['a', 'b', 'c', 'd', 'e'].map((id) => ({ id }));
+  type SepProps = { leadingItem: { id: string }; highlighted: boolean; color?: string };
+  function setup() {
+    const seen: SepProps[] = [];
+    const Sep = (p: SepProps) => {
+      seen.push(p);
+      return createElement('Sep');
+    };
+    const infos = new Map<string, CellInfo<{ id: string }>[]>();
+    const renderItem = (info: CellInfo<{ id: string }>) => {
+      infos.set(info.item.id, [...(infos.get(info.item.id) ?? []), info]);
+      return createElement('Row');
+    };
+    const latest = (id: string) => seen.filter((p) => p.leadingItem.id === id).at(-1);
+    const separatorsOf = (id: string) => infos.get(id)?.at(-1)?.separators;
+    return { Sep, renderItem, infos, latest, separatorsOf };
+  }
+  async function mountRows(Sep: unknown, renderItem: unknown, data = rows, extraData?: unknown) {
+    const { Flume } = await import('../Flume');
+    const element = (list: typeof rows, extra?: unknown) =>
+      createElement(Flume, {
+        data: list,
+        renderItem: renderItem as (info: CellInfo<unknown>) => ReturnType<typeof createElement>,
+        ItemSeparatorComponent: Sep as () => ReturnType<typeof createElement>,
+        extraData: extra,
+      });
+    const tree = await mount(element(data, extraData));
+    await sendSlots(
+      tree,
+      data.map((row, i) => rowEntry(i + 1, row.id, i)),
+    );
+    return { tree, element };
+  }
+
+  it('highlights the separators of the row and the row before it', async () => {
+    installHost();
+    const { Sep, renderItem, latest, separatorsOf } = setup();
+    await mountRows(Sep, renderItem);
+    await act(async () => {
+      separatorsOf('d')?.highlight();
+    });
+    expect(latest('c')?.highlighted).toBe(true);
+    expect(latest('d')?.highlighted).toBe(true);
+    for (const id of ['a', 'b']) expect(latest(id)?.highlighted).toBe(false);
+    await act(async () => {
+      separatorsOf('d')?.unhighlight();
+    });
+    expect(latest('c')?.highlighted).toBe(false);
+    expect(latest('d')?.highlighted).toBe(false);
+  });
+
+  it('merges updateProps into the leading or trailing separator', async () => {
+    installHost();
+    const { Sep, renderItem, latest, separatorsOf } = setup();
+    await mountRows(Sep, renderItem);
+    await act(async () => {
+      separatorsOf('c')?.updateProps('leading', { color: 'red' });
+      separatorsOf('c')?.updateProps('trailing', { color: 'blue' });
+    });
+    expect(latest('b')?.color).toBe('red');
+    expect(latest('c')?.color).toBe('blue');
+    expect(latest('a')?.color).toBeUndefined();
+  });
+
+  it('keeps one separators object per row across renders', async () => {
+    installHost();
+    const { Sep, renderItem, infos } = setup();
+    const { tree, element } = await mountRows(Sep, renderItem);
+    // Native registered every pre-rendered slot, so each key has one slot from here on.
+    await sendSlots(
+      tree,
+      rows.map((row, i) => rowEntry(i + 1, row.id, i)),
+      -1,
+      -100,
+    );
+    infos.clear();
+    for (const extra of [1, 2]) {
+      await act(async () => {
+        tree.update(element(rows, extra));
+      });
+    }
+    const seen = infos.get('b') ?? [];
+    expect(seen.length).toBe(2);
+    expect(seen[0]?.separators).toBeDefined();
+    expect(new Set(seen.map((info) => info.separators)).size).toBe(1);
+  });
+
+  it('leaves the new row before unhighlighted when the highlighted row before is deleted', async () => {
+    installHost();
+    const { Sep, renderItem, latest, separatorsOf } = setup();
+    const { tree, element } = await mountRows(Sep, renderItem);
+    await act(async () => {
+      separatorsOf('d')?.highlight();
+    });
+    await act(async () => {
+      tree.update(element(rows.filter((row) => row.id !== 'c')));
+    });
+    expect(latest('b')?.highlighted).toBe(false);
+    await act(async () => {
+      separatorsOf('d')?.unhighlight();
+    });
+    expect(latest('b')?.highlighted).toBe(false);
+    expect(latest('d')?.highlighted).toBe(false);
   });
 });
