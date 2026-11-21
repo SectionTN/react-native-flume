@@ -17,7 +17,7 @@ import {
 } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
 import { createSerializable } from 'react-native-worklets';
-import { cellKinds, type ResolvedCell, resolveCell } from './cells';
+import { cellKinds, itemComponentCell, type ResolvedCell, resolveCell } from './cells';
 import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './data';
 import { FlumeSlot } from './FlumeSlot';
 import { hostProps } from './foreign';
@@ -42,6 +42,7 @@ import FlumeViewNativeComponent, {
 import { logSetData, statsEnabled } from './stats';
 import { getHost, isDev } from './store';
 import type {
+  CellRendererProps,
   FlumeProps,
   FlumeRef,
   PressInfo,
@@ -66,7 +67,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const {
     data,
     renderCell,
-    renderItem,
+    renderItem: givenRenderItem,
     reactCells,
     keyExtractor,
     getItemType,
@@ -82,6 +83,8 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     ListFooterComponentStyle,
     ListEmptyComponentStyle,
     ItemSeparatorComponent,
+    ListItemComponent,
+    CellRendererComponent,
     inverted,
     itemAnimations = true,
     onPress,
@@ -146,6 +149,18 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     console[level](`react-native-flume: ${message}`);
   }, []);
   const warn = useCallback((message: string) => report('warn', message), [report]);
+  // Memoized on the component, so every slot keeps its memo while it stays the same.
+  const itemCell = useMemo(
+    () => (ListItemComponent == null ? undefined : itemComponentCell(ListItemComponent)),
+    [ListItemComponent],
+  );
+  const renderItem = itemCell ?? givenRenderItem;
+  if (itemCell !== undefined && givenRenderItem !== undefined) {
+    warn('ListItemComponent takes precedence over renderItem');
+  }
+  if (CellRendererComponent != null && renderCell !== undefined) {
+    warn('CellRendererComponent wraps React rows only; worklet rows ignore it');
+  }
 
   if (renderCell !== undefined && renderItem !== undefined) {
     warn('renderItem is ignored when renderCell is given; use reactCells to mix the two');
@@ -350,6 +365,9 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const { next } = commit.diff;
   separatorKeys.current = next;
   const lastStart = lastRowStart(next.keys.length, horizontal ? 1 : numColumns, stickyIndices);
+  const cellRenderer = (CellRendererComponent ?? null) as ComponentType<
+    CellRendererProps<unknown>
+  > | null;
   const separator = (ItemSeparatorComponent ?? null) as
     | ComponentType<SeparatorProps<unknown>>
     | ReactElement
@@ -380,6 +398,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         type={type ?? 'default'}
         dataRef={dataRef}
         links={links}
+        cellRenderer={row ? cellRenderer : null}
         element={elementFor(entry.kind)}
         extraData={extraData}
         keyboardTaps={keyboardShouldPersistTaps ?? 'never'}
