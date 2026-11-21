@@ -51,6 +51,7 @@ std::vector<int> stickyWithin(const std::vector<int>& sticky, size_t count) {
   for (int index : sticky) {
     if (index >= 0 && static_cast<size_t>(index) < count) out.push_back(index);
   }
+  std::sort(out.begin(), out.end());
   return out;
 }
 

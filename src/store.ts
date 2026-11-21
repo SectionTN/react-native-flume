@@ -30,6 +30,11 @@ export type FlumeHost = {
     storeId: number,
     renderCell: SerializableRef<(item: never, index: number) => CellNode>,
   ): void;
+  // Null clears it. A change rebinds every worklet row.
+  setSeparatorCell(
+    storeId: number,
+    separatorCell: SerializableRef<(info: never) => CellNode | null> | null,
+  ): void;
   setCellKinds(storeId: number, reactByDefault: boolean, reactTypes: string[]): void;
   // Sticky indices for the data native holds, applied with any pending data or alone.
   setStickyHeaderIndices(storeId: number, sticky: number[]): void;
@@ -70,6 +75,7 @@ export function getHost(): FlumeHost {
     releaseStore: host.releaseStore,
     setData: host.setData,
     setCell: host.setCell,
+    setSeparatorCell: host.setSeparatorCell,
     setCellKinds: host.setCellKinds,
     setStickyHeaderIndices: host.setStickyHeaderIndices,
     setReporter: host.setReporter,

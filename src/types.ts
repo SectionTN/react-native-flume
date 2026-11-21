@@ -243,9 +243,17 @@ export type SeparatorProps<T> = {
   highlighted: boolean;
 } & Record<string, unknown>;
 
+// What renderSeparatorCell gets: the row above it and the row below, undefined when that row is a React row.
+export type SeparatorCellInfo<T> = {
+  leadingItem: T;
+  trailingItem: T | undefined;
+};
+
 export type FlumeOwnProps<T> = {
   data: readonly T[] | null | undefined;
   renderCell?: ((item: T, index: number) => CellNode) | null;
+  // A worklet that draws the separator under each worklet row but the last grid row. Null draws none.
+  renderSeparatorCell?: ((info: SeparatorCellInfo<T>) => CellNode | null) | null;
   // The React renderer for every type without a worklet cell or a reactCells entry.
   renderItem?: ReactCell<T> | null;
   // React renderers by item type; they take precedence over renderCell.

@@ -32,7 +32,8 @@ struct Mounted {
   std::string testID;
   std::string accessibilityLabel;
   std::optional<bool> accessible;
-  std::string derivedLabel;    // the label last sent from the texts inside a pressable without its own
+  bool separator = false;      // the separator half of a composed row, left out of the row's label
+  std::string derivedLabel;   // the label last sent from the texts inside a pressable without its own
   int viewId = 0;              // 0 is the holder's own view
   YGNodeRef yoga = nullptr;
   Layout* layout = nullptr;

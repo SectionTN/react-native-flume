@@ -206,6 +206,7 @@ export function refreshOf<T>(props: FlumeProps<T>): Refresh {
 // Props that FlashList and LegendList type as nullable, where null means not given.
 const NULLABLE = [
   'renderCell',
+  'renderSeparatorCell',
   'renderItem',
   'keyExtractor',
   'getItemType',

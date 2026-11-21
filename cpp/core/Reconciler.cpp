@@ -81,9 +81,11 @@ void copyProps(Mounted& mounted, Node& fresh) {
   mounted.testID = std::move(fresh.testID);
   mounted.accessibilityLabel = std::move(fresh.accessibilityLabel);
   mounted.accessible = fresh.accessible;
+  mounted.separator = fresh.separator;
 }
 
 void appendTexts(const Mounted& node, std::string& out) {
+  if (node.separator) return;
   if (node.type == NodeType::Text && !node.text.empty()) {
     if (!out.empty()) out += ' ';
     out += node.text;
@@ -101,6 +103,8 @@ void Reconciler::reconcile(Holder& holder, std::unique_ptr<Node> fresh, OpBatch&
     }
     return;
   }
+  // The cell view is the root's box, so a root margin would only shrink the layout under an unchanged paint.
+  clearParentLayout(fresh->style);
   if (holder.root != nullptr && holder.root->type != fresh->type) {
     unmount(*holder.root, out);
     holder.root.reset();

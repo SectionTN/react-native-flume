@@ -41,6 +41,7 @@ class Engine {
   // A sticky-only change: it joins pending data, or applies alone.
   void setStickyHeaderIndices(int storeId, std::vector<int> sticky);
   void setCell(int storeId, std::shared_ptr<worklets::Serializable> renderCell);
+  void setSeparatorCell(int storeId, std::shared_ptr<worklets::Serializable> separatorCell);  // null clears it
   void setCellKinds(int storeId, bool reactByDefault, std::vector<std::string> reactTypes);
   void setReporter(int session, facebook::jsi::Function reporter);  // a function on the React runtime, development only
   void report(int level, const std::string& message);  // once per message: the reporter when set, else logcat
@@ -52,6 +53,7 @@ class Engine {
   // UI thread (platform bridge)
   int attach(int storeId, StoreListener* listener, std::unique_ptr<TextMeasurer> measurer, float pointScale);
   void detach(int storeId);
+  void setRowShape(int storeId, RowShape shape);  // before any bind laid out with the new shape
   int count(int storeId);
   int viewType(int storeId, int position);     // type id * 2, plus 1 for React; 0 for an unknown position
   bool hasReactKinds(int storeId);             // some item type renders as a React row
@@ -89,6 +91,7 @@ class Engine {
   void scheduleRefresh(const std::shared_ptr<Store>& store, bool always);
   static bool applyPending(Store& store, bool always);
   void bindOnRuntime(facebook::jsi::Runtime& rt, int index);
+  void composeOnRuntime(facebook::jsi::Runtime& rt, Store& store, int index);
   void releaseOnRuntime(int storeId);
   void logLine(const std::string& message);
 

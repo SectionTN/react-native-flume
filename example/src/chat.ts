@@ -1,4 +1,4 @@
-import { type CellNode, cell } from 'react-native-flume';
+import { type CellNode, cell, type SeparatorCellInfo } from 'react-native-flume';
 
 export type Chat = {
   id: string;
@@ -67,6 +67,16 @@ export function dayIndices(chats: readonly Chat[]): number[] {
 }
 
 export const accentColor = (dark: boolean) => (dark ? '#6ea8ff' : '#0066ff');
+
+// A hairline under each message, inset past the avatar, and full width next to a day chip.
+export function makeRenderSeparatorCell(dark: boolean) {
+  const line = dark ? '#3a3a3a' : '#dddddd';
+  return ({ leadingItem, trailingItem }: SeparatorCellInfo<Chat>): CellNode => {
+    'worklet';
+    const nextToDay = leadingItem.kind === 'day' || trailingItem?.kind === 'day';
+    return cell.view({ height: 1, marginLeft: nextToDay ? 0 : 64, backgroundColor: line });
+  };
+}
 
 export function makeRenderCell(dark: boolean) {
   const textColor = dark ? '#eeeeee' : '#111111';

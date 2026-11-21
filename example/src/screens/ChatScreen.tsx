@@ -1,7 +1,14 @@
 import { useMemo, useRef, useState } from 'react';
 import { Button, Platform, ToastAndroid, View } from 'react-native';
 import { Flume, type FlumeRef, type PressInfo } from 'react-native-flume';
-import { accentColor, type Chat, dayIndices, makeChats, makeRenderCell } from '../chat';
+import {
+  accentColor,
+  type Chat,
+  dayIndices,
+  makeChats,
+  makeRenderCell,
+  makeRenderSeparatorCell,
+} from '../chat';
 
 function blockJs(ms: number) {
   const end = Date.now() + ms;
@@ -53,6 +60,9 @@ export default function ChatScreen() {
     older: 0,
   }));
   const renderCell = useMemo(() => makeRenderCell(dark), [dark]);
+  // Native hairlines from the separator prop, or a worklet that draws each one next to its rows.
+  const [workletSeparators, setWorkletSeparators] = useState(false);
+  const renderSeparatorCell = useMemo(() => makeRenderSeparatorCell(dark), [dark]);
   const sticky = useMemo(() => dayIndices(list.chats), [list.chats]);
   const onPress = ({ item, id }: PressInfo<Chat>) =>
     toast(id === 'like' ? `like ${item.id}` : `open ${item.id}`);
@@ -107,6 +117,10 @@ export default function ChatScreen() {
         <Button title="To end" onPress={() => ref.current?.scrollToEnd()} />
         <Button title="To 500" onPress={() => ref.current?.scrollToIndex({ index: 500 })} />
         <Button title="To top" onPress={() => ref.current?.scrollToOffset({ offset: 0 })} />
+        <Button
+          title={workletSeparators ? 'Native separators' : 'Worklet separators'}
+          onPress={() => setWorkletSeparators((on) => !on)}
+        />
       </View>
       {mounted ? (
         <Flume
@@ -115,9 +129,10 @@ export default function ChatScreen() {
           keyExtractor={(c) => c.id}
           getItemType={(c) => c.kind}
           renderCell={renderCell}
+          renderSeparatorCell={workletSeparators ? renderSeparatorCell : null}
           inverted
           stickyHeaderIndices={sticky}
-          separator={{ size: 1, color: '#dddddd', insetStart: 64 }}
+          separator={workletSeparators ? undefined : { size: 1, color: '#dddddd', insetStart: 64 }}
           maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0.2 }}
           refreshing={refreshing}
           refreshControl={{ tintColor: accentColor(dark) }}

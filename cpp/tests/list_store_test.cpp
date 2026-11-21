@@ -18,6 +18,13 @@ TEST_CASE("a first snapshot inserts everything") {
   CHECK(store.keyAt(2) == "c");
 }
 
+TEST_CASE("sticky indices apply sorted, so the last full span is found by a search") {
+  flume::ListStore store;
+  store.setPending({"a", "b", "c", "d"}, {"t", "t", "t", "t"}, {0, 1, 2, 3}, {V(1), V(2), V(3), V(4)}, true, {3, 0, 2});
+  store.applyPending();
+  CHECK(store.sticky() == std::vector<int>{0, 2, 3});
+}
+
 TEST_CASE("a reset carries the sticky indices of its own data") {
   flume::ListStore store;
   store.setPending({"a", "b", "c"}, {"t", "t", "t"}, {0, 1, 2}, {V(1), V(2), V(3)}, true, {0});

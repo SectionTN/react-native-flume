@@ -441,6 +441,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   config.stackFromEnd =
       !props.inverted && config.lanes == 1 && props.maintainVisibleContentPosition.startRenderingFromBottom;
   _layoutConfig = config;
+  [self sendRowShape];
   [self configureLayoutRows];
   _horizontal = props.horizontal;
   _inverted = props.inverted;
@@ -449,6 +450,16 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   // A horizontal strip never takes the status bar tap from the vertical list beside it.
   _collectionView.scrollsToTop = !_horizontal;
   [self requestSlotsFlush];
+}
+
+// The engine composes worklet separators with the shape the rows are laid out with.
+- (void)sendRowShape
+{
+  if (_storeId == 0) {
+    return;
+  }
+  const flume::ListLayoutConfig &config = _layoutConfig;
+  flume::Engine::instance().setRowShape(_storeId, {config.horizontal, config.inverted, config.horizontal ? 1 : config.lanes});
 }
 
 // The header, the footer and the empty row move the data's positions, its separators and the rows that span a grid.
@@ -609,6 +620,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   _listener = std::make_unique<FLMStoreListener>(self);
   const float scale = self.traitCollection.displayScale > 0 ? self.traitCollection.displayScale : 1;
   const int count = flume::Engine::instance().attach(_storeId, _listener.get(), std::make_unique<FLMTextMeasurer>(), scale);
+  [self sendRowShape];
   // A text size change while the list was off screen left its text measured at the old size.
   const CGFloat fontScale = RCTFontSizeMultiplier();
   if (_everAttached && fontScale != _fontScale) {
