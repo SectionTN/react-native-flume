@@ -128,6 +128,9 @@ const Empty = () => (
   </View>
 );
 
+const Divider = () => <View style={styles.divider} />;
+const ChipDivider = () => <View style={styles.chipDivider} />;
+
 export default function ReactScreen() {
   const all = useMemo(() => makeReactRows(), []);
   const [rows, setRows] = useState(all);
@@ -140,6 +143,7 @@ export default function ReactScreen() {
   const [taps, setTaps] = useState<Taps>('never');
   const [refreshing, setRefreshing] = useState(false);
   const [pressed, setPressed] = useState('none');
+  const [separators, setSeparators] = useState(false);
   useEffect(() => {
     showPressed = setPressed;
     return () => {
@@ -155,6 +159,11 @@ export default function ReactScreen() {
   const prepend = () => {
     const n = -++prepended.current;
     setRows((current) => [{ id: `p${n}`, kind: 'row', title: `Row ${n}`, n }, ...current]);
+  };
+  const appended = useRef(0);
+  const append = () => {
+    const n = ++appended.current;
+    setRows((current) => [...current, { id: `a${n}`, kind: 'row', title: `Appended ${n}`, n }]);
   };
   const refresh = () => {
     setRefreshing(true);
@@ -172,6 +181,8 @@ export default function ReactScreen() {
     [`Mode ${mode}`, () => setMode((value) => (value === 'react' ? 'mixed' : 'react'))],
     ['Block JS 3 s', () => blockJs(3000)],
     ['Prepend', prepend],
+    ['Append', append],
+    [`Separators ${separators ? 'off' : 'on'}`, () => setSeparators((on) => !on)],
     ['Replace all', () => setRows(makeReactRows(500, `v${++version.current}`))],
     ['Clear', () => setRows([])],
     ['Refill', () => setRows(all)],
@@ -199,6 +210,7 @@ export default function ReactScreen() {
       <Flume
         data={CHIPS}
         renderItem={renderChip}
+        ItemSeparatorComponent={separators ? ChipDivider : undefined}
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.chips}
@@ -217,6 +229,7 @@ export default function ReactScreen() {
         estimatedItemSize={56}
         numColumns={columns}
         inverted={inverted}
+        ItemSeparatorComponent={separators ? Divider : undefined}
         ListHeaderComponent={Header}
         ListFooterComponent={footer}
         ListEmptyComponent={Empty}
@@ -257,6 +270,8 @@ const styles = StyleSheet.create({
   section: { height: 48, backgroundColor: '#dde6fb' },
   sectionTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: '#1b2a4a' },
   chips: { height: 64 },
+  divider: { height: 1, backgroundColor: '#d0d0d8' },
+  chipDivider: { width: 1, marginVertical: 20, backgroundColor: '#b0b0b8' },
   chip: {
     marginVertical: 12,
     marginHorizontal: 4,

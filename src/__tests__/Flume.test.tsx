@@ -1114,3 +1114,243 @@ describe('Flume component styles', () => {
     }
   });
 });
+
+describe('Flume item separators', () => {
+  const a = { id: 'a' };
+  const b = { id: 'b' };
+  const c = { id: 'c' };
+  type SepProps = { leadingItem: unknown; trailingItem: unknown; highlighted: boolean };
+  function separatorSpy() {
+    const props: SepProps[] = [];
+    const Sep = (p: SepProps) => {
+      props.push(p);
+      return createElement('Sep');
+    };
+    return { props, Sep };
+  }
+  function countingCell() {
+    const calls = new Map<string, number>();
+    const renderItem = (info: CellInfo<unknown>) => {
+      const id = (info.item as { id: string }).id;
+      calls.set(id, (calls.get(id) ?? 0) + 1);
+      return createElement('Row', { id });
+    };
+    return { calls, renderItem };
+  }
+  const slotsOfKey = (tree: ReactTestRenderer, key: string, kind = 0) =>
+    tree.root.findAll(
+      (node) =>
+        String(node.type) === 'FlumeSlotView' &&
+        node.props.itemKey === key &&
+        node.props.kind === kind,
+    );
+  const childTypes = (slot: ReactTestInstance) =>
+    (slot.children as ReactTestInstance[]).map((child) =>
+      typeof child.type === 'string' ? child.type : (child.type as { name: string }).name,
+    );
+  function expectSeparated(tree: ReactTestRenderer, key: string, separated: boolean) {
+    const slots = slotsOfKey(tree, key);
+    expect(slots.length).toBeGreaterThan(0);
+    for (const slot of slots)
+      expect(childTypes(slot)).toEqual(separated ? ['Row', 'Sep'] : ['Row']);
+  }
+
+  it('renders the separator after every row but the last', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { props, Sep } = separatorSpy();
+    const { renderItem } = countingCell();
+    const tree = await mount(
+      createElement(Flume, { data: [a, b, c], renderItem, ItemSeparatorComponent: Sep }),
+    );
+    await sendSlots(tree, [rowEntry(1, 'a', 0), rowEntry(2, 'b', 1), rowEntry(3, 'c', 2)]);
+    expectSeparated(tree, 'a', true);
+    expectSeparated(tree, 'b', true);
+    expectSeparated(tree, 'c', false);
+    expect(props).toContainEqual({ leadingItem: a, trailingItem: b, highlighted: false });
+    expect(props).toContainEqual({ leadingItem: b, trailingItem: c, highlighted: false });
+  });
+
+  it('re-renders only the old last row on an append', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { props, Sep } = separatorSpy();
+    const { calls, renderItem } = countingCell();
+    const tree = await mount(
+      createElement(Flume, { data: [a, b], renderItem, ItemSeparatorComponent: Sep }),
+    );
+    await sendSlots(tree, [rowEntry(1, 'a', 0), rowEntry(2, 'b', 1)]);
+    calls.clear();
+    props.length = 0;
+    await act(async () => {
+      tree.update(
+        createElement(Flume, { data: [a, b, c], renderItem, ItemSeparatorComponent: Sep }),
+      );
+    });
+    expect(calls.get('a')).toBeUndefined();
+    expect(calls.get('b')).toBeUndefined();
+    expect(props.length).toBeGreaterThan(0);
+    expect(props.every((p) => p.leadingItem === b && p.trailingItem === c)).toBe(true);
+    expectSeparated(tree, 'b', true);
+  });
+
+  it('re-renders the new last row when the last row is deleted', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Sep } = separatorSpy();
+    const { calls, renderItem } = countingCell();
+    const tree = await mount(
+      createElement(Flume, { data: [a, b, c], renderItem, ItemSeparatorComponent: Sep }),
+    );
+    await sendSlots(tree, [rowEntry(1, 'a', 0), rowEntry(2, 'b', 1), rowEntry(3, 'c', 2)]);
+    calls.clear();
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [a, b], renderItem, ItemSeparatorComponent: Sep }));
+    });
+    expect(calls.get('a')).toBeUndefined();
+    expect(calls.get('b')).toBeUndefined();
+    expectSeparated(tree, 'b', false);
+    // c left the data and still has its slot: it keeps what it showed.
+    for (const slot of slotsOfKey(tree, 'c')) expect(childTypes(slot)).toEqual(['Row']);
+  });
+
+  it('keeps a leaving row separated as it last committed', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Sep } = separatorSpy();
+    const { renderItem } = countingCell();
+    const tree = await mount(
+      createElement(Flume, { data: [a, b, c], renderItem, ItemSeparatorComponent: Sep }),
+    );
+    await sendSlots(tree, [rowEntry(1, 'a', 0), rowEntry(2, 'b', 1), rowEntry(3, 'c', 2)]);
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [a, c], renderItem, ItemSeparatorComponent: Sep }));
+    });
+    expectSeparated(tree, 'b', true);
+  });
+
+  it('draws one separator per grid item and none in the last grid row', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Sep } = separatorSpy();
+    const { renderItem } = countingCell();
+    const data = Array.from({ length: 10 }, (_, i) => ({ id: `i${i}` }));
+    const element = (numColumns: number) =>
+      createElement(Flume, { data, renderItem, numColumns, ItemSeparatorComponent: Sep });
+    const tree = await mount(element(3));
+    await sendSlots(
+      tree,
+      data.map((item, i) => rowEntry(i + 1, item.id, i)),
+      100,
+      0,
+      300,
+    );
+    for (let i = 0; i < 10; i++) expectSeparated(tree, `i${i}`, i < 9);
+    await act(async () => {
+      tree.update(element(2));
+    });
+    for (let i = 0; i < 10; i++) expectSeparated(tree, `i${i}`, i < 8);
+  });
+
+  it('renders the separator before the row when inverted', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Sep } = separatorSpy();
+    const { renderItem } = countingCell();
+    const tree = await mount(
+      createElement(Flume, {
+        data: [a, b],
+        renderItem,
+        inverted: true,
+        ItemSeparatorComponent: Sep,
+      }),
+    );
+    await sendSlots(tree, [rowEntry(1, 'a', 0), rowEntry(2, 'b', 1)]);
+    for (const slot of slotsOfKey(tree, 'a')) expect(childTypes(slot)).toEqual(['Sep', 'Row']);
+    for (const slot of slotsOfKey(tree, 'b')) expect(childTypes(slot)).toEqual(['Row']);
+  });
+
+  it('puts the row and its separator side by side when horizontal', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Sep } = separatorSpy();
+    const { renderItem } = countingCell();
+    const tree = await mount(
+      createElement(Flume, {
+        data: [a, b],
+        renderItem,
+        horizontal: true,
+        ItemSeparatorComponent: Sep,
+      }),
+    );
+    await sendSlots(tree, [rowEntry(1, 'a', 0), rowEntry(2, 'b', 1)]);
+    for (const [key, inside] of [
+      ['a', ['Row', 'Sep']],
+      ['b', ['Row']],
+    ] as const) {
+      for (const slot of slotsOfKey(tree, key)) {
+        const [wrapper] = slot.children as ReactTestInstance[];
+        expect(String(wrapper?.type)).toBe('View');
+        expect(wrapper?.props.style).toEqual({ flexDirection: 'row', alignSelf: 'flex-start' });
+        expect(childTypes(wrapper as ReactTestInstance)).toEqual(inside);
+      }
+    }
+  });
+
+  it('renders the separator on a sticky copy', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Sep } = separatorSpy();
+    const { renderItem } = countingCell();
+    const tree = await mount(
+      createElement(Flume, { data: [a, b], renderItem, ItemSeparatorComponent: Sep }),
+    );
+    await sendSlots(tree, [{ ...rowEntry(7, 'a', 0), kind: 4 }]);
+    const sticky = slotsOfKey(tree, 'a', 4);
+    expect(sticky).toHaveLength(1);
+    expect(childTypes(sticky[0] as ReactTestInstance)).toEqual(['Row', 'Sep']);
+  });
+
+  it('draws no separator next to the header and footer', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Sep } = separatorSpy();
+    const { renderItem } = countingCell();
+    const Header = () => createElement('HeaderNode');
+    const tree = await mount(
+      createElement(Flume, {
+        data: [a],
+        renderItem,
+        ItemSeparatorComponent: Sep,
+        ListHeaderComponent: Header,
+        ListFooterComponent: Header,
+      }),
+    );
+    await sendSlots(tree, [
+      { ...rowEntry(1, 'header', -1), kind: 1 },
+      rowEntry(2, 'a', 0),
+      { ...rowEntry(3, 'footer', -1), kind: 2 },
+    ]);
+    expect(tree.root.findAllByType(Sep)).toHaveLength(0);
+  });
+
+  it('reads fullSpan from the data index of the key', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { renderItem } = countingCell();
+    const tree = await mount(
+      createElement(Flume, {
+        data: [a, b, c],
+        renderItem,
+        numColumns: 2,
+        stickyHeaderIndices: [1],
+      }),
+    );
+    // Native's entry for b still carries index 0 from before a data change.
+    await sendSlots(tree, [rowEntry(1, 'a', 1), rowEntry(2, 'b', 0)], 150, 0, 300);
+    for (const slot of slotsOfKey(tree, 'b'))
+      expect(slot.props.style).toEqual({ position: 'absolute', left: 0, right: 0 });
+    for (const slot of slotsOfKey(tree, 'a'))
+      expect(slot.props.style).toEqual({ position: 'absolute', width: 150 });
+  });
+});
