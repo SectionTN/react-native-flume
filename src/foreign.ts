@@ -139,6 +139,7 @@ export const OWN_KEYS = [
   'drawDistance',
   'initialScrollIndex',
   'separator',
+  'ItemSeparatorComponent',
   'stickyHeaderIndices',
   'ListHeaderComponent',
   'ListFooterComponent',

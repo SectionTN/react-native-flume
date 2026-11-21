@@ -22,6 +22,7 @@ import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './da
 import { FlumeSlot } from './FlumeSlot';
 import { hostProps } from './foreign';
 import { contentPadding, nativeProps, refreshOf, settleProps, stickyIndicesOf } from './props';
+import { lastRowStart } from './separators';
 import {
   applySnapshot,
   gridCellWidth,
@@ -40,7 +41,14 @@ import FlumeViewNativeComponent, {
 } from './specs/FlumeViewNativeComponent';
 import { logSetData, statsEnabled } from './stats';
 import { getHost, isDev } from './store';
-import type { FlumeProps, FlumeRef, PressInfo, ReactCell, ViewToken } from './types';
+import type {
+  FlumeProps,
+  FlumeRef,
+  PressInfo,
+  ReactCell,
+  SeparatorProps,
+  ViewToken,
+} from './types';
 
 // FlatList's rule for the list components: an element renders as given, a component through createElement.
 // A given style wraps it in a View, as FlatList and FlashList do.
@@ -73,6 +81,8 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     ListHeaderComponentStyle,
     ListFooterComponentStyle,
     ListEmptyComponentStyle,
+    ItemSeparatorComponent,
+    inverted,
     itemAnimations = true,
     onPress,
     onLongPress,
@@ -332,18 +342,31 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     return [...bySlot.values()].sort((a, b) => a.slot - b.slot);
   }, [fresh, table]);
   const { next } = commit.diff;
+  const lastStart = lastRowStart(next.keys.length, horizontal ? 1 : numColumns, stickyIndices);
+  const separator = (ItemSeparatorComponent ?? null) as
+    | ComponentType<SeparatorProps<unknown>>
+    | ReactElement
+    | null;
   const cells = entries.map((entry) => {
     const type = typeOf(next, entry.key);
     const resolved = type === undefined ? undefined : resolveCell(type, latest.current);
+    const row = entry.kind === SlotKind.row || entry.kind === SlotKind.sticky;
+    // By key from the data, since native's table can lag it; a row that left keeps native's index.
+    const dataIndex = row ? next.index.get(entry.key) : undefined;
+    const index = dataIndex ?? entry.index;
     return (
       <FlumeSlot
         key={entry.slot}
         slot={entry.slot}
         kind={entry.kind}
         itemKey={entry.key}
-        index={entry.index}
+        index={index}
         minMain={entry.minMain}
-        fullSpan={entry.kind !== SlotKind.row || sticky.has(entry.index)}
+        fullSpan={entry.kind !== SlotKind.row || sticky.has(index)}
+        separator={row ? separator : null}
+        last={dataIndex === undefined || dataIndex >= lastStart}
+        trailingItem={dataIndex === undefined ? undefined : next.items[dataIndex + 1]}
+        inverted={inverted === true}
         layout={layout}
         item={itemOf(next, entry.key)}
         render={resolved?.kind === 'react' ? (resolved.render as ReactCell<unknown>) : undefined}

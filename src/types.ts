@@ -219,6 +219,13 @@ export type CellInfo<T> = {
 
 export type ReactCell<T> = (info: CellInfo<T>) => ReactNode;
 
+// What ItemSeparatorComponent gets: FlatList's props and FlashList's trailingItem.
+export type SeparatorProps<T> = {
+  leadingItem: T;
+  trailingItem: T | undefined;
+  highlighted: boolean;
+} & Record<string, unknown>;
+
 export type FlumeOwnProps<T> = {
   data: readonly T[] | null | undefined;
   renderCell?: ((item: T, index: number) => CellNode) | null;
@@ -249,6 +256,8 @@ export type FlumeOwnProps<T> = {
     | null;
   // A native line between consecutive rows, inset along the cross axis from the start and end edges.
   separator?: { size: number; color?: string; insetStart?: number; insetEnd?: number };
+  // Drawn inside a React row's cell after the row, before it when inverted; none in the last grid row.
+  ItemSeparatorComponent?: ComponentType<SeparatorProps<T>> | ReactElement | null;
   // Data indices, as FlashList counts them; FlatList counts the header too.
   stickyHeaderIndices?: readonly number[] | null;
   // Rows around the data; the empty one shows instead of the data while it is empty, filling the viewport.
