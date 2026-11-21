@@ -1,4 +1,12 @@
-import { createElement, createRef, Fragment, StrictMode, useEffect, useState } from 'react';
+import {
+  createElement,
+  createRef,
+  Fragment,
+  type ReactNode,
+  StrictMode,
+  useEffect,
+  useState,
+} from 'react';
 import { act, create, type ReactTestInstance, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FlumeHost } from '../store';
@@ -1515,5 +1523,126 @@ describe('Flume separators in the info', () => {
     });
     expect(latest('b')?.highlighted).toBe(false);
     expect(latest('d')?.highlighted).toBe(false);
+  });
+});
+
+describe('Flume ListItemComponent and CellRendererComponent', () => {
+  const a = { id: 'a' };
+  const b = { id: 'b' };
+  const Sep = () => createElement('Sep');
+  const keyed = (tree: ReactTestRenderer, key: string) =>
+    tree.root.findAll(
+      (node) => String(node.type) === 'FlumeSlotView' && node.props.itemKey === key,
+    );
+
+  it('renders ListItemComponent with the info in place of renderItem', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const got: CellInfo<unknown>[] = [];
+    const Item = (info: CellInfo<unknown>) => {
+      got.push(info);
+      return createElement('ItemNode');
+    };
+    const renderItem = vi.fn(() => createElement('Row'));
+    const tree = await mount(
+      createElement(Flume, { data: [a, b], renderItem, ListItemComponent: Item }),
+    );
+    await sendSlots(tree, [rowEntry(1, 'a', 0), rowEntry(2, 'b', 1)]);
+    expect(renderItem).not.toHaveBeenCalled();
+    expect(
+      got.some((info) => info.item === a && info.index === 0 && info.separators !== undefined),
+    ).toBe(true);
+    expect(tree.root.findAll((node) => String(node.type) === 'ItemNode').length).toBeGreaterThan(0);
+    expect(warn.mock.calls.filter(([m]) => String(m).includes('ListItemComponent'))).toHaveLength(
+      1,
+    );
+    warn.mockRestore();
+  });
+
+  it('keeps every slot memoized while ListItemComponent stays the same', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    let renders = 0;
+    const Item = () => {
+      renders++;
+      return createElement('ItemNode');
+    };
+    const data = [a, b];
+    const tree = await mount(createElement(Flume, { data, ListItemComponent: Item }));
+    await sendSlots(tree, [rowEntry(1, 'a', 0), rowEntry(2, 'b', 1)]);
+    const before = renders;
+    expect(before).toBeGreaterThan(0);
+    await act(async () => {
+      tree.update(createElement(Flume, { data, ListItemComponent: Item }));
+    });
+    expect(renders).toBe(before);
+  });
+
+  it('wraps the row and its separator in CellRendererComponent', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const got: Record<string, unknown>[] = [];
+    const Cell = (props: {
+      cellKey: string;
+      index: number;
+      item: unknown;
+      style?: unknown;
+      children?: ReactNode;
+    }) => {
+      got.push({
+        cellKey: props.cellKey,
+        index: props.index,
+        item: props.item,
+        style: props.style,
+      });
+      return createElement('CellNode', null, props.children);
+    };
+    const element = (horizontal: boolean) =>
+      createElement(Flume, {
+        data: [a, b],
+        renderItem: () => createElement('Row'),
+        ItemSeparatorComponent: Sep,
+        CellRendererComponent: Cell,
+        horizontal,
+      });
+    const tree = await mount(element(false));
+    await sendSlots(tree, [rowEntry(1, 'a', 0), rowEntry(2, 'b', 1)]);
+    expect(got).toContainEqual({ cellKey: 'a', index: 0, item: a, style: undefined });
+    for (const slot of keyed(tree, 'a')) {
+      const [cell] = slot.children as ReactTestInstance[];
+      expect(String(cell?.type)).not.toBe('View');
+      const node = cell?.find((n) => String(n.type) === 'CellNode');
+      expect(node?.findAll((n) => String(n.type) === 'Row')).toHaveLength(1);
+      expect(node?.findAllByType(Sep)).toHaveLength(1);
+    }
+    got.length = 0;
+    await act(async () => {
+      tree.update(element(true));
+    });
+    expect(got).toContainEqual({
+      cellKey: 'a',
+      index: 0,
+      item: a,
+      style: { flexDirection: 'row' },
+    });
+  });
+
+  it('warns once when CellRendererComponent is given with worklet rows', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const Cell = (props: { children?: ReactNode }) =>
+      createElement('CellNode', null, props.children);
+    const tree = await mount(
+      createElement(Flume, { data: [a], renderCell, CellRendererComponent: Cell }),
+    );
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [a, b], renderCell, CellRendererComponent: Cell }));
+    });
+    expect(
+      warn.mock.calls.filter(([m]) => String(m).includes('CellRendererComponent')),
+    ).toHaveLength(1);
+    warn.mockRestore();
   });
 });

@@ -1,5 +1,13 @@
+import { type ComponentType, createElement, isValidElement, type ReactElement } from 'react';
 import type { SettledProps } from './props';
-import type { ReactCell } from './types';
+import type { CellInfo, ReactCell } from './types';
+
+// FlatList's ListItemComponent: a component takes the info as props, an element renders as given.
+export function itemComponentCell<T>(
+  component: ComponentType<CellInfo<T>> | ReactElement,
+): ReactCell<T> {
+  return isValidElement(component) ? () => component : (info) => createElement(component, info);
+}
 
 export type ResolvedCell<T> =
   | { kind: 'worklet' }

@@ -140,6 +140,8 @@ export const OWN_KEYS = [
   'initialScrollIndex',
   'separator',
   'ItemSeparatorComponent',
+  'ListItemComponent',
+  'CellRendererComponent',
   'stickyHeaderIndices',
   'ListHeaderComponent',
   'ListFooterComponent',

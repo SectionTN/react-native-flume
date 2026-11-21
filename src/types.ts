@@ -227,6 +227,15 @@ export type CellInfo<T> = {
 
 export type ReactCell<T> = (info: CellInfo<T>) => ReactNode;
 
+// FlatList's CellRendererComponent props; it wraps a React row and its separator inside the row's cell.
+export type CellRendererProps<T> = {
+  cellKey: string;
+  index: number;
+  item: T;
+  style?: StyleProp<ViewStyle>;
+  children?: ReactNode;
+};
+
 // What ItemSeparatorComponent gets: FlatList's props and FlashList's trailingItem.
 export type SeparatorProps<T> = {
   leadingItem: T;
@@ -266,6 +275,10 @@ export type FlumeOwnProps<T> = {
   separator?: { size: number; color?: string; insetStart?: number; insetEnd?: number };
   // Drawn inside a React row's cell after the row, before it when inverted; none in the last grid row.
   ItemSeparatorComponent?: ComponentType<SeparatorProps<T>> | ReactElement | null;
+  // FlatList's: takes the renderItem info as props and wins over renderItem; an element renders as given.
+  ListItemComponent?: ComponentType<CellInfo<T>> | ReactElement | null;
+  // Wraps each React row and its separator inside the row's cell; worklet rows have no React host.
+  CellRendererComponent?: ComponentType<CellRendererProps<T>> | null;
   // Data indices, as FlashList counts them; FlatList counts the header too.
   stickyHeaderIndices?: readonly number[] | null;
   // Rows around the data; the empty one shows instead of the data while it is empty, filling the viewport.

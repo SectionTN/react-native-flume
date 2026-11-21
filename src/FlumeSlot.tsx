@@ -15,7 +15,7 @@ import { Keyboard, View } from 'react-native';
 import type { SeparatorLinks } from './separators';
 import { SlotKind, type SlotLayout, slotStyle } from './slots';
 import FlumeSlotViewNativeComponent from './specs/FlumeSlotViewNativeComponent';
-import type { ReactCell, SeparatorProps, Separators } from './types';
+import type { CellRendererProps, ReactCell, SeparatorProps, Separators } from './types';
 
 type FlumeSlotProps = {
   slot: number;
@@ -39,6 +39,7 @@ type FlumeSlotProps = {
   trailingItem: unknown;
   inverted: boolean;
   links: SeparatorLinks;
+  cellRenderer: ComponentType<CellRendererProps<unknown>> | null;
 };
 
 type SeparatorCellProps = {
@@ -77,6 +78,7 @@ const closeKeyboard = () => Keyboard.dismiss();
 
 // FlashList's horizontal cell: the row keeps its height and the separator stretches to it.
 const SIDE_BY_SIDE = { flexDirection: 'row', alignSelf: 'flex-start' } as const;
+const ROW = { flexDirection: 'row' } as const;
 
 // One React cell. A key that left the data keeps its last item and renderer while native still lists the slot.
 export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactElement | null {
@@ -100,6 +102,7 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
     trailingItem,
     inverted,
     links,
+    cellRenderer,
   } = props;
   const separators = useMemo<Separators>(
     () => ({
@@ -166,9 +169,22 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
     ];
     if (inverted) parts.reverse();
     content =
-      layout.horizontal && separator !== null
+      layout.horizontal && separator !== null && cellRenderer === null
         ? createElement(View, { style: SIDE_BY_SIDE }, parts)
         : parts;
+  }
+  // FlatList's cell renderer holds the row and its separator, laid out in a row when horizontal.
+  if (cell && cellRenderer !== null) {
+    content = createElement(
+      cellRenderer,
+      {
+        cellKey: itemKey,
+        index: rowIndex,
+        item: shown.item,
+        style: layout.horizontal ? ROW : undefined,
+      },
+      content,
+    );
   }
   return (
     <FlumeSlotViewNativeComponent
