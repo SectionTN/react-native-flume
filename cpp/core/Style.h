@@ -60,4 +60,7 @@ struct Style {
   bool operator==(const Style&) const = default;
 };
 
+// Drops what only a parent reads (margins, insets, position type, alignSelf and flex), as a cell root never has one.
+void clearParentLayout(Style& style);
+
 }  // namespace flume

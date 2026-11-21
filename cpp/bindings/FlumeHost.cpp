@@ -15,7 +15,8 @@ namespace jsi = facebook::jsi;
 namespace {
 
 const char* const kNames[] = {"install", "setScheduler", "createStore", "releaseStore", "setData",
-                              "setCell", "setCellKinds", "setStickyHeaderIndices", "setReporter"};
+                              "setCell", "setSeparatorCell", "setCellKinds", "setStickyHeaderIndices",
+                              "setReporter"};
 
 std::vector<std::string> stringsOf(jsi::Runtime& rt, const jsi::Value& value) {
   std::vector<std::string> out;
@@ -154,6 +155,19 @@ jsi::Value FlumeHost::get(jsi::Runtime& rt, const jsi::PropNameID& nameId) {
                           auto worklet = worklets::extractSerializable(
                               rt, args[1], "react-native-flume: renderCell must be a worklet");
                           engine.setCell(static_cast<int>(args[0].asNumber()), std::move(worklet));
+                          return jsi::Value::undefined();
+                        });
+  }
+  if (name == "setSeparatorCell") {
+    return hostFunction(rt, "setSeparatorCell", 2,
+                        [&engine](jsi::Runtime& rt, const jsi::Value&, const jsi::Value* args, size_t count) {
+                          if (count < 1) throw jsi::JSError(rt, "setSeparatorCell needs a store id");
+                          std::shared_ptr<worklets::Serializable> worklet;
+                          if (count > 1 && !args[1].isNull() && !args[1].isUndefined()) {
+                            worklet = worklets::extractSerializable(
+                                rt, args[1], "react-native-flume: renderSeparatorCell must be a worklet");
+                          }
+                          engine.setSeparatorCell(static_cast<int>(args[0].asNumber()), std::move(worklet));
                           return jsi::Value::undefined();
                         });
   }

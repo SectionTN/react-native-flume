@@ -122,6 +122,7 @@ export const IGNORED_KEYS = [
 export const OWN_KEYS = [
   'data',
   'renderCell',
+  'renderSeparatorCell',
   'renderItem',
   'reactCells',
   'keyExtractor',

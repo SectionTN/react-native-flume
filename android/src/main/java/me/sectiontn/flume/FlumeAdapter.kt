@@ -48,7 +48,16 @@ class FlumeAdapter(
 
   // Orientation, columns and padding come from the host; a change of the cell size rebinds every row.
   fun configure(horizontal: Boolean, numColumns: Int, inverted: Boolean, paddingPx: IntArray) {
-    if (geometry.configure(horizontal, numColumns, inverted, paddingPx)) rebindAll()
+    if (!geometry.configure(horizontal, numColumns, inverted, paddingPx)) return
+    sendRowShape()
+    rebindAll()
+  }
+
+  // The engine composes worklet separators with the shape the rows are laid out with.
+  private fun sendRowShape() {
+    if (storeId == 0) return
+    val lanes = if (geometry.horizontal) 1 else geometry.numColumns
+    FlumeJni.setRowShape(storeId, geometry.horizontal, geometry.inverted, lanes)
   }
 
   private fun rebindAll() {
@@ -72,6 +81,7 @@ class FlumeAdapter(
     if (this.storeId != 0 && this.storeId != storeId) detach()
     val reload = attached.onAttach(storeId)
     val attachedCount = FlumeJni.attach(storeId, this, measurer, density)
+    sendRowShape()
     val sticky = FlumeJni.stickyIndices(storeId)
     val stickyChanged = !sticky.contentEquals(stickyIndices)
     stickyIndices = sticky

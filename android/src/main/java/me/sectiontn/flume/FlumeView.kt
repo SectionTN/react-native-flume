@@ -195,6 +195,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
     recycler.adapter = adapter
     recycler.itemAnimator = animator
     recycler.clipToPadding = false
+    // A row composed with its separator draws its shadow from a child view, which a clipping cell would cut.
+    recycler.clipChildren = false
     adapter.onPress = { position, pressId, long ->
       val index = rows.dataIndex(position)
       if (index >= 0) emitPress(index, FlumeJni.keyAt(storeId, index), pressId, long)

@@ -6,6 +6,7 @@ export type {
   CellInfo,
   CellNode,
   CellPressableProps,
+  CellRendererProps,
   CellStyle,
   CellTextOptions,
   FlatListAnchoring,
@@ -18,6 +19,9 @@ export type {
   PressInfo,
   ReactCell,
   ScrollHandler,
+  SeparatorCellInfo,
+  SeparatorProps,
+  Separators,
   ViewabilityConfig,
   ViewToken,
 } from './types';

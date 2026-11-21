@@ -101,6 +101,9 @@ function installHost() {
     setCell: (storeId) => {
       cells.push({ storeId, alive: alive.has(storeId) });
     },
+    setSeparatorCell: (_storeId, separatorCell) => {
+      log.push(`separator ${separatorCell === null ? 'null' : 'set'}`);
+    },
     setCellKinds: (storeId, reactByDefault, reactTypes) => {
       kinds.push({ storeId, reactByDefault, reactTypes });
       log.push(`kinds ${reactByDefault} [${reactTypes.join(',')}]`);
@@ -1189,6 +1192,32 @@ describe('Flume item separators', () => {
     expect(props).toContainEqual({ leadingItem: b, trailingItem: c, highlighted: false });
   });
 
+  it('draws the React separator on a key that turns from a worklet row into a React row', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Sep } = separatorSpy();
+    const { renderItem } = countingCell();
+    const typed = (kind: string) => [
+      { ...a, kind },
+      { ...b, kind: 'w' },
+    ];
+    const props = (kind: string) => ({
+      data: typed(kind),
+      getItemType: (item: unknown) => (item as { kind: string }).kind,
+      renderCell,
+      renderSeparatorCell: () => ({ type: 'view' as const }),
+      reactCells: { r: renderItem },
+      ItemSeparatorComponent: Sep,
+    });
+    const tree = await mount(createElement(Flume, props('w')));
+    expect(slotsOfKey(tree, 'a')).toHaveLength(0);
+    await act(async () => {
+      tree.update(createElement(Flume, props('r')));
+    });
+    await sendSlots(tree, [rowEntry(1, 'a', 0)]);
+    expectSeparated(tree, 'a', true);
+  });
+
   it('re-renders only the old last row on an append', async () => {
     installHost();
     const { Flume } = await import('../Flume');
@@ -1690,6 +1719,68 @@ describe('Flume ListItemComponent and CellRendererComponent', () => {
     expect(
       warn.mock.calls.filter(([m]) => String(m).includes('CellRendererComponent')),
     ).toHaveLength(1);
+    warn.mockRestore();
+  });
+});
+
+describe('Flume worklet separators', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+  const a = { id: 'a' };
+  const b = { id: 'b' };
+  const renderSeparatorCell = () => ({ type: 'view' as const, style: { height: 1 } });
+
+  it('sends renderSeparatorCell before the first data, and null clears it', async () => {
+    const host = installHost();
+    const { Flume } = await import('../Flume');
+    const tree = await mount(
+      createElement(Flume, { data: [a, b], renderCell, renderSeparatorCell }),
+    );
+    const separator = host.log.indexOf('separator set');
+    expect(separator).toBeGreaterThanOrEqual(0);
+    expect(separator).toBeLessThan(host.log.findIndex((line) => line.startsWith('data')));
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [a, b], renderCell, renderSeparatorCell: null }));
+    });
+    expect(host.log).toContain('separator null');
+  });
+
+  it('warns once when ItemSeparatorComponent has only worklet rows to draw on', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const Divider = () => createElement('Divider');
+    const tree = await mount(
+      createElement(Flume, { data: [a], renderCell, ItemSeparatorComponent: Divider }),
+    );
+    await act(async () => {
+      tree.update(
+        createElement(Flume, { data: [a, b], renderCell, ItemSeparatorComponent: Divider }),
+      );
+    });
+    expect(warn.mock.calls.filter(([m]) => String(m).includes('renderSeparatorCell'))).toHaveLength(
+      1,
+    );
+    warn.mockRestore();
+  });
+
+  it('does not warn when renderSeparatorCell draws the worklet rows', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const Divider = () => createElement('Divider');
+    await mount(
+      createElement(Flume, {
+        data: [a, b],
+        renderCell,
+        renderSeparatorCell,
+        ItemSeparatorComponent: Divider,
+      }),
+    );
+    expect(warn.mock.calls.filter(([m]) => String(m).includes('renderSeparatorCell'))).toHaveLength(
+      0,
+    );
     warn.mockRestore();
   });
 });

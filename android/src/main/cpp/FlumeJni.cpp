@@ -99,6 +99,10 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
     return flume::Engine::instance().applyNow(storeId) ? JNI_TRUE : JNI_FALSE;
   }
 
+  static void setRowShape(jni::alias_ref<jclass>, jint storeId, jboolean horizontal, jboolean inverted, jint lanes) {
+    flume::Engine::instance().setRowShape(storeId, {horizontal == JNI_TRUE, inverted == JNI_TRUE, lanes});
+  }
+
   static void setStatsEnabled(jni::alias_ref<jclass>, jboolean enabled) {
     flume::Engine::instance().setStatsEnabled(enabled);
   }
@@ -123,6 +127,7 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
         makeNativeMethod("invalidateMeasures", JFlumeJni::invalidateMeasures),
         makeNativeMethod("refresh", JFlumeJni::refresh),
         makeNativeMethod("applyNow", JFlumeJni::applyNow),
+        makeNativeMethod("setRowShape", JFlumeJni::setRowShape),
         makeNativeMethod("setStatsEnabled", JFlumeJni::setStatsEnabled),
     });
   }

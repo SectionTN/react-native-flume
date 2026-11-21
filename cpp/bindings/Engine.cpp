@@ -4,6 +4,7 @@
 #include <cstdio>
 
 #include "bindings/JsiConverter.h"
+#include "core/SeparatorRule.h"
 #include "core/TreeParser.h"
 
 #ifdef __ANDROID__
@@ -118,6 +119,13 @@ void Engine::setCell(int storeId, std::shared_ptr<worklets::Serializable> render
   scheduleRefresh(store, true);
 }
 
+void Engine::setSeparatorCell(int storeId, std::shared_ptr<worklets::Serializable> separatorCell) {
+  auto store = find(storeId);
+  if (store == nullptr) return;
+  store->setSeparatorCell(std::move(separatorCell));
+  scheduleRefresh(store, true);
+}
+
 void Engine::setCellKinds(int storeId, bool reactByDefault, std::vector<std::string> reactTypes) {
   auto store = find(storeId);
   if (store == nullptr) return;
@@ -211,6 +219,7 @@ void Engine::releaseOnRuntime(int storeId) {
     store = it->second;
   }
   store->slot.renderCellFn.reset();
+  store->slot.separatorCellFn.reset();
   store->slot.items.clear();
 }
 
@@ -234,6 +243,11 @@ void Engine::detach(int storeId) {
   if (store == nullptr) return;
   store->listener = nullptr;
   store->list.setAttached(false);
+}
+
+void Engine::setRowShape(int storeId, RowShape shape) {
+  auto store = find(storeId);
+  if (store != nullptr) store->shape = shape;
 }
 
 int Engine::count(int storeId) {
@@ -350,6 +364,53 @@ void Engine::bindOnRuntime(jsi::Runtime& rt, int index) {
   } catch (const std::exception& e) {
     current_.error = std::string("renderCell failed: ") + e.what();
   }
+  if (current_.fresh != nullptr) composeOnRuntime(rt, *store, index);
+}
+
+// With a separator worklet every row binds composed, and rows before the last grid row get its tree.
+void Engine::composeOnRuntime(jsi::Runtime& rt, Store& store, int index) {
+  Store::RuntimeSlot& slot = store.slot;
+  auto [separatorCell, version] = store.separatorCell();
+  if (separatorCell == nullptr) {
+    slot.separatorCellFn.reset();
+    return;
+  }
+  const RowShape& shape = store.shape;
+  std::unique_ptr<Node> separator;
+  try {
+    if (!slot.separatorCellFn || slot.separatorCellVersion != version) {
+      slot.separatorCellFn = separatorCell->toJSValue(rt).asObject(rt).asFunction(rt);
+      slot.separatorCellVersion = version;
+    }
+    int count = store.list.count();
+    if (index < lastRowStart(count, shape.horizontal ? 1 : shape.lanes, store.list.sticky())) {
+      const ListStore& list = store.list;
+      jsi::Object info(rt);
+      info.setProperty(rt, "leadingItem",
+                       jsi::Value(rt, slot.items.materialize(rt, list.keyAt(index), list.itemVersion(index),
+                                                             list.itemAt(index))));
+      int next = index + 1;
+      // A React row's item lives in JS only, so its separator gets no trailing item.
+      if (next < count && !list.isReactAt(next)) {
+        info.setProperty(rt, "trailingItem",
+                         jsi::Value(rt, slot.items.materialize(rt, list.keyAt(next), list.itemVersion(next),
+                                                               list.itemAt(next))));
+      }
+      jsi::Value result = slot.separatorCellFn->call(rt, {jsi::Value(rt, info)});
+      if (!result.isNull() && !result.isUndefined()) {
+        std::vector<std::string> unknownKeys;
+        ParseResult parsed = parseTree(toValue(rt, result), &unknownKeys);
+        for (const std::string& key : unknownKeys) report(1, "unknown style key: " + key);
+        if (parsed.root == nullptr) report(2, "renderSeparatorCell returned an invalid tree: " + parsed.error);
+        separator = std::move(parsed.root);
+      }
+    }
+  } catch (const jsi::JSError& e) {
+    report(2, "renderSeparatorCell threw: " + e.getMessage());
+  } catch (const std::exception& e) {
+    report(2, std::string("renderSeparatorCell failed: ") + e.what());
+  }
+  current_.fresh = composeRow(std::move(current_.fresh), std::move(separator), shape.horizontal, shape.inverted);
 }
 
 int Engine::viewType(int storeId, int position) {

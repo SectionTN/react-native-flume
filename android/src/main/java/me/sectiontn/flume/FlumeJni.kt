@@ -44,6 +44,9 @@ object FlumeJni {
   // UI thread: applies deferred data now, in the frame of the mount that brought its cells. False when none was pending.
   @JvmStatic external fun applyNow(storeId: Int): Boolean
 
+  // UI thread: the shape the rows are laid out with, before any bind that uses it.
+  @JvmStatic external fun setRowShape(storeId: Int, horizontal: Boolean, inverted: Boolean, lanes: Int)
+
   // Binds read the clock and return stats only while this is on.
   @JvmStatic external fun setStatsEnabled(enabled: Boolean)
 }

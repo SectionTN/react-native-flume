@@ -68,6 +68,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const {
     data,
     renderCell,
+    renderSeparatorCell,
     renderItem: givenRenderItem,
     reactCells,
     keyExtractor,
@@ -162,6 +163,11 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   if (CellRendererComponent != null && renderCell !== undefined) {
     warn('CellRendererComponent wraps React rows only; worklet rows ignore it');
   }
+  if (ItemSeparatorComponent != null && renderCell !== undefined && renderSeparatorCell == null) {
+    warn(
+      'ItemSeparatorComponent draws on React rows only; give renderSeparatorCell for worklet rows',
+    );
+  }
 
   if (renderCell !== undefined && renderItem !== undefined) {
     warn('renderItem is ignored when renderCell is given; use reactCells to mix the two');
@@ -185,6 +191,18 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     // The native side extracts a SerializableJSRef, which only createSerializable produces.
     if (renderCell !== undefined) host.setCell(storeId, createSerializable(renderCell));
   }, [host, storeId, renderCell]);
+
+  // The store that holds a separator worklet, so null is sent only to clear one.
+  const separatorStore = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (renderSeparatorCell != null) {
+      host.setSeparatorCell(storeId, createSerializable(renderSeparatorCell));
+      separatorStore.current = storeId;
+    } else if (separatorStore.current === storeId) {
+      host.setSeparatorCell(storeId, null);
+      separatorStore.current = null;
+    }
+  }, [host, storeId, renderSeparatorCell]);
 
   const kinds = cellKinds({ renderCell, reactCells });
   const prerendering = useRef(false);

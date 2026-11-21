@@ -290,3 +290,18 @@ Style Style::fromValue(const Value& object, std::vector<std::string>* unknownKey
 }
 
 }  // namespace flume
+
+namespace flume {
+
+void clearParentLayout(Style& style) {
+  style.margin.fill(Dimension{});
+  style.position.fill(Dimension{});
+  style.positionType.reset();
+  style.alignSelf.reset();
+  style.flex.reset();
+  style.flexGrow.reset();
+  style.flexShrink.reset();
+  style.flexBasis = Dimension{};
+}
+
+}  // namespace flume

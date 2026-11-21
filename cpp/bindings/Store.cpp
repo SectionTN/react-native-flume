@@ -28,4 +28,15 @@ uint64_t Store::renderCellVersion() const {
   return renderCellVersion_;
 }
 
+void Store::setSeparatorCell(std::shared_ptr<worklets::Serializable> separatorCell) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  separatorCell_ = std::move(separatorCell);
+  separatorCellVersion_++;
+}
+
+std::pair<std::shared_ptr<worklets::Serializable>, uint64_t> Store::separatorCell() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return {separatorCell_, separatorCellVersion_};
+}
+
 }  // namespace flume

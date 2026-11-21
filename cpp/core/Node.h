@@ -28,6 +28,7 @@ struct Node {
   std::string testID;
   std::string accessibilityLabel;
   std::optional<bool> accessible;
+  bool separator = false;  // the separator half of a composed row, left out of the row's label
   std::vector<std::unique_ptr<Node>> children;  // view and pressable only
 };
 
