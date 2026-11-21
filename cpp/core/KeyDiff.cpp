@@ -101,4 +101,16 @@ ListOps diffKeys(const Keys& previous, const Keys& next, const std::vector<int>&
   return ops;
 }
 
+std::vector<int> rebound(const ListOps& ops) {
+  std::vector<int> rows = ops.changed;
+  rows.insert(rows.end(), ops.neighbors.begin(), ops.neighbors.end());
+  std::sort(rows.begin(), rows.end());
+  rows.erase(std::unique(rows.begin(), rows.end()), rows.end());
+  return rows;
+}
+
+bool isNeighbor(const ListOps& ops, int index) {
+  return std::binary_search(ops.neighbors.begin(), ops.neighbors.end(), index);
+}
+
 }  // namespace flume

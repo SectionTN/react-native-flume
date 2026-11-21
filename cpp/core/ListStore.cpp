@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "core/SeparatorRule.h"
+
 namespace flume {
 
 void ListStore::setPending(std::vector<std::string> keys, std::vector<std::string> types,
@@ -72,6 +74,11 @@ void ListStore::setKinds(bool reactByDefault, std::vector<std::string> reactType
   pendingKinds_ = Kinds{reactByDefault, {reactTypes.begin(), reactTypes.end()}};
 }
 
+void ListStore::setSeparators(bool on) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  separators_ = on;
+}
+
 void ListStore::resolveKinds() {
   reactByTypeId_.assign(typeRegistry_.size(), false);
   for (const auto& [name, id] : typeRegistry_) {
@@ -83,11 +90,13 @@ std::optional<ListOps> ListStore::applyPending() {
   std::optional<Pending> pending;
   std::optional<Kinds> kinds;
   std::optional<std::vector<int>> sticky;
+  bool separators = false;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     pending.swap(pending_);
     kinds.swap(pendingKinds_);
     sticky.swap(pendingSticky_);
+    separators = separators_;
   }
   if (kinds) {
     kinds_ = std::move(*kinds);
@@ -111,6 +120,9 @@ std::optional<ListOps> ListStore::applyPending() {
   std::vector<int> typeIds(size);
   std::vector<int64_t> itemIds(size);
   std::vector<int> changed = pending->changedIndices;
+  // Each row's index in the previous data, -1 for a new key, kept only for the separator neighbors.
+  std::vector<int> oldOf(separators ? size : 0, -1);
+  const int oldStart = lastRowStart(static_cast<int>(keys_.size()), lanes_, sticky_);
   size_t carried = 0;
   for (size_t i = 0; i < size; i++) {
     typeIds[i] = typeRegistry_.try_emplace(pending->types[i], static_cast<int>(typeRegistry_.size())).first->second;
@@ -118,6 +130,7 @@ std::optional<ListOps> ListStore::applyPending() {
         idRegistry_.try_emplace(pending->keys[i], static_cast<int64_t>(idRegistry_.size()) + 1).first->second;
     auto it = previous.find(pending->keys[i]);
     if (it == previous.end()) continue;
+    if (separators) oldOf[i] = static_cast<int>(it->second);
     items[i] = std::move(items_[it->second]);
     versions[i] = versions_[it->second];
     carried++;
@@ -143,7 +156,28 @@ std::optional<ListOps> ListStore::applyPending() {
   versions_ = std::move(versions);
   typeIds_ = std::move(typeIds);
   itemIds_ = std::move(itemIds);
+  if (separators && !ops.reset) ops.neighbors = separatorNeighbors(ops, oldOf, oldStart);
   return ops;
+}
+
+// A worklet row rebinds when its separator came or went, or when the row after it is another key or changed.
+std::vector<int> ListStore::separatorNeighbors(const ListOps& ops, const std::vector<int>& oldOf, int oldStart) const {
+  const int size = count();
+  std::vector<bool> fresh(size, false);
+  for (int index : ops.changed) fresh[index] = true;
+  for (const auto& range : ops.inserted) {
+    for (int i = range.index; i < range.index + range.count; i++) fresh[i] = true;
+  }
+  const int newStart = lastRowStart(size, lanes_, sticky_);
+  std::vector<int> neighbors;
+  for (int i = 0; i < size; i++) {
+    const int was = oldOf[i];
+    if (was < 0 || fresh[i] || isReactAt(i)) continue;
+    const bool had = was < oldStart;
+    const bool has = i < newStart;
+    if (had != has || (has && (fresh[i + 1] || oldOf[i + 1] != was + 1))) neighbors.push_back(i);
+  }
+  return neighbors;
 }
 
 }  // namespace flume

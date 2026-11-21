@@ -122,6 +122,7 @@ void Engine::setCell(int storeId, std::shared_ptr<worklets::Serializable> render
 void Engine::setSeparatorCell(int storeId, std::shared_ptr<worklets::Serializable> separatorCell) {
   auto store = find(storeId);
   if (store == nullptr) return;
+  store->list.setSeparators(separatorCell != nullptr);
   store->setSeparatorCell(std::move(separatorCell));
   scheduleRefresh(store, true);
 }
@@ -247,7 +248,9 @@ void Engine::detach(int storeId) {
 
 void Engine::setRowShape(int storeId, RowShape shape) {
   auto store = find(storeId);
-  if (store != nullptr) store->shape = shape;
+  if (store == nullptr) return;
+  store->shape = shape;
+  store->list.setLanes(shape.horizontal ? 1 : shape.lanes);
 }
 
 int Engine::count(int storeId) {

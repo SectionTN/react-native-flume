@@ -39,8 +39,9 @@ struct JFlumeStoreListener : jni::JavaClass<JFlumeStoreListener> {
         javaClassStatic()
             ->getMethod<void(jboolean, jni::JArrayInt::javaobject, jni::JArrayInt::javaobject, jni::JArrayInt::javaobject,
                              jni::JArrayInt::javaobject, jint, jni::JArrayInt::javaobject)>("onListChanged");
+    // A separator neighbor rebinds in place like a changed row.
     method(self(), ops.reset, rangeArray(ops.removed).get(), rangeArray(ops.inserted).get(), pairArray(ops.moved).get(),
-           intArray(ops.changed).get(), count, intArray(ops.sticky).get());
+           intArray(rebound(ops)).get(), count, intArray(ops.sticky).get());
   }
 };
 
