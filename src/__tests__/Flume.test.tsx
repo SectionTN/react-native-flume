@@ -1,5 +1,5 @@
 import { createElement, createRef, Fragment, StrictMode, useEffect, useState } from 'react';
-import { act, create, type ReactTestRenderer } from 'react-test-renderer';
+import { act, create, type ReactTestInstance, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FlumeHost } from '../store';
 import type { CellInfo, FlumeRef } from '../types';
@@ -23,7 +23,10 @@ vi.mock('../specs/FlumeViewNativeComponent', () => ({
   },
 }));
 vi.mock('../specs/FlumeSlotViewNativeComponent', () => ({ default: 'FlumeSlotView' }));
-vi.mock('react-native', () => ({ Keyboard: { isVisible: vi.fn(() => true), dismiss: vi.fn() } }));
+vi.mock('react-native', () => ({
+  Keyboard: { isVisible: vi.fn(() => true), dismiss: vi.fn() },
+  View: 'View',
+}));
 
 type DataCall = {
   storeId: number;
@@ -1035,5 +1038,79 @@ describe('Flume refresh', () => {
       native.props.onRefresh();
     });
     expect(Commands.setNativeRefreshing).not.toHaveBeenCalled();
+  });
+});
+
+describe('Flume component styles', () => {
+  const Header = () => createElement('HeaderNode');
+  const Footer = () => createElement('FooterNode');
+  const Empty = () => createElement('EmptyNode');
+  const entry = (slot: number, kind: number, key: string): Entry => ({
+    slot,
+    kind,
+    key,
+    index: -1,
+    bound: true,
+    minMain: 0,
+  });
+  const slotOf = (tree: ReactTestRenderer, kind: number) =>
+    tree.root.findAll((node) => String(node.type) === 'FlumeSlotView' && node.props.kind === kind);
+
+  it('wraps the header, footer and empty rows in a View with their style', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const style = { padding: 8 };
+    const tree = await mount(
+      createElement(Flume, {
+        data: [],
+        renderItem: () => null,
+        ListHeaderComponent: Header,
+        ListFooterComponent: Footer,
+        ListEmptyComponent: Empty,
+        ListHeaderComponentStyle: style,
+        ListFooterComponentStyle: style,
+        ListEmptyComponentStyle: style,
+      }),
+    );
+    await sendSlots(tree, [entry(1, 1, 'header'), entry(2, 2, 'footer'), entry(3, 3, 'empty')]);
+    for (const [kind, component] of [
+      [1, Header],
+      [2, Footer],
+      [3, Empty],
+    ] as const) {
+      const slots = slotOf(tree, kind);
+      expect(slots.length).toBeGreaterThan(0);
+      for (const slot of slots) {
+        const [wrapper] = slot.children as ReactTestInstance[];
+        expect(String(wrapper?.type)).toBe('View');
+        expect(wrapper?.props.style).toBe(style);
+        expect(wrapper?.findAllByType(component)).toHaveLength(1);
+      }
+    }
+  });
+
+  it('adds no wrapper without a style', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const tree = await mount(
+      createElement(Flume, {
+        data: [],
+        renderItem: () => null,
+        ListHeaderComponent: Header,
+        ListEmptyComponent: Empty,
+      }),
+    );
+    await sendSlots(tree, [entry(1, 1, 'header'), entry(3, 3, 'empty')]);
+    for (const [kind, component] of [
+      [1, Header],
+      [3, Empty],
+    ] as const) {
+      const slots = slotOf(tree, kind);
+      expect(slots.length).toBeGreaterThan(0);
+      for (const slot of slots) {
+        const [child] = slot.children as ReactTestInstance[];
+        expect(child?.type).toBe(component);
+      }
+    }
   });
 });

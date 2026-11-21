@@ -255,6 +255,10 @@ export type FlumeOwnProps<T> = {
   ListHeaderComponent?: ComponentType<object> | ReactElement | null;
   ListFooterComponent?: ComponentType<object> | ReactElement | null;
   ListEmptyComponent?: ComponentType<object> | ReactElement | null;
+  // Each wraps its component in a View with this style.
+  ListHeaderComponentStyle?: StyleProp<ViewStyle> | null;
+  ListFooterComponentStyle?: StyleProp<ViewStyle> | null;
+  ListEmptyComponentStyle?: StyleProp<ViewStyle> | null;
   // The ScrollView events with the ScrollView payload; contentOffset counts from the content start.
   onScroll?: ScrollHandler | null;
   onScrollBeginDrag?: ScrollHandler | null;

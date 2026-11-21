@@ -15,6 +15,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { type StyleProp, View, type ViewStyle } from 'react-native';
 import { createSerializable } from 'react-native-worklets';
 import { cellKinds, type ResolvedCell, resolveCell } from './cells';
 import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './data';
@@ -42,11 +43,14 @@ import { getHost, isDev } from './store';
 import type { FlumeProps, FlumeRef, PressInfo, ReactCell, ViewToken } from './types';
 
 // FlatList's rule for the list components: an element renders as given, a component through createElement.
+// A given style wraps it in a View, as FlatList and FlashList do.
 function componentElement(
   component: ComponentType<object> | ReactElement | null | undefined,
+  style: StyleProp<ViewStyle> | null | undefined,
 ): ReactElement | null {
   if (component == null) return null;
-  return isValidElement(component) ? component : createElement(component);
+  const element = isValidElement(component) ? component : createElement(component);
+  return style == null ? element : createElement(View, { style }, element);
 }
 
 function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
@@ -66,6 +70,9 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     ListHeaderComponent,
     ListFooterComponent,
     ListEmptyComponent,
+    ListHeaderComponentStyle,
+    ListFooterComponentStyle,
+    ListEmptyComponentStyle,
     itemAnimations = true,
     onPress,
     onLongPress,
@@ -263,9 +270,18 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     [horizontal, numColumns, padding.top, padding.left, padding.bottom, padding.right, cellWidth],
   );
   const sticky = useMemo(() => new Set(stickyHeaderIndices), [stickyHeaderIndices]);
-  const header = useMemo(() => componentElement(ListHeaderComponent), [ListHeaderComponent]);
-  const footer = useMemo(() => componentElement(ListFooterComponent), [ListFooterComponent]);
-  const empty = useMemo(() => componentElement(ListEmptyComponent), [ListEmptyComponent]);
+  const header = useMemo(
+    () => componentElement(ListHeaderComponent, ListHeaderComponentStyle),
+    [ListHeaderComponent, ListHeaderComponentStyle],
+  );
+  const footer = useMemo(
+    () => componentElement(ListFooterComponent, ListFooterComponentStyle),
+    [ListFooterComponent, ListFooterComponentStyle],
+  );
+  const empty = useMemo(
+    () => componentElement(ListEmptyComponent, ListEmptyComponentStyle),
+    [ListEmptyComponent, ListEmptyComponentStyle],
+  );
   const elementFor = (kind: number) =>
     kind === SlotKind.header
       ? header
