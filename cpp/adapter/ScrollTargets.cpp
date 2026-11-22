@@ -26,6 +26,20 @@ float offsetAfterViewportChange(bool keepsEnd, float offset, float oldEnd, float
   return std::clamp(keepsEnd ? offset + oldEnd - newEnd : offset, low, std::max(low, high));
 }
 
+std::optional<VisualEdge> restingEdgeAt(const ListLayout& layout, float viewportStart, float viewportLength) {
+  constexpr float slop = 0.5f;
+  if (layout.count() == 0 || viewportLength <= 0) return std::nullopt;
+  if (!layout.bottomAnchored()) {
+    return viewportStart <= slop ? std::optional(VisualEdge::Top) : std::nullopt;
+  }
+  const bool atEnd = viewportStart + viewportLength >= layout.contentLength(viewportLength) - slop;
+  return atEnd ? std::optional(VisualEdge::Bottom) : std::nullopt;
+}
+
+float keptViewportStart(float edge, float distance, bool fromEnd, float viewportLength) {
+  return fromEnd ? edge + distance - viewportLength : edge - distance;
+}
+
 IndexRange landingRows(int targetRow, float viewPosition, float viewportLength, int rowCount,
                        const std::function<float(int row)>& rowLength) {
   if (rowCount <= 0) return {0, -1};
