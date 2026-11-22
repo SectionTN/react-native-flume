@@ -12,6 +12,7 @@ const layout = {
   horizontal: false,
   numColumns: 1,
   padding: { top: 0, left: 16, bottom: 0, right: 8 },
+  lanes: { insetStart: 0, insetEnd: 0 },
   cellWidth: -1,
 };
 const row = { slot: 1, kind: SlotKind.row, key: 'a', index: 0, bound: true, minMain: 0 };
@@ -29,6 +30,23 @@ describe('slotStyle', () => {
       width: 120,
     });
     expect(slotStyle(row, true, grid)).toEqual({ position: 'absolute', left: 16, right: 8 });
+  });
+
+  it('insets a full-span data row and its pinned copy by the lane insets, and not the header', () => {
+    const grid = {
+      ...layout,
+      numColumns: 2,
+      cellWidth: 100,
+      lanes: { insetStart: 12, insetEnd: 4 },
+    };
+    const inset = { position: 'absolute', left: 28, right: 12 };
+    expect(slotStyle(row, true, grid)).toEqual(inset);
+    expect(slotStyle({ ...row, kind: SlotKind.sticky }, true, grid)).toEqual(inset);
+    expect(slotStyle({ ...row, kind: SlotKind.header }, true, grid)).toEqual({
+      position: 'absolute',
+      left: 16,
+      right: 8,
+    });
   });
 
   it('takes the padded height in a horizontal list', () => {
