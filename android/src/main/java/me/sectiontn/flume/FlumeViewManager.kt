@@ -33,6 +33,8 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
   }
 
   override fun onDropViewInstance(view: FlumeView) {
+    // A view dropped while detached registered its mount listener after its own detach cleanup.
+    view.dropMountListener()
     view.setStateWrapper(null)
     super.onDropViewInstance(view)
   }
