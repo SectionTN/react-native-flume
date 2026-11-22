@@ -113,10 +113,10 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
   const style = slotStyle(entry, span, layout);
   if (style === null) return null;
   const handled = keyboardTaps === 'handled';
-  let content: ReactNode = cell ? rowContent : element;
-  if (cell && separator !== null) {
+  let content: ReactNode = element;
+  if (cell) {
     const drawn =
-      shown.last === false
+      separator !== null && shown.last === false
         ? isValidElement(separator)
           ? separator
           : createElement(separator, {
@@ -125,13 +125,16 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
               highlighted: false,
             })
         : null;
-    // Keyed, so the row keeps its state when its separator comes or goes.
+    // Keyed, so the row keeps its state when its separator or the separator prop comes or goes.
     const parts = [
       createElement(Fragment, { key: 'row' }, rowContent),
       drawn === null ? null : createElement(Fragment, { key: 'separator' }, drawn),
     ];
     if (inverted) parts.reverse();
-    content = layout.horizontal ? createElement(View, { style: SIDE_BY_SIDE }, parts) : parts;
+    content =
+      layout.horizontal && separator !== null
+        ? createElement(View, { style: SIDE_BY_SIDE }, parts)
+        : parts;
   }
   return (
     <FlumeSlotViewNativeComponent
