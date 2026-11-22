@@ -41,7 +41,8 @@ class ListGeometry(private val density: Float) {
 
   // True when cells must rebind: the orientation, the columns, the lanes or the padding along the bind axis changed.
   fun configure(horizontal: Boolean, numColumns: Int, inverted: Boolean, paddingPx: IntArray, lanes: Lanes = Lanes()): Boolean {
-    val changed = horizontal != this.horizontal || numColumns != this.numColumns || lanes != this.lanes ||
+    // Inverted too: a separator worklet sits after its row, or before it when inverted.
+    val changed = horizontal != this.horizontal || numColumns != this.numColumns || inverted != this.inverted || lanes != this.lanes ||
       bindPadding(horizontal, paddingPx) != bindPadding(this.horizontal, this.paddingPx)
     this.horizontal = horizontal
     this.numColumns = numColumns
