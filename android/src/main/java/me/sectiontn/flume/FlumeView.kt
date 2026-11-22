@@ -859,7 +859,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   @OptIn(UnstableReactNativeAPI::class)
-  private fun dropMountListener() {
+  fun dropMountListener() {
     val listener = mountListener ?: return
     mountListener = null
     UIManagerHelper.getUIManager(context as ReactContext, UIManagerType.FABRIC)?.removeUIManagerEventListener(listener)
