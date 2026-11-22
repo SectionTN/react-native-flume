@@ -221,6 +221,7 @@ Then rename `<FlatList>` to `<Flume>`. `renderItem`, `keyExtractor`, the list co
 - `ItemSeparatorComponent` draws between React rows. With `renderCell`, draw separators with `renderSeparatorCell` or a `separator` line.
 - In a grid, `ItemSeparatorComponent` draws under each item and gets that item as `leadingItem`, as on FlashList. FlatList draws it once under each row of items.
 - In a grid, an item's `width: '33%'` is a third of its column, as on FlashList. FlatList measures it against the whole row.
+- In a grid, an item with `flex: 1` in a last row that isn't full is one column wide, as on FlashList. FlatList stretches it across the row.
 - In a grid, a React row stays at its content height, so a tile with `flex: 1` doesn't stretch to the tallest tile in its row. Worklet rows stretch as on FlatList.
 - `columnWrapperStyle` takes gaps and horizontal padding. Its `rowGap` spaces the grid's rows, where FlatList ignores it.
 - A horizontal list keeps each React row at its own height. FlatList stretches a row without a height to the list's height.
