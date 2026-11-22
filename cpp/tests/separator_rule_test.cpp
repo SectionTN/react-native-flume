@@ -137,6 +137,21 @@ TEST_CASE("a composed row keeps the row's own label on the cell") {
   CHECK_FALSE(accessOf(composed.batch, 1).has_value());
 }
 
+TEST_CASE("a pressable separator reads as its own texts, outside the row's label") {
+  auto pressable = obj({{"type", V("pressable")},
+                        {"id", V("more")},
+                        {"children", arr({obj({{"type", V("text")}, {"text", V("Show more")}})})}});
+  Bound composed;
+  composed.bind(flume::composeRow(parsed(row()), parsed(pressable), false, false));
+  // The row is view 1 with its texts 2 and 3, the separator pressable view 4.
+  auto separatorAccess = accessOf(composed.batch, 4);
+  REQUIRE(separatorAccess);
+  CHECK(separatorAccess->label == "Show more");
+  auto rootAccess = accessOf(composed.batch, 0);
+  REQUIRE(rootAccess);
+  CHECK(rootAccess->label.find("Show more") == std::string::npos);
+}
+
 TEST_CASE("an inverted composed row puts the separator first") {
   Bound composed;
   composed.bind(flume::composeRow(parsed(row()), parsed(separator()), false, true));
