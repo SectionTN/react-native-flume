@@ -44,6 +44,13 @@ function newChat(n: number): Chat {
 // The counters live with the list so queued presses never reuse an id, a seed or an older batch.
 type ListState = { chats: Chat[]; seed: number; added: number; older: number };
 
+const LINES = ['native', 'worklet', 'both'] as const;
+type Lines = (typeof LINES)[number];
+
+const nextLines = (lines: Lines) => LINES[(LINES.indexOf(lines) + 1) % LINES.length] ?? 'native';
+
+const NATIVE_LINE = { size: 1, color: '#dddddd', insetStart: 64 };
+
 const toast = (message: string) => {
   if (Platform.OS === 'android') ToastAndroid.show(message, ToastAndroid.SHORT);
 };
@@ -60,8 +67,8 @@ export default function ChatScreen() {
     older: 0,
   }));
   const renderCell = useMemo(() => makeRenderCell(dark), [dark]);
-  // Native hairlines from the separator prop, or a worklet that draws each one next to its rows.
-  const [workletSeparators, setWorkletSeparators] = useState(false);
+  // Native hairlines from the separator prop, a worklet that draws each one next to its rows, or both.
+  const [lines, setLines] = useState<Lines>('native');
   const renderSeparatorCell = useMemo(() => makeRenderSeparatorCell(dark), [dark]);
   const sticky = useMemo(() => dayIndices(list.chats), [list.chats]);
   const onPress = ({ item, id }: PressInfo<Chat>) =>
@@ -117,10 +124,7 @@ export default function ChatScreen() {
         <Button title="To end" onPress={() => ref.current?.scrollToEnd()} />
         <Button title="To 500" onPress={() => ref.current?.scrollToIndex({ index: 500 })} />
         <Button title="To top" onPress={() => ref.current?.scrollToOffset({ offset: 0 })} />
-        <Button
-          title={workletSeparators ? 'Native separators' : 'Worklet separators'}
-          onPress={() => setWorkletSeparators((on) => !on)}
-        />
+        <Button title={`Separators ${nextLines(lines)}`} onPress={() => setLines(nextLines)} />
       </View>
       {mounted ? (
         <Flume
@@ -129,10 +133,10 @@ export default function ChatScreen() {
           keyExtractor={(c) => c.id}
           getItemType={(c) => c.kind}
           renderCell={renderCell}
-          renderSeparatorCell={workletSeparators ? renderSeparatorCell : null}
+          renderSeparatorCell={lines === 'native' ? null : renderSeparatorCell}
           inverted
           stickyHeaderIndices={sticky}
-          separator={workletSeparators ? undefined : { size: 1, color: '#dddddd', insetStart: 64 }}
+          separator={lines === 'worklet' ? undefined : NATIVE_LINE}
           maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 0.2 }}
           refreshing={refreshing}
           refreshControl={{ tintColor: accentColor(dark) }}

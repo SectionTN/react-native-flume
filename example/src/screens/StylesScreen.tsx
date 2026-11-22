@@ -1,12 +1,14 @@
-import { Platform, ToastAndroid } from 'react-native';
+import { useState } from 'react';
+import { Button, Platform, ToastAndroid, View } from 'react-native';
 import { type CellNode, cell, Flume } from 'react-native-flume';
 
 type Showcase = {
-  id: 'borders' | 'percent' | 'margins' | 'text' | 'images' | 'pressable';
+  id: 'composed' | 'borders' | 'percent' | 'margins' | 'text' | 'images' | 'pressable';
   title: string;
 };
 
 const ROWS: Showcase[] = [
+  { id: 'composed', title: 'Root margin, elevation, a pressable root and a testID' },
   { id: 'borders', title: 'Borders, radii and elevation' },
   { id: 'percent', title: 'Percent widths and aspect ratio' },
   { id: 'margins', title: 'Auto margins and display none' },
@@ -214,8 +216,40 @@ function pressable(): CellNode {
   );
 }
 
+// A separator worklet must leave this root's margin, shadow, label, testID and press as they are.
+function composed(title: string): CellNode {
+  'worklet';
+  const root = cell.pressable(
+    {
+      id: 'composed',
+      pressedOpacity: 0.5,
+      margin: 10,
+      padding: 16,
+      gap: 4,
+      borderRadius: 12,
+      backgroundColor: '#ffffff',
+      elevation: 4,
+      shadowColor: '#000000',
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+    },
+    [
+      cell.text(title, { fontSize: 15, fontWeight: '600', color: '#111111' }),
+      cell.text('testID composed-row', { fontSize: 12, color: '#666666' }),
+    ],
+  );
+  return { ...root, testID: 'composed-row' };
+}
+
+const renderSeparator = (): CellNode => {
+  'worklet';
+  return cell.view({ height: 1, marginHorizontal: 16, backgroundColor: '#c0c0c8' });
+};
+
 function renderCell(item: Showcase, _index: number): CellNode {
   'worklet';
+  if (item.id === 'composed') return composed(item.title);
   let content: CellNode;
   if (item.id === 'borders') content = borders();
   else if (item.id === 'percent') content = percent();
@@ -235,15 +269,25 @@ function renderCell(item: Showcase, _index: number): CellNode {
 }
 
 export default function StylesScreen() {
+  const [lines, setLines] = useState(false);
   return (
-    <Flume
-      data={ROWS}
-      renderCell={renderCell}
-      onPress={({ item, id }) => {
-        if (Platform.OS === 'android')
-          ToastAndroid.show(`pressed ${id ?? item.id}`, ToastAndroid.LONG);
-      }}
-      style={{ flex: 1, backgroundColor: '#fafafa' }}
-    />
+    <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', padding: 8 }}>
+        <Button
+          title={`Separators ${lines ? 'off' : 'on'}`}
+          onPress={() => setLines((on) => !on)}
+        />
+      </View>
+      <Flume
+        data={ROWS}
+        renderCell={renderCell}
+        renderSeparatorCell={lines ? renderSeparator : null}
+        onPress={({ item, id }) => {
+          if (Platform.OS === 'android')
+            ToastAndroid.show(`pressed ${id ?? item.id}`, ToastAndroid.LONG);
+        }}
+        style={{ flex: 1, backgroundColor: '#fafafa' }}
+      />
+    </View>
   );
 }

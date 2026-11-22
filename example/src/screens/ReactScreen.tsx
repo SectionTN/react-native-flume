@@ -9,7 +9,15 @@ import {
   ToastAndroid,
   View,
 } from 'react-native';
-import { type CellInfo, type CellNode, cell, Flume, type FlumeRef } from 'react-native-flume';
+import {
+  type CellInfo,
+  type CellNode,
+  cell,
+  Flume,
+  type FlumeRef,
+  type SeparatorProps,
+  type Separators,
+} from 'react-native-flume';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { CHIPS, type Chip, makeReactRows, type ReactRow, sectionIndices } from '../reactData';
 
@@ -17,6 +25,12 @@ const TAPS = ['never', 'handled', 'always'] as const;
 type Taps = (typeof TAPS)[number];
 
 const nextTaps = (taps: Taps) => TAPS[(TAPS.indexOf(taps) + 1) % TAPS.length] ?? 'never';
+
+// A plain divider, or one that a pressed row highlights with the one above it.
+const LINES = ['off', 'line', 'highlight'] as const;
+type Lines = (typeof LINES)[number];
+
+const nextLines = (lines: Lines) => LINES[(LINES.indexOf(lines) + 1) % LINES.length] ?? 'off';
 
 function blockJs(ms: number) {
   const end = Date.now() + ms;
@@ -33,12 +47,25 @@ const toast = (message: string) => {
   showPressed(message);
 };
 
-function RowCell({ row, tinted }: { row: ReactRow; tinted: boolean }) {
+function RowCell({
+  row,
+  tinted,
+  separators,
+}: {
+  row: ReactRow;
+  tinted: boolean;
+  separators?: Separators;
+}) {
   return (
     <View style={[styles.row, tinted && styles.tinted]}>
       <View style={styles.main}>
         <Text style={styles.title}>{row.title}</Text>
-        <Pressable style={styles.button} onPress={() => toast(row.title)}>
+        <Pressable
+          style={styles.button}
+          onPress={() => toast(row.title)}
+          onPressIn={separators?.highlight}
+          onPressOut={separators?.unhighlight}
+        >
           <Text style={styles.buttonText}>Toast</Text>
         </Pressable>
       </View>
@@ -128,7 +155,9 @@ const Empty = () => (
   </View>
 );
 
-const Divider = () => <View style={styles.divider} />;
+const Divider = ({ highlighted }: SeparatorProps<ReactRow>) => (
+  <View style={[styles.divider, highlighted && styles.dividerOn]} />
+);
 const ChipDivider = () => <View style={styles.chipDivider} />;
 
 export default function ReactScreen() {
@@ -143,7 +172,8 @@ export default function ReactScreen() {
   const [taps, setTaps] = useState<Taps>('never');
   const [refreshing, setRefreshing] = useState(false);
   const [pressed, setPressed] = useState('none');
-  const [separators, setSeparators] = useState(false);
+  const [lines, setLines] = useState<Lines>('off');
+  const [styled, setStyled] = useState(false);
   useEffect(() => {
     showPressed = setPressed;
     return () => {
@@ -169,12 +199,18 @@ export default function ReactScreen() {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
   };
-  const renderRow = ({ item, extraData }: CellInfo<ReactRow>) => {
+  const renderRow = ({ item, extraData, separators }: CellInfo<ReactRow>) => {
     const tinted = extraData === true && item.n % 2 === 0;
     if (item.kind === 'section') return <SectionCell row={item} />;
     if (item.kind === 'card') return <CardCell row={item} tinted={tinted} />;
     if (item.kind === 'swipe') return <SwipeCell row={item} onDelete={remove} />;
-    return <RowCell row={item} tinted={tinted} />;
+    return (
+      <RowCell
+        row={item}
+        tinted={tinted}
+        separators={lines === 'highlight' ? separators : undefined}
+      />
+    );
   };
   const mixed = { card: renderRow, swipe: renderRow, section: renderRow };
   const controls: [string, () => void][] = [
@@ -182,7 +218,8 @@ export default function ReactScreen() {
     ['Block JS 3 s', () => blockJs(3000)],
     ['Prepend', prepend],
     ['Append', append],
-    [`Separators ${separators ? 'off' : 'on'}`, () => setSeparators((on) => !on)],
+    [`Separators ${nextLines(lines)}`, () => setLines(nextLines)],
+    [`Styles ${styled ? 'off' : 'on'}`, () => setStyled((on) => !on)],
     ['Replace all', () => setRows(makeReactRows(500, `v${++version.current}`))],
     ['Clear', () => setRows([])],
     ['Refill', () => setRows(all)],
@@ -210,7 +247,7 @@ export default function ReactScreen() {
       <Flume
         data={CHIPS}
         renderItem={renderChip}
-        ItemSeparatorComponent={separators ? ChipDivider : undefined}
+        ItemSeparatorComponent={lines === 'off' ? undefined : ChipDivider}
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.chips}
@@ -224,15 +261,20 @@ export default function ReactScreen() {
         getItemType={kindOf}
         extraData={highlight}
         stickyHeaderIndices={sticky}
-        contentContainerStyle={{ padding: pad }}
+        contentContainerStyle={
+          styled ? { padding: pad, backgroundColor: '#eef7ee' } : { padding: pad }
+        }
         keyboardShouldPersistTaps={taps}
         estimatedItemSize={56}
         numColumns={columns}
         inverted={inverted}
-        ItemSeparatorComponent={separators ? Divider : undefined}
+        ItemSeparatorComponent={lines === 'off' ? undefined : Divider}
         ListHeaderComponent={Header}
+        ListHeaderComponentStyle={styled ? styles.headerFrame : undefined}
         ListFooterComponent={footer}
+        ListFooterComponentStyle={styled ? styles.footerFrame : undefined}
         ListEmptyComponent={Empty}
+        ListEmptyComponentStyle={styled ? styles.emptyFrame : undefined}
         refreshing={refreshing}
         onRefresh={refresh}
         style={styles.screen}
@@ -271,6 +313,10 @@ const styles = StyleSheet.create({
   sectionTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: '#1b2a4a' },
   chips: { height: 64 },
   divider: { height: 1, backgroundColor: '#d0d0d8' },
+  dividerOn: { height: 3, backgroundColor: '#0066ff' },
+  headerFrame: { borderBottomWidth: 2, borderBottomColor: '#0066ff' },
+  footerFrame: { backgroundColor: '#fff3d6' },
+  emptyFrame: { backgroundColor: '#fdecec' },
   chipDivider: { width: 1, marginVertical: 20, backgroundColor: '#b0b0b8' },
   chip: {
     marginVertical: 12,
