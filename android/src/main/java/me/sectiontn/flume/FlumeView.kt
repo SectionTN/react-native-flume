@@ -548,12 +548,11 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
 
-  // contentContainerStyle flexGrow with justifyContent: "end" stacks a single column from the end, "center" centers.
-  var contentJustify = "start"
+  // contentContainerStyle flexGrow with justifyContent places short content and leaves the opening edge alone.
+  var contentJustify = ContentJustify.Start
     set(value) {
       if (field == value) return
       field = value
-      rebuildLayoutManager()
       applyDrawDistance()
       recycler.requestLayout()
     }
@@ -723,7 +722,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   // A grid only reverses; stackFromEnd is unsupported there, so an inverted grid with little content starts at the top.
   private fun rebuildLayoutManager() {
-    val next = LayoutShape.of(horizontal, numColumns, inverted, anchorConfig.startRenderingFromBottom, contentJustify == "end")
+    val next = LayoutShape.of(horizontal, numColumns, inverted, anchorConfig.startRenderingFromBottom)
     if (next == shape) return
     val kept = if (LayoutShape.keepsPosition(shape, next)) adapter.anchorState() else null
     shape = next
@@ -758,11 +757,11 @@ class FlumeView(context: Context) : FrameLayout(context) {
     when (val lm = layoutManager) {
       is FlumeLinearLayoutManager -> {
         lm.drawDistancePx = px
-        lm.centerContent = contentJustify == "center"
+        lm.justify = contentJustify
       }
       is FlumeGridLayoutManager -> {
         lm.drawDistancePx = px
-        lm.centerContent = contentJustify == "center"
+        lm.justify = contentJustify
       }
     }
   }

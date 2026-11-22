@@ -79,8 +79,8 @@ std::vector<int> ListLayout::apply(const ListOps& ops, int count, const TypeOf& 
 LengthChange ListLayout::setLength(int index, float length, int anchor, float viewportLength) {
   if (index < 0 || index >= count()) return LengthChange{0, 0};
   const bool hasAnchor = anchor >= 0 && anchor < count();
-  // Centered short content recenters with its slack, which the offset must not chase. Stacking from the end wins.
-  const bool recenters = centered() && !config_.stackFromEnd;
+  // Justified short content moves with its slack, which the offset must not chase. Stacking from the end wins.
+  const bool recenters = justified() && !config_.stackFromEnd;
   const auto edge = [&] { return anchorEdge(rowOf_[anchor], viewportLength) - (recenters ? slack(viewportLength) : 0); };
   const float before = hasAnchor ? edge() : 0;
   const float contentBefore = contentLength(viewportLength);
@@ -120,7 +120,7 @@ float ListLayout::estimate(int type) const {
 
 float ListLayout::contentLength(float viewportLength) const {
   const float length = config_.paddingStart + rowStart(static_cast<int>(rows_.size())) + config_.paddingEnd;
-  return bottomAnchored() || centered() ? std::max(viewportLength, length) : length;
+  return bottomAnchored() || justified() ? std::max(viewportLength, length) : length;
 }
 
 std::pair<float, float> ListLayout::contentSpan(float viewportLength) const {
@@ -306,10 +306,10 @@ float ListLayout::rowStart(int row) const {
 }
 
 float ListLayout::slack(float viewportLength) const {
-  if (!config_.stackFromEnd && !centered()) return 0;
+  if (!config_.stackFromEnd && !justified()) return 0;
   const float length = config_.paddingStart + rowStart(static_cast<int>(rows_.size())) + config_.paddingEnd;
   const float free = std::max(0.f, viewportLength - length);
-  return config_.stackFromEnd ? free : free / 2;
+  return config_.stackFromEnd || config_.justify == ListLayoutConfig::Justify::End ? free : free / 2;
 }
 
 float ListLayout::startOf(int row, float viewportLength) const {

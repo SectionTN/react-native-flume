@@ -631,6 +631,29 @@ TEST_CASE("short content sits at the center or the end of the viewport") {
   CHECK(measured(3, 100, config).rectOf(0, 400, 600).y == 300);
 }
 
+TEST_CASE("end justification moves short content to the end without stacking the list from it") {
+  ListLayoutConfig config;
+  config.justify = ListLayoutConfig::Justify::End;
+  ListLayout column = measured(3, 100, config);
+  CHECK(column.rectOf(0, 400, 600).y == 300);
+  CHECK(column.contentLength(600) == 600);
+  CHECK_FALSE(column.bottomAnchored());
+  config.lanes = 3;
+  CHECK(measured(4, 100, config).rectOf(0, 400, 600).y == 400);
+  config.lanes = 1;
+  ListLayout overflowing = measured(20, 50, config);
+  CHECK(overflowing.rectOf(0, 400, 500).y == 0);
+  CHECK(overflowing.anchorAt(100, 300) == 2);
+}
+
+TEST_CASE("end-justified short content moves with its slack, so a length change moves no anchor") {
+  ListLayoutConfig config;
+  config.justify = ListLayoutConfig::Justify::End;
+  ListLayout layout = list(3, config);
+  CHECK(layout.setLength(0, 100, 0, 600).anchorMoved == 0);
+  CHECK(layout.rectOf(0, 400, 600).y == 400);
+}
+
 TEST_CASE("a growing footer takes what the other rows leave of the viewport") {
   ListLayoutConfig config;
   config.afterData = 1;

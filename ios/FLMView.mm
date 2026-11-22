@@ -464,11 +464,11 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   config.laneInsetStart = props.laneInsetStart;
   config.laneInsetEnd = props.laneInsetEnd;
   config.justify = props.contentJustify == FlumeViewContentJustify::Center ? flume::ListLayoutConfig::Justify::Center
+                   : props.contentJustify == FlumeViewContentJustify::End  ? flume::ListLayoutConfig::Justify::End
                                                                           : flume::ListLayoutConfig::Justify::Start;
   config.growFooter = props.growFooter;
   config.stackFromEnd =
-      !props.inverted && config.lanes == 1 &&
-      (props.maintainVisibleContentPosition.startRenderingFromBottom || props.contentJustify == FlumeViewContentJustify::End);
+      !props.inverted && config.lanes == 1 && props.maintainVisibleContentPosition.startRenderingFromBottom;
   _layoutConfig = config;
   [self sendRowShape];
   [self configureLayoutRows];

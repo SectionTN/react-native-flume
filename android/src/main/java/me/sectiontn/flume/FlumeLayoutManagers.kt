@@ -23,11 +23,11 @@ class FlumeLinearLayoutManager(context: Context, orientation: Int, reverse: Bool
   LinearLayoutManager(context, orientation, reverse) {
   var drawDistancePx = -1
   var onLaidOut: (() -> Unit)? = null
-  var centerContent = false
+  var justify = ContentJustify.Start
 
   override fun onLayoutChildren(recycler: RecyclerView.Recycler, state: RecyclerView.State) {
     super.onLayoutChildren(recycler, state)
-    if (centerContent) centerShortContent(this, state)
+    if (justify != ContentJustify.Start) placeShortContent(this, state, justify)
   }
 
   override fun calculateExtraLayoutSpace(state: RecyclerView.State, extraLayoutSpace: IntArray) =
@@ -43,11 +43,11 @@ class FlumeGridLayoutManager(context: Context, spanCount: Int, orientation: Int,
   GridLayoutManager(context, spanCount, orientation, reverse) {
   var drawDistancePx = -1
   var onLaidOut: (() -> Unit)? = null
-  var centerContent = false
+  var justify = ContentJustify.Start
 
   override fun onLayoutChildren(recycler: RecyclerView.Recycler, state: RecyclerView.State) {
     super.onLayoutChildren(recycler, state)
-    if (centerContent) centerShortContent(this, state)
+    if (justify != ContentJustify.Start) placeShortContent(this, state, justify)
   }
   val fullSpanLookup = FlumeSpanSizeLookup { this.spanCount }
 
@@ -125,8 +125,8 @@ object LayoutFlags {
 // a prop again with the value it has, so only a new shape rebuilds it; stackFromEnd applies to a single column.
 data class LayoutShape(val horizontal: Boolean, val numColumns: Int, val inverted: Boolean, val stackFromEnd: Boolean) {
   companion object {
-    fun of(horizontal: Boolean, numColumns: Int, inverted: Boolean, startRenderingFromBottom: Boolean, justifyEnd: Boolean = false) =
-      LayoutShape(horizontal, numColumns, inverted, numColumns == 1 && LayoutFlags.stackFromEnd(inverted, startRenderingFromBottom || justifyEnd))
+    fun of(horizontal: Boolean, numColumns: Int, inverted: Boolean, startRenderingFromBottom: Boolean) =
+      LayoutShape(horizontal, numColumns, inverted, numColumns == 1 && LayoutFlags.stackFromEnd(inverted, startRenderingFromBottom))
 
     // A column or axis change keeps the first visible item; a new direction or stacking opens at its edge instead.
     fun keepsPosition(previous: LayoutShape?, next: LayoutShape): Boolean =
@@ -134,8 +134,8 @@ data class LayoutShape(val horizontal: Boolean, val numColumns: Int, val inverte
   }
 }
 
-// FlatList's flexGrow content with justifyContent center: short upright content moves to the middle after every layout.
-internal fun centerShortContent(lm: LinearLayoutManager, state: RecyclerView.State) {
+// FlatList's flexGrow content with justifyContent: short upright content moves to its place after every layout.
+internal fun placeShortContent(lm: LinearLayoutManager, state: RecyclerView.State, justify: ContentJustify) {
   if (state.isPreLayout || lm.childCount == 0 || lm.reverseLayout) return
   val horizontal = lm.orientation == RecyclerView.HORIZONTAL
   var first = Int.MAX_VALUE
@@ -153,18 +153,33 @@ internal fun centerShortContent(lm: LinearLayoutManager, state: RecyclerView.Sta
   if (!hasFirst || !hasLast) return
   val start = if (horizontal) lm.paddingLeft else lm.paddingTop
   val end = if (horizontal) lm.width - lm.paddingRight else lm.height - lm.paddingBottom
-  val shift = ContentPlacement.centerShift(first, last, start, end)
+  val shift = ContentPlacement.shift(justify, first, last, start, end)
   if (shift == 0) return
   if (horizontal) lm.offsetChildrenHorizontal(shift) else lm.offsetChildrenVertical(shift)
 }
 
+// contentContainerStyle justifyContent with flexGrow, as the share of the free space that goes before short content.
+enum class ContentJustify(val lead: Float) {
+  Start(0f),
+  Center(0.5f),
+  End(1f);
+
+  companion object {
+    fun of(value: String?): ContentJustify = when (value) {
+      "center" -> Center
+      "end" -> End
+      else -> Start
+    }
+  }
+}
+
 object ContentPlacement {
-  // The move that puts short content in the middle of the viewport, 0 once it is there or when it fills the viewport.
-  fun centerShift(firstStart: Int, lastEnd: Int, viewportStart: Int, viewportEnd: Int): Int {
+  // The move that puts short content at its place in the viewport, 0 once it is there or when it fills the viewport.
+  fun shift(justify: ContentJustify, firstStart: Int, lastEnd: Int, viewportStart: Int, viewportEnd: Int): Int {
     val content = lastEnd - firstStart
     val viewport = viewportEnd - viewportStart
     if (content >= viewport) return 0
-    return viewportStart + (viewport - content) / 2 - firstStart
+    return viewportStart + ((viewport - content) * justify.lead).toInt() - firstStart
   }
 
   // A growing footer takes what the rows above it leave of the viewport.

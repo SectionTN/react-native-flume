@@ -30,8 +30,8 @@ struct ListLayoutConfig {
   float separatorInsetStart = 0, separatorInsetEnd = 0;  // across the scroll axis, from the padded edges
   // startRenderingFromBottom on an upright list; short content sits at the end, sizes keep the last row in view.
   bool stackFromEnd = false;
-  // contentContainerStyle flexGrow with justifyContent center: short upright content sits in the middle.
-  enum class Justify : uint8_t { Start, Center };
+  // contentContainerStyle flexGrow with justifyContent: short upright content sits in the middle or at the end.
+  enum class Justify : uint8_t { Start, Center, End };
   Justify justify = Justify::Start;
   bool growFooter = false;  // the footer takes what the other rows leave of the viewport
 };
@@ -102,7 +102,7 @@ class ListLayout {
   std::optional<ItemRect> separatorRect(int index, float listCrossLength) const;
   // Inverted or stacked from the end: the list keeps its end where it was.
   bool bottomAnchored() const { return config_.inverted || config_.stackFromEnd; }
-  bool centered() const { return !config_.inverted && config_.justify == ListLayoutConfig::Justify::Center; }
+  bool justified() const { return !config_.inverted && config_.justify != ListLayoutConfig::Justify::Start; }
 
  private:
   struct Item {
@@ -128,7 +128,7 @@ class ListLayout {
   bool isData(int index) const;  // not the header, the footer or the empty row
   float lineAfter(int row) const;  // the separator after the row, 0 when it has none
   float rowStart(int row) const;  // from the start of item 0, inside the padding
-  float slack(float viewportLength) const;  // the space short content leaves above its rows: all of it from the end, half centered
+  float slack(float viewportLength) const;  // the space short content leaves above its rows: all of it at the end, half centered
   float minLengthOf(int index, float viewportLength) const;
   float startOf(int row, float viewportLength) const;  // in content coordinates
   float anchorEdge(int row, float viewportLength) const;
