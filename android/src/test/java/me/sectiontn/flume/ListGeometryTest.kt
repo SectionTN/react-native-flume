@@ -65,6 +65,15 @@ class ListGeometryTest {
     assertEquals(268f, g.cellWidthDp(fullSpan = true), 0f)
   }
 
+  // A separator worklet sits after its row, or before it when inverted, so the rows compose again.
+  @Test
+  fun anInvertedChangeRebinds() {
+    val g = geometry()
+    g.configure(horizontal = false, numColumns = 1, inverted = false, paddingPx = IntArray(4))
+    assertTrue(g.configure(horizontal = false, numColumns = 1, inverted = true, paddingPx = IntArray(4)))
+    assertFalse(g.configure(horizontal = false, numColumns = 1, inverted = true, paddingPx = IntArray(4)))
+  }
+
   @Test
   fun aLaneChangeRebinds() {
     val g = geometry()

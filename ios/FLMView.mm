@@ -334,7 +334,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     if (components) {
       [self reloadRows];
     }
-    if (shape) {
+    // Inverted too: a separator worklet sits after its row, or before it when inverted.
+    if (shape || next.inverted != old.inverted) {
       [self rebind];
     }
   }
