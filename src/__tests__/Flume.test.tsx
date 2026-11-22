@@ -4,6 +4,8 @@ import {
   Fragment,
   type ReactNode,
   StrictMode,
+  Suspense,
+  startTransition,
   useEffect,
   useState,
 } from 'react';
@@ -1443,7 +1445,7 @@ describe('Flume separators in the info', () => {
       createElement(Flume, {
         data: list,
         renderItem: renderItem as (info: CellInfo<unknown>) => ReturnType<typeof createElement>,
-        ItemSeparatorComponent: Sep as () => ReturnType<typeof createElement>,
+        ItemSeparatorComponent: Sep as unknown as () => ReturnType<typeof createElement>,
         extraData: extra,
       });
     const tree = await mount(element(data, extraData));
@@ -1484,6 +1486,51 @@ describe('Flume separators in the info', () => {
     expect(latest('a')?.color).toBeUndefined();
   });
 
+  it('routes a separator call by the rows on screen while a newer render suspends', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Sep, renderItem, latest, separatorsOf } = setup();
+    const never = new Promise<void>(() => {});
+    // Suspends the transition from outside the list, so React throws away the list's render too.
+    const Gate = ({ open }: { open: boolean }) => {
+      if (!open) throw never;
+      return null;
+    };
+    const element = (list: { id: string }[], open: boolean) =>
+      createElement(
+        Suspense,
+        { fallback: null },
+        createElement(Flume, {
+          data: list,
+          renderItem: renderItem as (info: CellInfo<unknown>) => ReturnType<typeof createElement>,
+          ItemSeparatorComponent: Sep as unknown as () => ReturnType<typeof createElement>,
+        }),
+        createElement(Gate, { open }),
+      );
+    const shown = rows.slice(0, 3);
+    let tree: ReactTestRenderer | undefined;
+    await act(async () => {
+      tree = create(element(shown, true), {
+        createNodeMock: () => ({}),
+        unstable_isConcurrent: true,
+      } as Parameters<typeof create>[1]);
+    });
+    await sendSlots(
+      tree as ReactTestRenderer,
+      shown.map((row, i) => rowEntry(i + 1, row.id, i)),
+    );
+    // React keeps a, b, c on screen and throws the render of a, c, b away.
+    await act(async () => {
+      startTransition(() => {
+        tree?.update(element([{ id: 'a' }, { id: 'c' }, { id: 'b' }], false));
+      });
+    });
+    await act(async () => {
+      separatorsOf('c')?.highlight();
+    });
+    expect(latest('b')?.highlighted).toBe(true);
+    expect(latest('a')?.highlighted).toBe(false);
+  });
   it('keeps one separators object per row across renders', async () => {
     installHost();
     const { Sep, renderItem, infos } = setup();
