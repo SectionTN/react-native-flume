@@ -9,6 +9,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useInsertionEffect,
   useLayoutEffect,
   useMemo,
   useReducer,
@@ -363,7 +364,10 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     return [...bySlot.values()].sort((a, b) => a.slot - b.slot);
   }, [fresh, table]);
   const { next } = commit.diff;
-  separatorKeys.current = next;
+  // Before every layout effect of the commit, and never from a render React throws away.
+  useInsertionEffect(() => {
+    separatorKeys.current = next;
+  }, [next]);
   const lastStart = lastRowStart(next.keys.length, horizontal ? 1 : numColumns, stickyIndices);
   const cellRenderer = (CellRendererComponent ?? null) as ComponentType<
     CellRendererProps<unknown>
