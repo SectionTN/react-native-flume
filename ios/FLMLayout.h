@@ -17,7 +17,8 @@ struct FLMPendingOffset {
   int index = 0;           // Landing and Anchor
   float viewPosition = 0;  // Landing
   flume::VisualEdge edge = flume::VisualEdge::Top;  // Edge
-  float anchorDelta = 0;  // Anchor: the anchor edge's distance from the viewport start
+  float anchorDelta = 0;  // Anchor: the anchor edge's distance from the viewport start, or its end with fromEnd
+  bool fromEnd = false;  // Anchor: a list anchored at its end keeps that end when the viewport resizes
 };
 
 // The collection view layout over the shared ListLayout model: estimates, self-sizing with offset compensation, sticky headers.

@@ -88,3 +88,38 @@ TEST_CASE("an initial index past the data opens at the content end") {
   CHECK_FALSE(openingLanding(-1, 10));
   CHECK_FALSE(openingLanding(3, 0));
 }
+
+namespace {
+
+ListLayout rows(int count, ListLayoutConfig config) {
+  ListLayout layout;
+  layout.configure(config, {});
+  layout.reset(count, [](int) { return 0; });
+  for (int i = 0; i < count; i++) layout.setLength(i, 100, 0);
+  return layout;
+}
+
+}  // namespace
+
+TEST_CASE("a viewport at the edge a list rests at keeps that edge, elsewhere none") {
+  ListLayout upright = rows(20, {});
+  CHECK(restingEdgeAt(upright, 0, 1000) == VisualEdge::Top);
+  CHECK_FALSE(restingEdgeAt(upright, 10, 1000));
+  CHECK_FALSE(restingEdgeAt(upright, 1000, 1000));
+  ListLayoutConfig flipped;
+  flipped.inverted = true;
+  ListLayout inverted = rows(20, flipped);
+  CHECK(restingEdgeAt(inverted, 1000, 1000) == VisualEdge::Bottom);
+  CHECK_FALSE(restingEdgeAt(inverted, 990, 1000));
+  CHECK_FALSE(restingEdgeAt(inverted, 0, 1000));
+  ListLayoutConfig stacked;
+  stacked.stackFromEnd = true;
+  CHECK(restingEdgeAt(rows(3, stacked), 0, 1000) == VisualEdge::Bottom);
+  CHECK_FALSE(restingEdgeAt(rows(0, {}), 0, 1000));
+}
+
+TEST_CASE("a kept anchor holds its distance from the end of a list anchored there when the viewport resizes") {
+  // The edge at 1500 sat 100 above the end of a 900 viewport from 700, then the viewport lost 45 at its top.
+  CHECK(keptViewportStart(1500, 100, true, 855) == 745);
+  CHECK(keptViewportStart(1500, 800, false, 855) == 700);
+}

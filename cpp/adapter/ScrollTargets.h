@@ -22,6 +22,10 @@ float alignedViewportStart(float itemStart, float itemLength, float viewportLeng
 float clampOffset(float offset, float contentLength, float boundsLength, float insetStart, float insetEnd);
 // After the viewport's end moves (a resize or an end inset), a list anchored at its end keeps that end in place.
 float offsetAfterViewportChange(bool keepsEnd, float offset, float oldEnd, float newEnd, float low, float high);
+// The edge a list rests at (the top, the bottom when inverted or stacked) when the viewport sits on it, else none.
+std::optional<VisualEdge> restingEdgeAt(const ListLayout& layout, float viewportStart, float viewportLength);
+// Where the viewport starts so an anchor edge keeps its distance from the viewport start, or from its end.
+float keptViewportStart(float edge, float distance, bool fromEnd, float viewportLength);
 // The rows a landing shows, two past each side; rowLength may measure the row it is asked for.
 IndexRange landingRows(int targetRow, float viewPosition, float viewportLength, int rowCount,
                        const std::function<float(int row)>& rowLength);

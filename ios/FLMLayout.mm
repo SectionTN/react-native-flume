@@ -17,6 +17,16 @@ struct FLMAnchorUpdate {
   std::vector<std::pair<int, float>> items;
 };
 
+// The changes that move rows along the scroll axis, at once or when the cells measure again at a new width.
+bool FLMLengthsDiffer(const flume::ListLayoutConfig &a, const flume::ListLayoutConfig &b)
+{
+  return a.paddingStart != b.paddingStart || a.paddingEnd != b.paddingEnd ||
+      a.paddingCrossStart != b.paddingCrossStart || a.paddingCrossEnd != b.paddingCrossEnd ||
+      a.estimatedItemLength != b.estimatedItemLength || a.separator != b.separator || a.mainGap != b.mainGap ||
+      a.gridRowGap != b.gridRowGap || a.crossGap != b.crossGap || a.laneInsetStart != b.laneInsetStart ||
+      a.laneInsetEnd != b.laneInsetEnd || a.justify != b.justify || a.growFooter != b.growFooter;
+}
+
 }  // namespace
 
 @implementation FLMLayout {
@@ -50,7 +60,9 @@ struct FLMAnchorUpdate {
 - (void)configure:(const flume::ListLayoutConfig &)config fullSpan:(std::vector<int>)fullSpan sticky:(std::vector<int>)sticky
 {
   const bool reshaped = config.lanes != _config.lanes || config.horizontal != _config.horizontal;
-  const std::optional<FLMPendingOffset> kept = reshaped ? [self anchorOffset] : std::nullopt;
+  // A position still waiting for layout lands on the new lengths instead.
+  const bool keep = !_pendingOffset && (reshaped || FLMLengthsDiffer(config, _config));
+  const std::optional<FLMPendingOffset> kept = keep ? [self keptOffset] : std::nullopt;
   _config = config;
   _sticky = std::move(sticky);
   _model.configure(config, std::move(fullSpan));
@@ -74,7 +86,19 @@ struct FLMAnchorUpdate {
   }
 }
 
-// The anchored row and its edge's distance from the viewport start; none without rows or a viewport.
+// The edge the list rests at when the viewport sits on it, as a list at its newest row stays there, else the row in view.
+- (std::optional<FLMPendingOffset>)keptOffset
+{
+  const FLMViewport viewport = [self viewportFor:self.collectionView.bounds];
+  const auto edge =
+      flume::restingEdgeAt(_model, static_cast<float>(viewport.start), static_cast<float>(viewport.length));
+  if (edge) {
+    return FLMPendingOffset{FLMPendingOffset::Kind::Edge, 0, 0, *edge};
+  }
+  return [self anchorOffset];
+}
+
+// The anchored row and its edge's distance from the viewport start, or its end when the list is anchored there.
 - (std::optional<FLMPendingOffset>)anchorOffset
 {
   const FLMViewport viewport = [self viewportFor:self.collectionView.bounds];
@@ -85,7 +109,9 @@ struct FLMAnchorUpdate {
     return std::nullopt;
   }
   FLMPendingOffset pending{FLMPendingOffset::Kind::Anchor, anchor};
-  pending.anchorDelta = _model.anchorEdgeOf(anchor, length) - start;
+  const float edge = _model.anchorEdgeOf(anchor, length);
+  pending.fromEnd = _model.bottomAnchored();
+  pending.anchorDelta = pending.fromEnd ? start + length - edge : edge - start;
   return pending;
 }
 
@@ -503,8 +529,9 @@ struct FLMAnchorUpdate {
         const int index = std::min(pending.index, _model.count() - 1);
         const UIEdgeInsets insets = self.collectionView.adjustedContentInset;
         const float edge = _model.anchorEdgeOf(index, static_cast<float>(_viewportLength));
-        offset = [self clampedOffset:edge - pending.anchorDelta -
-                                     static_cast<float>(_config.horizontal ? insets.left : insets.top)];
+        const float start =
+            flume::keptViewportStart(edge, pending.anchorDelta, pending.fromEnd, static_cast<float>(_viewportLength));
+        offset = [self clampedOffset:start - static_cast<float>(_config.horizontal ? insets.left : insets.top)];
         break;
       }
     }
