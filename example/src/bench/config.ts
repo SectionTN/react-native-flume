@@ -15,6 +15,8 @@ export type BenchParams = {
   // The jump action's target and scroll kind.
   index: number;
   animated: boolean;
+  // Each list draws its separator: ItemSeparatorComponent, or renderSeparatorCell for Flume's worklet cells.
+  separators: boolean;
   nonce: string;
 };
 
@@ -50,6 +52,7 @@ const DEFAULTS: BenchParams = {
   action: 'none',
   index: 0,
   animated: false,
+  separators: false,
   nonce: '',
 };
 
@@ -70,6 +73,7 @@ export function parseBenchParams(
     action: oneOf(params?.action, ACTIONS, DEFAULTS.action),
     index: Number.isInteger(index) && index >= 0 ? index : DEFAULTS.index,
     animated: params?.animated === '1',
+    separators: params?.sep === '1',
     nonce: params?.n ?? DEFAULTS.nonce,
   };
 }
@@ -84,6 +88,7 @@ export function benchUrl(params: Partial<BenchParams>): string {
     action: p.action,
     index: String(p.index),
     animated: p.animated ? '1' : '0',
+    sep: p.separators ? '1' : '0',
     n: p.nonce,
   });
   return `flume-example://bench?${query.toString()}`;

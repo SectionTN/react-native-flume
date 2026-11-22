@@ -52,6 +52,16 @@ export const FeedRow = memo(function FeedRow({ item }: { item: FeedPost }) {
   );
 });
 
+// FlashList's separator props, also what Flume's React cells get.
+export function FlashSeparator(_props: { leadingItem: unknown; trailingItem: unknown }) {
+  return <View style={styles.line} />;
+}
+
+// LegendList's separator prop.
+export function LegendSeparator(_props: { leadingItem: unknown }) {
+  return <View style={styles.line} />;
+}
+
 const styles = StyleSheet.create({
   chat: {
     flexDirection: 'row',
@@ -78,4 +88,5 @@ const styles = StyleSheet.create({
   count: { fontSize: 13, color: '#666666' },
   share: { fontSize: 13, fontWeight: '600', color: '#0066ff' },
   strip: { height: 8, backgroundColor: '#f0f0f0' },
+  line: { height: 1, backgroundColor: '#dddddd' },
 });

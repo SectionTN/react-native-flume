@@ -46,7 +46,7 @@ const BLANK_FRAME_THRESHOLD = 0.01;
 const JUMPS = [0.5, 0.1, 0.9, 0.3, 0.7];
 const JUMP_SETTLE_MS = 800;
 
-type Config = Pick<BenchParams, 'scenario' | 'impl' | 'load' | 'count'>;
+type Config = Pick<BenchParams, 'scenario' | 'impl' | 'load' | 'count' | 'separators'>;
 // The battery temperature when the line was read: a warm phone slows every list.
 type SetDataResult = {
   round: number;
@@ -66,13 +66,14 @@ const { values } = parseArgs({
     'no-record': { type: 'boolean', default: false },
     setdata: { type: 'boolean', default: false },
     jump: { type: 'boolean', default: false },
+    separators: { type: 'boolean', default: false },
   },
 });
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const isFlume = (impl: Impl) => impl === 'flume' || impl === 'flume-react';
 const label = (c: Config) =>
-  `${c.scenario} ${c.impl} load=${c.load ? 'on' : 'off'} count=${c.count}`;
+  `${c.scenario} ${c.impl} load=${c.load ? 'on' : 'off'} count=${c.count}${c.separators ? ' separators' : ''}`;
 
 let nonce = 0;
 
@@ -309,7 +310,13 @@ async function jumpPass(
 }
 
 async function prime(adb: Adb, scenario: Scenario, count: number) {
-  const ready = await launch(adb, { scenario, impl: 'flume', load: false, count });
+  const ready = await launch(adb, {
+    scenario,
+    impl: 'flume',
+    load: false,
+    count,
+    separators: false,
+  });
   for (let done = 0; done < PRIMING; done += 10) {
     adb.assertForeground();
     await flings(adb, ready, 10, true);
@@ -334,17 +341,21 @@ async function newestSetData(adb: Adb, after: number): Promise<SetDataLine> {
   throw new Error('no FlumeStats setData line within 10 s');
 }
 
-async function setDataRounds(adb: Adb, repeat: number): Promise<SetDataResult[]> {
+async function setDataRounds(
+  adb: Adb,
+  repeat: number,
+  separators: boolean,
+): Promise<SetDataResult[]> {
   const results: SetDataResult[] = [];
   const rounds: [Config, BenchAction, string, string][] = [
     [
-      { scenario: 'feed', impl: 'flume-react', load: false, count: 10_000 },
+      { scenario: 'feed', impl: 'flume-react', load: false, count: 10_000, separators },
       'replace',
       'react 10,000 keys, mount',
       'react 10,000 keys, replace',
     ],
     [
-      { scenario: 'chat', impl: 'flume', load: false, count: 1000 },
+      { scenario: 'chat', impl: 'flume', load: false, count: 1000, separators },
       'change500',
       'worklet 1,000 items, mount',
       'worklet 500 changed items',
@@ -413,14 +424,15 @@ async function main() {
   const impls = values.impls?.split(',') as Impl[] | undefined;
   const loads = values.load.split(',').map((value) => value === '1');
   const count = Number(values.count);
+  const separators = values.separators;
   const configs: Config[] = scenarios.flatMap((scenario) =>
     IMPLS[scenario]
       .filter((impl) => impls === undefined || impls.includes(impl))
-      .flatMap((impl) => loads.map((load) => ({ scenario, impl, load, count }))),
+      .flatMap((impl) => loads.map((load) => ({ scenario, impl, load, count, separators }))),
   );
   try {
     if (values.setdata) {
-      setData = await setDataRounds(adb, Number(values.repeat));
+      setData = await setDataRounds(adb, Number(values.repeat), separators);
     } else if (values.jump) {
       for (let repeat = 0; repeat < Number(values.repeat); repeat++) {
         for (const config of configs) {
