@@ -13,6 +13,8 @@ type Case = {
   footer?: boolean;
   columnWrapperStyle?: ViewStyle;
   contentContainerStyle?: ViewStyle;
+  columns?: number;
+  count?: number;
 };
 
 const FIRST: Case = { name: 'flex 1', tile: { flex: 1 } };
@@ -49,6 +51,18 @@ const CASES: Case[] = [
     contentContainerStyle: { flexGrow: 1, justifyContent: 'center' },
   },
   {
+    name: 'flexGrow, end',
+    tile: { flex: 1 },
+    contentContainerStyle: { flexGrow: 1, justifyContent: 'flex-end' },
+  },
+  {
+    name: 'flexGrow, end, long column',
+    tile: {},
+    columns: 1,
+    count: 40,
+    contentContainerStyle: { flexGrow: 1, justifyContent: 'flex-end' },
+  },
+  {
     name: 'flexGrow, growing footer',
     tile: { flex: 1 },
     contentContainerStyle: { flexGrow: 1 },
@@ -60,7 +74,7 @@ const IMPLS = ['FlatList', 'Flume React', 'Flume worklet'] as const;
 type Impl = (typeof IMPLS)[number];
 
 const COLORS = ['#ef9a9a', '#90caf9', '#a5d6a7'];
-const DATA: Item[] = Array.from({ length: 10 }, (_, n) => ({ id: `i${n}`, n }));
+const DATA: Item[] = Array.from({ length: 40 }, (_, n) => ({ id: `i${n}`, n }));
 
 // The tile's own height: aspectRatio or its text decides it in those cases, the row's index otherwise.
 function tileStyle(c: Case, n: number): ViewStyle {
@@ -130,8 +144,8 @@ export default function CompareScreen() {
     return cell.view({ height: 4, backgroundColor: '#333333' });
   };
   const shared = {
-    data: removed ? DATA.filter((item) => item.n !== 2) : DATA,
-    numColumns: 3,
+    data: DATA.slice(0, c.count ?? 10).filter((item) => !removed || item.n !== 2),
+    numColumns: c.columns ?? 3,
     keyExtractor: (item: Item) => item.id,
     contentContainerStyle: c.contentContainerStyle,
     columnWrapperStyle: c.columnWrapperStyle,
