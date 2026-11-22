@@ -648,3 +648,13 @@ TEST_CASE("centered short content recenters itself, so a length change moves no 
   CHECK(layout.setLength(0, 100, 0, 600).anchorMoved == 0);
   CHECK(layout.rectOf(0, 400, 600).y == 200);
 }
+
+TEST_CASE("stacked from the end, centered content keeps its anchor's bottom where it was") {
+  ListLayoutConfig config;
+  config.justify = ListLayoutConfig::Justify::Center;
+  config.stackFromEnd = true;
+  ListLayout layout = measured(3, 100, config);
+  // The end stacking wins: row 2 ends at the viewport end before and after row 0 grows.
+  CHECK(layout.setLength(0, 200, 2, 600).anchorMoved == 0);
+  CHECK(layout.rectOf(2, 400, 600).y == 500);
+}

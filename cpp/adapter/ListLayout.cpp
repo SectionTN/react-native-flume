@@ -79,8 +79,9 @@ std::vector<int> ListLayout::apply(const ListOps& ops, int count, const TypeOf& 
 LengthChange ListLayout::setLength(int index, float length, int anchor, float viewportLength) {
   if (index < 0 || index >= count()) return LengthChange{0, 0};
   const bool hasAnchor = anchor >= 0 && anchor < count();
-  // Centered short content recenters with its slack, which the offset must not chase.
-  const auto edge = [&] { return anchorEdge(rowOf_[anchor], viewportLength) - (centered() ? slack(viewportLength) : 0); };
+  // Centered short content recenters with its slack, which the offset must not chase. Stacking from the end wins.
+  const bool recenters = centered() && !config_.stackFromEnd;
+  const auto edge = [&] { return anchorEdge(rowOf_[anchor], viewportLength) - (recenters ? slack(viewportLength) : 0); };
   const float before = hasAnchor ? edge() : 0;
   const float contentBefore = contentLength(viewportLength);
   Item& item = items_[index];
