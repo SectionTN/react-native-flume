@@ -68,6 +68,8 @@ export default function CompareScreen() {
   const [index, setIndex] = useState(0);
   const [impl, setImpl] = useState<Impl>('FlatList');
   const [separated, setSeparated] = useState(false);
+  // Removing tile 2 re-forms the rows, so a grid row loses its tallest tile in the uneven case.
+  const [removed, setRemoved] = useState(false);
   const c = CASES[index] ?? FIRST;
   const renderItem = ({ item }: { item: Item }) => (
     <View
@@ -101,7 +103,7 @@ export default function CompareScreen() {
     return cell.view({ height: 4, backgroundColor: '#333333' });
   };
   const shared = {
-    data: DATA,
+    data: removed ? DATA.filter((item) => item.n !== 2) : DATA,
     numColumns: 3,
     keyExtractor: (item: Item) => item.id,
     contentContainerStyle: c.contentContainerStyle,
@@ -127,6 +129,7 @@ export default function CompareScreen() {
           title={separated ? 'Separators on' : 'Separators off'}
           onPress={() => setSeparated((s) => !s)}
         />
+        <Button title={removed ? 'Restore 2' : 'Remove 2'} onPress={() => setRemoved((r) => !r)} />
       </View>
       <Text testID="compare-case" style={{ textAlign: 'center', paddingBottom: 4 }}>
         {`${index + 1}/${CASES.length} ${c.name}`}
