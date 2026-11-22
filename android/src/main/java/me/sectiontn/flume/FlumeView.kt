@@ -1,6 +1,7 @@
 package me.sectiontn.flume
 
 import android.content.Context
+import android.graphics.Canvas
 import android.view.MotionEvent
 import android.view.View
 import android.view.VelocityTracker
@@ -779,6 +780,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
     val down = MotionEvent.obtain(e.downTime, e.eventTime, MotionEvent.ACTION_DOWN, downX, downY, e.metaState)
     refreshLayout.dispatchTouchEvent(down)
     down.recycle()
+  }
+
+  // A list clips to its bounds like a ScrollView, so a pinned copy pushed past the edge leaves the screen with it.
+  override fun dispatchDraw(canvas: Canvas) {
+    val saved = canvas.save()
+    canvas.clipRect(0, 0, width, height)
+    super.dispatchDraw(canvas)
+    canvas.restoreToCount(saved)
   }
 
   override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
