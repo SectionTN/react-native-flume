@@ -555,8 +555,10 @@ class FlumeView(context: Context) : FrameLayout(context) {
   // Offsets count from the content start; the visual delta flips for an inverted list.
   fun scrollToOffset(offsetDp: Double, animated: Boolean) {
     viewability.interacted = true
-    recycler.stopScroll()
+    // Before stopScroll, whose idle state would run an older command's realign.
+    pendingAlign = null
     jumps.cancel()?.let { dropJump(it) }
+    recycler.stopScroll()
     val targetPx = (offsetDp * density).roundToInt()
     ScrollTargets.startRow(targetPx)?.let { row ->
       scrollToPosition(row, animated, 0f, 0.0)
