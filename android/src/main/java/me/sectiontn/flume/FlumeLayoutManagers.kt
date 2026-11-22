@@ -41,6 +41,8 @@ class FlumeGridLayoutManager(context: Context, spanCount: Int, orientation: Int,
 
   init {
     spanSizeLookup = fullSpanLookup
+    // A stretched cell keeps its row's height as its measure, so a row that lost its tallest cell must measure again.
+    isMeasurementCacheEnabled = false
   }
 
   override fun calculateExtraLayoutSpace(state: RecyclerView.State, extraLayoutSpace: IntArray) =
