@@ -24,6 +24,11 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
 
   override fun createViewInstance(context: ThemedReactContext): FlumeView = FlumeView(context)
 
+  override fun onAfterUpdateTransaction(view: FlumeView) {
+    super.onAfterUpdateTransaction(view)
+    view.afterProps()
+  }
+
   // Slot views live in holders and the bay; Fabric's child order is mirrored so its removeViewAt finds them.
   override fun needsCustomLayoutForChildren(): Boolean = true
 

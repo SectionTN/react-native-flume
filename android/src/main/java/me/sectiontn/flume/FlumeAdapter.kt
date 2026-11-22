@@ -24,6 +24,8 @@ class FlumeAdapter(
   var onPress: ((position: Int, pressId: String?, long: Boolean) -> Unit)? = null
   var fullSpans = FullSpans(IntArray(0))
   var onFirstData: (() -> Unit)? = null
+  // Every row binds again at the same data, which the list lays out without item animations.
+  var onRebindAll: (() -> Unit)? = null
   var onDataChanged: ((reset: Boolean) -> Unit)? = null
   var onStickyIndicesChanged: (() -> Unit)? = null
   // Data indices of the applied data, from the store with each data change.
@@ -50,6 +52,7 @@ class FlumeAdapter(
   }
 
   private fun rebindAll() {
+    onRebindAll?.invoke()
     measurer.invalidate()
     if (storeId != 0) FlumeJni.invalidateMeasures(storeId)
     // React grid cells take their width from JS, which learns it from the slot snapshot.
