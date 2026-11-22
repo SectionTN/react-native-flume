@@ -193,6 +193,14 @@ const everyOwnKey: [Exclude<keyof FlumeOwnProps<unknown>, (typeof OWN_KEYS)[numb
   : never = true;
 void everyOwnKey;
 
+// Fails to compile when an ignored prop is missing from IGNORED_KEYS, so it cannot leak to the native view either.
+const everyIgnoredKey: [
+  Exclude<keyof IgnoredProps<unknown>, (typeof IGNORED_KEYS)[number]>,
+] extends [never]
+  ? true
+  : never = true;
+void everyIgnoredKey;
+
 const NOT_HOST = new Set<string>([...OWN_KEYS, ...IGNORED_KEYS, 'children']);
 
 // The plain view props a list may carry (nativeID, pointerEvents, accessibility), for the native view.

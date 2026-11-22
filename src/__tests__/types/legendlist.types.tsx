@@ -37,3 +37,20 @@ export function LegendListExample({ data }: { data: UserData[] }) {
     </>
   );
 }
+
+export function LegendListSeparatorExample({ data }: { data: UserData[] }) {
+  return (
+    <Flume
+      data={data}
+      renderItem={({ item }) => <Text>{item.name}</Text>}
+      keyExtractor={(item) => item.id}
+      numColumns={2}
+      columnWrapperStyle={{ columnGap: 16, rowGap: 16 }}
+      ItemSeparatorComponent={({ leadingItem }) => <View style={{ height: leadingItem ? 1 : 0 }} />}
+      ListHeaderComponent={<Text>Header</Text>}
+      ListHeaderComponentStyle={{ marginBottom: 12 }}
+      ListEmptyComponent={<Text>Empty</Text>}
+      ListEmptyComponentStyle={{ flex: 1 }}
+    />
+  );
+}
