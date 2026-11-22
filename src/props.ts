@@ -30,6 +30,8 @@ export type FlatProps = Pick<
   | 'paddingPercentBottom'
   | 'paddingPercentRight'
   | 'contentBackgroundColor'
+  | 'contentJustify'
+  | 'growFooter'
   | 'mainGap'
   | 'gridRowGap'
   | 'crossGap'
@@ -110,6 +112,8 @@ type Amount = { points: number; fraction: number };
 
 const PERCENT = /^-?\d+(\.\d+)?%$/;
 
+const JUSTIFY = new Set(['flex-start', 'center', 'flex-end']);
+
 // Shorthands resolve as in React Native: padding, then the axis pairs, then each side. Start and end map to left and right.
 // A percent stays a fraction of the list width, Yoga's base for every edge, and resolves where the width is known.
 export function contentPadding(style: StyleProp<ViewStyle> | undefined): ContentPadding {
@@ -128,7 +132,10 @@ export function contentPadding(style: StyleProp<ViewStyle> | undefined): Content
   };
   for (const key of Object.keys(flat)) {
     if (GAP_KEYS.has(key)) amount(key);
-    else if (!PADDING_KEYS.has(key) && key !== 'backgroundColor') unsupported.push(key);
+    else if (key === 'flexGrow') amount(key);
+    else if (key === 'justifyContent') {
+      if (!JUSTIFY.has(flat[key] as string)) unsupported.push(key);
+    } else if (!PADDING_KEYS.has(key) && key !== 'backgroundColor') unsupported.push(key);
   }
   const none: Amount = { points: 0, fraction: 0 };
   const all = amount('padding') ?? none;
@@ -379,6 +386,27 @@ export function settleProps<T>(props: FlumeProps<T>): SettledProps<T> {
   return settled as SettledProps<T>;
 }
 
+// FlatList's flexGrow content: justifyContent places short content, and a footer with flex takes the slack.
+function contentGrowth<T>(
+  props: SettledProps<T>,
+): Pick<FlatProps, 'contentJustify' | 'growFooter'> {
+  const content: Record<string, unknown> = {};
+  flatten(props.contentContainerStyle, content);
+  const grows = typeof content.flexGrow === 'number' && content.flexGrow > 0;
+  if (!grows) return { contentJustify: 'start', growFooter: false };
+  const footer: Record<string, unknown> = {};
+  flatten(props.ListFooterComponentStyle, footer);
+  const flexes = (key: string) => typeof footer[key] === 'number' && (footer[key] as number) > 0;
+  return {
+    contentJustify:
+      content.justifyContent === 'center'
+        ? 'center'
+        : content.justifyContent === 'flex-end'
+          ? 'end'
+          : 'start',
+    growFooter: props.ListFooterComponent != null && (flexes('flex') || flexes('flexGrow')),
+  };
+}
 export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
   const props = settleProps(given);
   const refresh = refreshOf(props);
@@ -414,6 +442,7 @@ export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
     paddingPercentBottom: padding.percent.bottom,
     paddingPercentRight: padding.percent.right,
     contentBackgroundColor: contentBackground(props.contentContainerStyle),
+    ...contentGrowth(props),
     estimatedItemSize: props.estimatedItemSize ?? -1,
     listHeader: props.ListHeaderComponent != null,
     listFooter: props.ListFooterComponent != null,

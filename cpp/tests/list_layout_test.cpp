@@ -618,3 +618,33 @@ TEST_CASE("the content span covers the rows and their padding, at the bottom whe
   config.inverted = true;
   CHECK(measured(3, 50, config).contentSpan(1000) == std::pair<float, float>{820, 1000});
 }
+
+TEST_CASE("short content sits at the center or the end of the viewport") {
+  ListLayoutConfig config;
+  config.justify = ListLayoutConfig::Justify::Center;
+  ListLayout centered = measured(3, 100, config);
+  CHECK(centered.rectOf(0, 400, 600).y == 150);
+  CHECK(centered.contentLength(600) == 600);
+  CHECK(centered.contentSpan(600) == std::pair<float, float>{150, 450});
+  config.justify = ListLayoutConfig::Justify::Start;
+  config.stackFromEnd = true;
+  CHECK(measured(3, 100, config).rectOf(0, 400, 600).y == 300);
+}
+
+TEST_CASE("a growing footer takes what the other rows leave of the viewport") {
+  ListLayoutConfig config;
+  config.afterData = 1;
+  config.growFooter = true;
+  ListLayout layout = list(4, config, {3});
+  for (int i = 0; i < 3; i++) layout.setLength(i, 100, 0);
+  layout.setLength(3, 50, 0);
+  CHECK(layout.growMinLength(600) == 300);
+}
+
+TEST_CASE("centered short content recenters itself, so a length change moves no anchor") {
+  ListLayoutConfig config;
+  config.justify = ListLayoutConfig::Justify::Center;
+  ListLayout layout = list(3, config);
+  CHECK(layout.setLength(0, 100, 0, 600).anchorMoved == 0);
+  CHECK(layout.rectOf(0, 400, 600).y == 200);
+}

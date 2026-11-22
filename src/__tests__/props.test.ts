@@ -457,3 +457,39 @@ describe('content background and percent padding', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('padding'));
   });
 });
+
+describe('flexGrow and justifyContent', () => {
+  it('reads justifyContent only with flexGrow, and a footer with flex: 1 grows', () => {
+    const warn = vi.fn();
+    const Footer = () => null;
+    const grown = nativeProps(
+      {
+        data: [],
+        contentContainerStyle: { flexGrow: 1, justifyContent: 'center' },
+        ListFooterComponent: Footer,
+        ListFooterComponentStyle: { flex: 1 },
+      },
+      warn,
+    );
+    expect(grown).toMatchObject({ contentJustify: 'center', growFooter: true });
+    const end = { flexGrow: 1, justifyContent: 'flex-end' } as const;
+    expect(nativeProps({ data: [], contentContainerStyle: end }, warn)).toMatchObject({
+      contentJustify: 'end',
+      growFooter: false,
+    });
+    const still = { justifyContent: 'center' } as const;
+    expect(nativeProps({ data: [], contentContainerStyle: still }, warn)).toMatchObject({
+      contentJustify: 'start',
+    });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('still warns about alignItems and about a spacing justifyContent', () => {
+    const warn = vi.fn();
+    nativeProps({ data: [], contentContainerStyle: { flexGrow: 1, alignItems: 'center' } }, warn);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('alignItems'));
+    const spaced = { flexGrow: 1, justifyContent: 'space-between' } as const;
+    nativeProps({ data: [], contentContainerStyle: spaced }, warn);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('justifyContent'));
+  });
+});

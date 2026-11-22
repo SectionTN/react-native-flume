@@ -322,6 +322,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     }
     sticky.refresh()
     updateEmptyLength()
+    updateFooterLength()
     evaluateViewability()
     evaluateEdges()
     requestOrigins()
@@ -546,6 +547,41 @@ class FlumeView(context: Context) : FrameLayout(context) {
     return ((if (geometry.horizontal) batch.rootWidth else batch.rootHeight) * density).roundToInt()
   }
 
+
+  // contentContainerStyle flexGrow with justifyContent: "end" stacks a single column from the end, "center" centers.
+  var contentJustify = "start"
+    set(value) {
+      if (field == value) return
+      field = value
+      rebuildLayoutManager()
+      applyDrawDistance()
+      recycler.requestLayout()
+    }
+
+  var growFooter = false
+    set(value) {
+      if (field == value) return
+      field = value
+      updateFooterLength()
+    }
+
+  // A growing footer takes what the laid-out rows above it leave of the viewport, an upright list only.
+  private fun updateFooterLength() {
+    if (!rows.footer || !geometry.ready) return
+    val footer = recycler.findViewHolderForAdapterPosition(rows.itemCount - 1) as? FlumeAdapter.Holder ?: return
+    val slot = footer.slot ?: return
+    val first = recycler.findViewHolderForAdapterPosition(0)?.itemView
+    val lm = layoutManager
+    val horizontal = geometry.horizontal
+    val px = if (!growFooter || inverted || first == null) {
+      0
+    } else {
+      val start = if (horizontal) lm.getDecoratedLeft(first) else lm.getDecoratedTop(first)
+      val footerStart = if (horizontal) lm.getDecoratedLeft(footer.itemView) else lm.getDecoratedTop(footer.itemView)
+      ContentPlacement.footerMinPx(start, footerStart, if (horizontal) geometry.innerWidthPx else geometry.innerHeightPx)
+    }
+    slots.setMinMain(slot, px / density)
+  }
   // The empty row fills what the header and footer leave of the viewport, so flex content centers in the visible area.
   private fun updateEmptyLength() {
     if (!rows.hasEmptyRow || !geometry.ready) return
@@ -687,7 +723,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   // A grid only reverses; stackFromEnd is unsupported there, so an inverted grid with little content starts at the top.
   private fun rebuildLayoutManager() {
-    val next = LayoutShape.of(horizontal, numColumns, inverted, anchorConfig.startRenderingFromBottom)
+    val next = LayoutShape.of(horizontal, numColumns, inverted, anchorConfig.startRenderingFromBottom, contentJustify == "end")
     if (next == shape) return
     val kept = if (LayoutShape.keepsPosition(shape, next)) adapter.anchorState() else null
     shape = next
@@ -720,8 +756,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private fun applyDrawDistance() {
     val px = if (drawDistanceDp < 0) -1 else (drawDistanceDp * density).roundToInt()
     when (val lm = layoutManager) {
-      is FlumeLinearLayoutManager -> lm.drawDistancePx = px
-      is FlumeGridLayoutManager -> lm.drawDistancePx = px
+      is FlumeLinearLayoutManager -> {
+        lm.drawDistancePx = px
+        lm.centerContent = contentJustify == "center"
+      }
+      is FlumeGridLayoutManager -> {
+        lm.drawDistancePx = px
+        lm.centerContent = contentJustify == "center"
+      }
     }
   }
 

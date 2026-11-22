@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <unordered_map>
@@ -29,6 +30,10 @@ struct ListLayoutConfig {
   float separatorInsetStart = 0, separatorInsetEnd = 0;  // across the scroll axis, from the padded edges
   // startRenderingFromBottom on an upright list; short content sits at the end, sizes keep the last row in view.
   bool stackFromEnd = false;
+  // contentContainerStyle flexGrow with justifyContent center: short upright content sits in the middle.
+  enum class Justify : uint8_t { Start, Center };
+  Justify justify = Justify::Start;
+  bool growFooter = false;  // the footer takes what the other rows leave of the viewport
 };
 
 // Percent padding is a fraction of the list width on every edge, as Yoga resolves it.
@@ -91,11 +96,13 @@ class ListLayout {
   float anchorEdgeOf(int index, float viewportLength) const;
   std::vector<int> itemsIn(float start, float end, float viewportLength) const;
   float emptyMinLength(float viewportLength) const;  // the viewport the padding and the other rows leave
+  float growMinLength(float viewportLength) const;  // the same for a growing footer
   std::optional<Pinned> pinned(const std::vector<int>& sticky, float viewportStart, float viewportLength) const;
   // Relative to the item's origin: the gap after its row in content order, none after the last row.
   std::optional<ItemRect> separatorRect(int index, float listCrossLength) const;
   // Inverted or stacked from the end: the list keeps its end where it was.
   bool bottomAnchored() const { return config_.inverted || config_.stackFromEnd; }
+  bool centered() const { return !config_.inverted && config_.justify == ListLayoutConfig::Justify::Center; }
 
  private:
   struct Item {
@@ -121,7 +128,8 @@ class ListLayout {
   bool isData(int index) const;  // not the header, the footer or the empty row
   float lineAfter(int row) const;  // the separator after the row, 0 when it has none
   float rowStart(int row) const;  // from the start of item 0, inside the padding
-  float slack(float viewportLength) const;  // the space a short list that stacks from the end leaves above its rows
+  float slack(float viewportLength) const;  // the space short content leaves above its rows: all of it from the end, half centered
+  float minLengthOf(int index, float viewportLength) const;
   float startOf(int row, float viewportLength) const;  // in content coordinates
   float anchorEdge(int row, float viewportLength) const;
   int rowAt(float offset, float viewportLength) const;  // offset in content coordinates

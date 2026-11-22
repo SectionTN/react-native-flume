@@ -23,6 +23,12 @@ class FlumeLinearLayoutManager(context: Context, orientation: Int, reverse: Bool
   LinearLayoutManager(context, orientation, reverse) {
   var drawDistancePx = -1
   var onLaidOut: (() -> Unit)? = null
+  var centerContent = false
+
+  override fun onLayoutChildren(recycler: RecyclerView.Recycler, state: RecyclerView.State) {
+    super.onLayoutChildren(recycler, state)
+    if (centerContent) centerShortContent(this, state)
+  }
 
   override fun calculateExtraLayoutSpace(state: RecyclerView.State, extraLayoutSpace: IntArray) =
     fillExtraSpace(drawDistancePx, extraLayoutSpace)
@@ -37,6 +43,12 @@ class FlumeGridLayoutManager(context: Context, spanCount: Int, orientation: Int,
   GridLayoutManager(context, spanCount, orientation, reverse) {
   var drawDistancePx = -1
   var onLaidOut: (() -> Unit)? = null
+  var centerContent = false
+
+  override fun onLayoutChildren(recycler: RecyclerView.Recycler, state: RecyclerView.State) {
+    super.onLayoutChildren(recycler, state)
+    if (centerContent) centerShortContent(this, state)
+  }
   val fullSpanLookup = FlumeSpanSizeLookup { this.spanCount }
 
   init {
@@ -113,11 +125,48 @@ object LayoutFlags {
 // a prop again with the value it has, so only a new shape rebuilds it; stackFromEnd applies to a single column.
 data class LayoutShape(val horizontal: Boolean, val numColumns: Int, val inverted: Boolean, val stackFromEnd: Boolean) {
   companion object {
-    fun of(horizontal: Boolean, numColumns: Int, inverted: Boolean, startRenderingFromBottom: Boolean) =
-      LayoutShape(horizontal, numColumns, inverted, numColumns == 1 && LayoutFlags.stackFromEnd(inverted, startRenderingFromBottom))
+    fun of(horizontal: Boolean, numColumns: Int, inverted: Boolean, startRenderingFromBottom: Boolean, justifyEnd: Boolean = false) =
+      LayoutShape(horizontal, numColumns, inverted, numColumns == 1 && LayoutFlags.stackFromEnd(inverted, startRenderingFromBottom || justifyEnd))
 
     // A column or axis change keeps the first visible item; a new direction or stacking opens at its edge instead.
     fun keepsPosition(previous: LayoutShape?, next: LayoutShape): Boolean =
       previous != null && previous.inverted == next.inverted && previous.stackFromEnd == next.stackFromEnd
   }
+}
+
+// FlatList's flexGrow content with justifyContent center: short upright content moves to the middle after every layout.
+internal fun centerShortContent(lm: LinearLayoutManager, state: RecyclerView.State) {
+  if (state.isPreLayout || lm.childCount == 0 || lm.reverseLayout) return
+  val horizontal = lm.orientation == RecyclerView.HORIZONTAL
+  var first = Int.MAX_VALUE
+  var last = Int.MIN_VALUE
+  var hasFirst = false
+  var hasLast = false
+  for (i in 0 until lm.childCount) {
+    val child = lm.getChildAt(i) ?: continue
+    first = minOf(first, if (horizontal) lm.getDecoratedLeft(child) else lm.getDecoratedTop(child))
+    last = maxOf(last, if (horizontal) lm.getDecoratedRight(child) else lm.getDecoratedBottom(child))
+    val position = lm.getPosition(child)
+    if (position == 0) hasFirst = true
+    if (position == state.itemCount - 1) hasLast = true
+  }
+  if (!hasFirst || !hasLast) return
+  val start = if (horizontal) lm.paddingLeft else lm.paddingTop
+  val end = if (horizontal) lm.width - lm.paddingRight else lm.height - lm.paddingBottom
+  val shift = ContentPlacement.centerShift(first, last, start, end)
+  if (shift == 0) return
+  if (horizontal) lm.offsetChildrenHorizontal(shift) else lm.offsetChildrenVertical(shift)
+}
+
+object ContentPlacement {
+  // The move that puts short content in the middle of the viewport, 0 once it is there or when it fills the viewport.
+  fun centerShift(firstStart: Int, lastEnd: Int, viewportStart: Int, viewportEnd: Int): Int {
+    val content = lastEnd - firstStart
+    val viewport = viewportEnd - viewportStart
+    if (content >= viewport) return 0
+    return viewportStart + (viewport - content) / 2 - firstStart
+  }
+
+  // A growing footer takes what the rows above it leave of the viewport.
+  fun footerMinPx(contentStart: Int, footerStart: Int, viewportPx: Int): Int = maxOf(0, viewportPx - (footerStart - contentStart))
 }

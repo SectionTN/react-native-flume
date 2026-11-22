@@ -79,7 +79,9 @@ std::vector<int> ListLayout::apply(const ListOps& ops, int count, const TypeOf& 
 LengthChange ListLayout::setLength(int index, float length, int anchor, float viewportLength) {
   if (index < 0 || index >= count()) return LengthChange{0, 0};
   const bool hasAnchor = anchor >= 0 && anchor < count();
-  const float before = hasAnchor ? anchorEdge(rowOf_[anchor], viewportLength) : 0;
+  // Centered short content recenters with its slack, which the offset must not chase.
+  const auto edge = [&] { return anchorEdge(rowOf_[anchor], viewportLength) - (centered() ? slack(viewportLength) : 0); };
+  const float before = hasAnchor ? edge() : 0;
   const float contentBefore = contentLength(viewportLength);
   Item& item = items_[index];
   Mean& mean = means_[item.type];
@@ -92,7 +94,7 @@ LengthChange ListLayout::setLength(int index, float length, int anchor, float vi
   item.length = length;
   item.measured = true;
   updateRow(rowOf_[index]);
-  const float moved = hasAnchor ? anchorEdge(rowOf_[anchor], viewportLength) - before : 0;
+  const float moved = hasAnchor ? edge() - before : 0;
   return LengthChange{moved, contentLength(viewportLength) - contentBefore};
 }
 
@@ -117,12 +119,12 @@ float ListLayout::estimate(int type) const {
 
 float ListLayout::contentLength(float viewportLength) const {
   const float length = config_.paddingStart + rowStart(static_cast<int>(rows_.size())) + config_.paddingEnd;
-  return bottomAnchored() ? std::max(viewportLength, length) : length;
+  return bottomAnchored() || centered() ? std::max(viewportLength, length) : length;
 }
 
 std::pair<float, float> ListLayout::contentSpan(float viewportLength) const {
   const float length = config_.paddingStart + rowStart(static_cast<int>(rows_.size())) + config_.paddingEnd;
-  if (!bottomAnchored()) return {0, length};
+  if (!config_.inverted) return {slack(viewportLength), slack(viewportLength) + length};
   const float end = contentLength(viewportLength);
   return {end - length, end};
 }
@@ -236,10 +238,16 @@ std::optional<ItemRect> ListLayout::separatorRect(int index, float listCrossLeng
   return ItemRect{from, main, to - from, config_.separator};
 }
 
-float ListLayout::emptyMinLength(float viewportLength) const {
-  if (config_.emptyIndex < 0 || config_.emptyIndex >= count()) return 0;
+float ListLayout::emptyMinLength(float viewportLength) const { return minLengthOf(config_.emptyIndex, viewportLength); }
+
+float ListLayout::growMinLength(float viewportLength) const {
+  return config_.growFooter && config_.afterData > 0 ? minLengthOf(count() - 1, viewportLength) : 0;
+}
+
+float ListLayout::minLengthOf(int index, float viewportLength) const {
+  if (index < 0 || index >= count()) return 0;
   const float used = config_.paddingStart + config_.paddingEnd + rowStart(static_cast<int>(rows_.size())) -
-                     rows_[rowOf_[config_.emptyIndex]].length;
+                     rows_[rowOf_[index]].length;
   return std::max(0.f, viewportLength - used);
 }
 
@@ -297,9 +305,10 @@ float ListLayout::rowStart(int row) const {
 }
 
 float ListLayout::slack(float viewportLength) const {
-  if (!config_.stackFromEnd) return 0;
+  if (!config_.stackFromEnd && !centered()) return 0;
   const float length = config_.paddingStart + rowStart(static_cast<int>(rows_.size())) + config_.paddingEnd;
-  return std::max(0.f, viewportLength - length);
+  const float free = std::max(0.f, viewportLength - length);
+  return config_.stackFromEnd ? free : free / 2;
 }
 
 float ListLayout::startOf(int row, float viewportLength) const {

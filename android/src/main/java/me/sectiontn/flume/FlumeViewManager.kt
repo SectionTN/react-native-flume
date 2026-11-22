@@ -116,6 +116,16 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
   @ReactProp(name = "paddingPercentRight")
   override fun setPaddingPercentRight(view: FlumeView, value: Double) = view.setPaddingPercent(2, value)
 
+  @ReactProp(name = "contentJustify")
+  override fun setContentJustify(view: FlumeView, value: String?) {
+    view.contentJustify = value ?: "start"
+  }
+
+  @ReactProp(name = "growFooter")
+  override fun setGrowFooter(view: FlumeView, value: Boolean) {
+    view.growFooter = value
+  }
+
   @ReactProp(name = "contentBackgroundColor", customType = "Color")
   override fun setContentBackgroundColor(view: FlumeView, value: Int?) {
     view.recycler.contentBackground = value ?: 0
