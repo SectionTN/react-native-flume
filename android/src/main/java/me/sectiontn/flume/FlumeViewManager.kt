@@ -118,7 +118,7 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
 
   @ReactProp(name = "contentJustify")
   override fun setContentJustify(view: FlumeView, value: String?) {
-    view.contentJustify = value ?: "start"
+    view.contentJustify = ContentJustify.of(value)
   }
 
   @ReactProp(name = "growFooter")
