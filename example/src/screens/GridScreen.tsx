@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button, View } from 'react-native';
-import { type CellNode, cell, Flume } from 'react-native-flume';
+import { type CellNode, cell, Flume, type SeparatorCellInfo } from 'react-native-flume';
 
 type Photo = { id: string; kind: 'photo' | 'header'; uri: string; caption: string };
 type Story = { id: string; uri: string; name: string };
@@ -46,6 +46,20 @@ const renderPhoto = (item: Photo): CellNode => {
   ]);
 };
 
+// One line under each photo, none under a header.
+const renderPhotoSeparator = ({ leadingItem }: SeparatorCellInfo<Photo>): CellNode | null => {
+  'worklet';
+  if (leadingItem.kind === 'header') return null;
+  return cell.view({ height: 2, marginHorizontal: 4, backgroundColor: '#0066ff' });
+};
+
+const LINES = ['off', 'native', 'worklet'] as const;
+type Lines = (typeof LINES)[number];
+
+const nextLines = (lines: Lines) => LINES[(LINES.indexOf(lines) + 1) % LINES.length] ?? 'off';
+
+const NATIVE_LINE = { size: 1, color: '#999999' };
+
 // Laid out at the strip's height with its own width: a horizontal cell.
 const renderStory = (item: Story): CellNode => {
   'worklet';
@@ -65,6 +79,9 @@ const renderStory = (item: Story): CellNode => {
 export default function GridScreen() {
   const [columns, setColumns] = useState(3);
   const [inverted, setInverted] = useState(false);
+  const [lines, setLines] = useState<Lines>('off');
+  const [gaps, setGaps] = useState(false);
+  const [pad, setPad] = useState(8);
   const photos = useMemo(() => makePhotos(), []);
   const stories = useMemo(() => makeStories(), []);
   const headers = useMemo(
@@ -73,12 +90,26 @@ export default function GridScreen() {
   );
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, padding: 8 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: 8,
+          padding: 8,
+        }}
+      >
         <Button
           title={`Columns ${columns === 3 ? 2 : 3}`}
           onPress={() => setColumns((c) => (c === 3 ? 2 : 3))}
         />
         <Button title={inverted ? 'Upright' : 'Inverted'} onPress={() => setInverted((v) => !v)} />
+        <Button title={`Separators ${nextLines(lines)}`} onPress={() => setLines(nextLines)} />
+        <Button title={`Gaps ${gaps ? 'off' : 'on'}`} onPress={() => setGaps((on) => !on)} />
+        <Button
+          title={`Padding ${pad === 8 ? 24 : 8}`}
+          onPress={() => setPad((p) => (p === 8 ? 24 : 8))}
+        />
       </View>
       <Flume
         data={stories}
@@ -96,7 +127,10 @@ export default function GridScreen() {
         numColumns={columns}
         inverted={inverted}
         stickyHeaderIndices={headers}
-        contentContainerStyle={{ padding: 8 }}
+        separator={lines === 'native' ? NATIVE_LINE : undefined}
+        renderSeparatorCell={lines === 'worklet' ? renderPhotoSeparator : null}
+        contentContainerStyle={gaps ? { padding: pad, gap: 8 } : { padding: pad }}
+        columnWrapperStyle={gaps ? { gap: 8 } : undefined}
         style={{ flex: 1 }}
       />
     </View>
