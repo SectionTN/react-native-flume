@@ -425,7 +425,7 @@ export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
   const padding = contentPadding(props.contentContainerStyle);
   if (padding.unsupported.length > 0) {
     warn(
-      `contentContainerStyle supports padding, gaps and backgroundColor only; ignored: ${padding.unsupported.join(', ')}`,
+      `contentContainerStyle supports padding, gaps, backgroundColor, flexGrow and justifyContent only; ignored: ${padding.unsupported.join(', ')}`,
     );
   }
   return {

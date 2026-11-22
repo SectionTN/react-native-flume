@@ -64,6 +64,25 @@ describe('nativeProps', () => {
     nativeProps({ data: [], contentContainerStyle: { padding: 4, borderWidth: 1 } }, warn);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('borderWidth'));
   });
+
+  it('names every contentContainerStyle key it lays out when it warns', () => {
+    const warn = vi.fn();
+    nativeProps(
+      {
+        data: [],
+        contentContainerStyle: {
+          padding: 4,
+          flexGrow: 1,
+          justifyContent: 'center',
+          borderWidth: 1,
+        },
+      },
+      warn,
+    );
+    expect(warn).toHaveBeenCalledWith(
+      'contentContainerStyle supports padding, gaps, backgroundColor, flexGrow and justifyContent only; ignored: borderWidth',
+    );
+  });
 });
 
 describe('nativeProps separator', () => {
