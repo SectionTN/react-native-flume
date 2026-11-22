@@ -15,6 +15,8 @@ type Case = {
   contentContainerStyle?: ViewStyle;
   columns?: number;
   count?: number;
+  // A ListEmptyComponent with flex: 1, the usual way to center an empty state.
+  empty?: boolean;
 };
 
 const FIRST: Case = { name: 'flex 1', tile: { flex: 1 } };
@@ -68,6 +70,14 @@ const CASES: Case[] = [
     contentContainerStyle: { flexGrow: 1 },
     footer: true,
   },
+  {
+    name: 'flexGrow, empty and growing footer',
+    tile: { flex: 1 },
+    count: 0,
+    contentContainerStyle: { flexGrow: 1 },
+    footer: true,
+    empty: true,
+  },
 ];
 
 const IMPLS = ['FlatList', 'Flume React', 'Flume worklet'] as const;
@@ -90,6 +100,17 @@ function tileStyle(c: Case, n: number): ViewStyle {
 }
 
 const Divider = () => <View style={{ height: 4, backgroundColor: '#333333' }} />;
+
+const Empty = () => (
+  <View
+    testID="empty"
+    accessible
+    accessibilityLabel="empty"
+    style={{ flex: 1, minHeight: 50, backgroundColor: '#fff59d', justifyContent: 'center' }}
+  >
+    <Text style={{ textAlign: 'center' }}>empty</Text>
+  </View>
+);
 
 const Footer = () => (
   <View
@@ -151,6 +172,7 @@ export default function CompareScreen() {
     columnWrapperStyle: c.columnWrapperStyle,
     ListFooterComponent: c.footer ? Footer : undefined,
     ListFooterComponentStyle: c.footer ? { flex: 1 } : undefined,
+    ListEmptyComponent: c.empty ? Empty : undefined,
     ItemSeparatorComponent: separated ? Divider : undefined,
     style: { flex: 1 },
   };
