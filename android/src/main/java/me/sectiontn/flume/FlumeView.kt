@@ -556,6 +556,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   fun scrollToOffset(offsetDp: Double, animated: Boolean) {
     viewability.interacted = true
     recycler.stopScroll()
+    jumps.cancel()?.let { dropJump(it) }
     val targetPx = (offsetDp * density).roundToInt()
     ScrollTargets.startRow(targetPx)?.let { row ->
       scrollToPosition(row, animated, 0f, 0.0)
