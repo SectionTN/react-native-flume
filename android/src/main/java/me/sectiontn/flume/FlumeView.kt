@@ -8,7 +8,6 @@ import android.view.ViewConfiguration
 import android.content.res.Configuration
 import android.os.SystemClock
 import android.widget.FrameLayout
-import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -94,7 +93,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     }
 
   // Change animations stay off so a rebind never flickers; false removes the animator entirely.
-  private val animator = DefaultItemAnimator().apply { supportsChangeAnimations = false }
+  private val animator = FlumeItemAnimator().apply { supportsChangeAnimations = false }
   var itemAnimations = true
     set(value) {
       if (value == field) return
@@ -186,6 +185,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   init {
     slots.onRendered = { slot -> jumps.rendered(slot)?.let { runJump(it) } }
+    adapter.onRebindAll = { animator.still = true }
     recycler.layoutManager = layoutManager
     recycler.adapter = adapter
     recycler.itemAnimator = animator
@@ -301,6 +301,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   private fun onLaidOut() {
+    animator.still = false
     if (reclaimOnLayout) {
       reclaimOnLayout = false
       slots.reclaim()
@@ -660,6 +661,18 @@ class FlumeView(context: Context) : FrameLayout(context) {
     kept?.let { layoutManager.scrollToPositionWithOffset(it.firstVisiblePosition, it.firstVisibleOffsetPx) }
     adapter.configure(horizontal, numColumns, inverted, paddingPx)
     sticky.refresh(force = true)
+    layoutWithProps = true
+  }
+
+  // A new layout manager has no rows until it lays out, so it does in the frame of the props that made it.
+  private var layoutWithProps = false
+
+  fun afterProps() {
+    if (!layoutWithProps) return
+    layoutWithProps = false
+    if (width == 0 || height == 0) return
+    removeCallbacks(measureAndLayout)
+    measureAndLayout.run()
   }
 
   private fun applyDrawDistance() {
