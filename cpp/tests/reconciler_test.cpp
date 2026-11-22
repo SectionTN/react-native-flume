@@ -511,3 +511,30 @@ TEST_CASE("a text op carries the leading padding and border insets") {
   CHECK(op->floats[4] == 13.0f);
   CHECK(op->floats[5] == 5.0f);
 }
+
+TEST_CASE("a holder rebound from a pressable root to a plain root sends role 0 for the root") {
+  auto root = [](const char* type, const char* text) {
+    return obj({{"type", V(type)}, {"id", V("row")}, {"children", arr({textNode(text, 14, "#111")})}});
+  };
+  Rig rig;
+  rig.bind(root("pressable", "Open"));
+  CHECK(firstOp(rig.batch, 8, 0).ints[2] == 1);
+  rig.bind(root("view", "Borders"));
+  CHECK(firstOp(rig.batch, 8, 0).ints[2] == 0);
+  rig.bind(root("pressable", "Same"));
+  rig.bind(root("view", "Same"));
+  CHECK(firstOp(rig.batch, 8, 0).ints[2] == 0);
+}
+
+TEST_CASE("a holder rebound from a painted pressable root to a plain root clears the root's paint") {
+  Rig rig;
+  rig.bind(obj({{"type", V("pressable")},
+                {"id", V("row")},
+                {"style", obj({{"backgroundColor", V("#fff")}, {"borderRadius", V(12)}, {"elevation", V(4)}})},
+                {"children", arr({textNode("Open", 14, "#111")})}}));
+  rig.bind(obj({{"type", V("view")}, {"children", arr({textNode("Borders", 14, "#111")})}}));
+  auto op = firstOp(rig.batch, 4, 0);
+  CHECK(op.ints[0] == 0);
+  CHECK(op.floats[1] == 0.0f);
+  CHECK(op.floats[6] == 0.0f);
+}

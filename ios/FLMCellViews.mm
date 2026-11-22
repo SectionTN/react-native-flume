@@ -146,8 +146,11 @@ void FLMCellViews::accessibility(flume::ViewHandle handle, const std::optional<s
   UIView *view = FLMUIView(handle);
   view.accessibilityLabel = label ? @(label->c_str()) : nil;
   view.accessibilityIdentifier = testID ? @(testID->c_str()) : nil;
+  // A reused view drops the role of the node it showed before.
   if (role == 1) {
     view.accessibilityTraits |= UIAccessibilityTraitButton;
+  } else {
+    view.accessibilityTraits &= ~UIAccessibilityTraitButton;
   }
   if (accessible == 0 || accessible == 1) {
     view.isAccessibilityElement = accessible == 1;

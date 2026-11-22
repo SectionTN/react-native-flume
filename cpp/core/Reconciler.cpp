@@ -105,12 +105,16 @@ void Reconciler::reconcile(Holder& holder, std::unique_ptr<Node> fresh, OpBatch&
   }
   // The cell view is the root's box, so a root margin would only shrink the layout under an unchanged paint.
   clearParentLayout(fresh->style);
-  if (holder.root != nullptr && holder.root->type != fresh->type) {
+  const bool retyped = holder.root != nullptr && holder.root->type != fresh->type;
+  if (retyped) {
     unmount(*holder.root, out);
     holder.root.reset();
   }
   if (holder.root == nullptr) {
     holder.root = mountNew(holder, *fresh, 0, -1, 0, out);
+    // The root view outlives its node, so a new root type resets its paint, role and label even when none is set.
+    if (retyped && !drawsBox(holder.root->type, holder.root->style)) emitViewStyle(*holder.root, out);
+    if (retyped && !hasAccessibility(*holder.root)) emitAccessibility(holder, *holder.root, out);
     return;
   }
   reconcileNode(holder, *holder.root, *fresh, out);
