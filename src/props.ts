@@ -396,7 +396,8 @@ function contentGrowth<T>(
   if (!grows) return { contentJustify: 'start', growFooter: false };
   const footer: Record<string, unknown> = {};
   flatten(props.ListFooterComponentStyle, footer);
-  const flexes = (key: string) => typeof footer[key] === 'number' && (footer[key] as number) > 0;
+  // Yoga takes an explicit flexGrow, 0 included, before the flex shorthand.
+  const grow = typeof footer.flexGrow === 'number' ? footer.flexGrow : footer.flex;
   return {
     contentJustify:
       content.justifyContent === 'center'
@@ -404,7 +405,7 @@ function contentGrowth<T>(
         : content.justifyContent === 'flex-end'
           ? 'end'
           : 'start',
-    growFooter: props.ListFooterComponent != null && (flexes('flex') || flexes('flexGrow')),
+    growFooter: props.ListFooterComponent != null && typeof grow === 'number' && grow > 0,
   };
 }
 export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {

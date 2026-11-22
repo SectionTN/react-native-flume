@@ -510,6 +510,23 @@ describe('flexGrow and justifyContent', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
+  it('lets an explicit flexGrow on the footer win over flex, as Yoga does', () => {
+    const Footer = () => null;
+    const footer = (ListFooterComponentStyle: object) =>
+      nativeProps(
+        {
+          data: [],
+          contentContainerStyle: { flexGrow: 1 },
+          ListFooterComponent: Footer,
+          ListFooterComponentStyle,
+        },
+        vi.fn(),
+      ).growFooter;
+    expect(footer({ flex: 1, flexGrow: 0 })).toBe(false);
+    expect(footer({ flexGrow: 1 })).toBe(true);
+    expect(footer({ flex: 1 })).toBe(true);
+  });
+
   it('still warns about alignItems and about a spacing justifyContent', () => {
     const warn = vi.fn();
     nativeProps({ data: [], contentContainerStyle: { flexGrow: 1, alignItems: 'center' } }, warn);
