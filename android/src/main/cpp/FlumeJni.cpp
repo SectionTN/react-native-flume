@@ -85,6 +85,12 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
     return JFlumeBatch::create(batch);
   }
 
+  static jni::local_ref<JFlumeBatch> relayout(jni::alias_ref<jclass>, jint storeId, jint holderId, jfloat mainDp) {
+    flume::OpBatch batch;
+    if (!flume::Engine::instance().relayout(storeId, holderId, mainDp, batch)) return nullptr;
+    return JFlumeBatch::create(batch);
+  }
+
   static void releaseHolder(jni::alias_ref<jclass>, jint storeId, jint holderId) {
     flume::Engine::instance().releaseHolder(storeId, holderId);
   }
@@ -123,6 +129,7 @@ struct JFlumeJni : jni::JavaClass<JFlumeJni> {
         makeNativeMethod("keyAt", JFlumeJni::keyAt),
         makeNativeMethod("stickyIndices", JFlumeJni::stickyIndices),
         makeNativeMethod("bind", JFlumeJni::bind),
+        makeNativeMethod("relayout", JFlumeJni::relayout),
         makeNativeMethod("releaseHolder", JFlumeJni::releaseHolder),
         makeNativeMethod("invalidateMeasures", JFlumeJni::invalidateMeasures),
         makeNativeMethod("refresh", JFlumeJni::refresh),

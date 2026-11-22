@@ -168,3 +168,43 @@ TEST_CASE("a composed row without a separator keeps the row alone") {
   CHECK(frameOf(composed.batch, 1).has_value());
   CHECK_FALSE(frameOf(composed.batch, 4).has_value());
 }
+
+namespace {
+
+flume::Value sized(int height) {
+  return obj({{"type", V("view")}, {"style", obj({{"height", V(height)}, {"backgroundColor", V("#ffffff")}})}});
+}
+
+}  // namespace
+
+TEST_CASE("a stretched composed row keeps its separator at the row's end") {
+  Bound composed;
+  composed.bind(flume::composeRow(parsed(row()), parsed(separator()), false, false));
+  composed.batch.clear();
+  composed.layout.relayout(*composed.holder.root, false, 100);
+  composed.layout.readFrames(*composed.holder.root, composed.batch);
+  CHECK(composed.batch.rootHeight == 100);
+  // An auto-height row grows like a FlatList row child, and the line sits at the bottom.
+  CHECK((*frameOf(composed.batch, 1))[3] == 99);
+  CHECK((*frameOf(composed.batch, 4))[1] == 99);
+}
+
+TEST_CASE("a stretched composed row keeps a row's own height and the separator at the end, inverted too") {
+  Bound upright;
+  upright.bind(flume::composeRow(parsed(sized(40)), parsed(separator()), false, false));
+  upright.batch.clear();
+  upright.layout.relayout(*upright.holder.root, false, 100);
+  upright.layout.readFrames(*upright.holder.root, upright.batch);
+  const auto& rows = upright.holder.root->children;
+  CHECK(rows[0]->lastFrame == std::array<float, 4>{0, 0, 360, 40});
+  CHECK(rows[1]->lastFrame[1] == 99);
+  Bound inverted;
+  inverted.bind(flume::composeRow(parsed(sized(40)), parsed(separator()), false, true));
+  inverted.batch.clear();
+  inverted.layout.relayout(*inverted.holder.root, false, 100);
+  inverted.layout.readFrames(*inverted.holder.root, inverted.batch);
+  // Inverted, the separator comes first and the row sits at the end.
+  const auto& flipped = inverted.holder.root->children;
+  CHECK(flipped[0]->lastFrame[1] == 0);
+  CHECK(flipped[1]->lastFrame == std::array<float, 4>{0, 60, 360, 40});
+}

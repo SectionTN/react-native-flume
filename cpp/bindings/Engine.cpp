@@ -323,6 +323,19 @@ bool Engine::bind(int storeId, int holderId, int index, float widthDp, float hei
   return true;
 }
 
+bool Engine::relayout(int storeId, int holderId, float mainDp, OpBatch& out) {
+  auto store = find(storeId);
+  if (store == nullptr || store->layout == nullptr) return false;
+  auto it = store->holders.find(holderId);
+  if (it == store->holders.end() || it->second == nullptr || it->second->root == nullptr) return false;
+  Holder& holder = *it->second;
+  out.clear();
+  store->layout->relayout(*holder.root, store->shape.horizontal, mainDp);
+  store->layout->readFrames(*holder.root, out);
+  store->reconciler->emitAfterLayout(holder, out);
+  return true;
+}
+
 // Runs on the flume runtime with its lock held: materializes renderCell and the item, calls, parses.
 void Engine::bindOnRuntime(jsi::Runtime& rt, int index) {
   std::shared_ptr<Store> store = current_.store;

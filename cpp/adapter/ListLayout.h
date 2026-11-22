@@ -67,6 +67,7 @@ class ListLayout {
   int rowOf(int index) const { return rowOf_[index]; }
   float rowLength(int row) const { return rows_[row].length; }
   float rowStride(int row) const;  // the row's length with the separator and the gaps after it
+  float itemLength(int index) const { return items_[index].length; }  // its own, measured or estimated
   IndexRange itemsOfRows(int firstRow, int lastRow) const;
   bool measured(int index) const;
   float estimate(int type) const;

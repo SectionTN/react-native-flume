@@ -611,7 +611,8 @@ struct FLMAnchorUpdate {
   const CGFloat scale = self.collectionView.traitCollection.displayScale;
   const CGFloat pixel = scale > 0 ? 1 / scale : 1;
   const CGFloat length = [self mainLength:preferred.size];
-  return std::fabs(length - [self mainLength:[self frameOf:index].size]) > pixel;
+  // A grid frame is its row's length, so the cell's own length is what a self-size compares with.
+  return std::fabs(length - _model.itemLength(index)) > pixel;
 }
 
 - (UICollectionViewLayoutInvalidationContext *)
@@ -702,7 +703,7 @@ struct FLMAnchorUpdate {
   }
   const CGFloat scale = self.collectionView.traitCollection.displayScale;
   const CGFloat pixel = scale > 0 ? 1 / scale : 1;
-  if (_model.measured(item) && std::fabs(length - [self mainLength:[self frameOf:item].size]) <= pixel) {
+  if (_model.measured(item) && std::fabs(length - _model.itemLength(item)) <= pixel) {
     return;
   }
   const int anchor = _model.anchorAt([self viewportFor:self.collectionView.bounds].start, _viewportLength);

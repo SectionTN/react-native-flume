@@ -7,6 +7,8 @@ type Case = {
   name: string;
   tile: ViewStyle;
   uneven?: boolean;
+  // No height: the text runs one to three lines, so a row's tiles differ until the row stretches them.
+  auto?: boolean;
   columnWrapperStyle?: ViewStyle;
   contentContainerStyle?: ViewStyle;
 };
@@ -33,6 +35,7 @@ const CASES: Case[] = [
     contentContainerStyle: { padding: 8, gap: 8 },
   },
   { name: 'uneven heights', tile: { flex: 1 }, uneven: true },
+  { name: 'auto heights', tile: { flex: 1 }, auto: true },
 ];
 
 const IMPLS = ['FlatList', 'Flume React', 'Flume worklet'] as const;
@@ -41,9 +44,10 @@ type Impl = (typeof IMPLS)[number];
 const COLORS = ['#ef9a9a', '#90caf9', '#a5d6a7'];
 const DATA: Item[] = Array.from({ length: 10 }, (_, n) => ({ id: `i${n}`, n }));
 
-// The tile's own height: aspectRatio decides it in that case, the row's index otherwise.
+// The tile's own height: aspectRatio or its text decides it in those cases, the row's index otherwise.
 function tileStyle(c: Case, n: number): ViewStyle {
-  const height = c.tile.aspectRatio !== undefined ? undefined : c.uneven ? 40 + (n % 3) * 20 : 60;
+  const height =
+    c.tile.aspectRatio !== undefined || c.auto ? undefined : c.uneven ? 40 + (n % 3) * 20 : 60;
   return {
     ...c.tile,
     ...(height === undefined ? {} : { height }),
@@ -54,6 +58,10 @@ function tileStyle(c: Case, n: number): ViewStyle {
 }
 
 const Divider = () => <View style={{ height: 4, backgroundColor: '#333333' }} />;
+
+function label(c: Case, n: number): string {
+  return c.auto ? [String(n), ...Array<string>(n % 3).fill('more')].join('\n') : String(n);
+}
 
 // The same data and props through FlatList and both Flume row kinds, one at a time at the same place.
 export default function CompareScreen() {
@@ -68,10 +76,11 @@ export default function CompareScreen() {
       accessibilityLabel={`tile-${item.n}`}
       style={tileStyle(c, item.n)}
     >
-      <Text>{item.n}</Text>
+      <Text>{label(c, item.n)}</Text>
     </View>
   );
   const styles = useMemo(() => DATA.map((item) => tileStyle(c, item.n)), [c]);
+  const labels = useMemo(() => DATA.map((item) => label(c, item.n)), [c]);
   const renderCell = useMemo(
     () =>
       (item: Item): CellNode => {
@@ -82,10 +91,10 @@ export default function CompareScreen() {
           accessible: true,
           accessibilityLabel: `tile-${item.n}`,
           style: styles[item.n] as CellNode['style'],
-          children: [cell.text(String(item.n))],
+          children: [cell.text(labels[item.n] ?? '')],
         };
       },
-    [styles],
+    [styles, labels],
   );
   const renderSeparatorCell = () => {
     'worklet';

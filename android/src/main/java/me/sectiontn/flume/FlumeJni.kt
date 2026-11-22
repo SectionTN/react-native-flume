@@ -33,6 +33,9 @@ object FlumeJni {
   // Null when the store is gone.
   @JvmStatic external fun bind(storeId: Int, holderId: Int, index: Int, widthDp: Float, heightDp: Float): FlumeBatch?
 
+  // The holder's bound tree laid out again at a main length in dp, NaN for its own, with no worklet call.
+  @JvmStatic external fun relayout(storeId: Int, holderId: Int, mainDp: Float): FlumeBatch?
+
   @JvmStatic external fun releaseHolder(storeId: Int, holderId: Int)
 
   // Drops the measure cache so the next binds measure at the current width and font scale.

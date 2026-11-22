@@ -842,6 +842,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     };
   }
   const CGFloat cross = [_layout bindCrossLengthForItem:indexPath.item];
+  cell.stretches = !_horizontal && _layoutConfig.lanes > 1;
   if ([cell bindStore:_storeId
                 index:_rows.dataIndex(position)
                 width:_horizontal ? NAN : cross

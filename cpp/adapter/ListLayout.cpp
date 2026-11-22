@@ -140,7 +140,7 @@ ItemRect ListLayout::rectOf(int index, float listCrossLength, float viewportLeng
   const float lane = static_cast<float>(index - rows_[row].first);
   const float crossAt =
       config_.paddingCrossStart + (isData(index) ? config_.laneInsetStart : 0) + (cross + config_.crossGap) * lane;
-  const float length = items_[index].length;
+  const float length = rows_[row].length;  // a grid row's cells all take its longest
   if (config_.horizontal) return ItemRect{main, crossAt, length, cross};
   return ItemRect{crossAt, main, cross, length};
 }

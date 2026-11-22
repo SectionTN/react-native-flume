@@ -150,3 +150,18 @@ TEST_CASE("with a separator worklet an append lists the old last row as a neighb
   CHECK(listener.calls.back().inserted == std::vector<flume::ListOps::Range>{{3, 1}});
   CHECK(listener.calls.back().neighbors == std::vector<int>{2});
 }
+
+TEST_CASE("relayout lays a bound row out again at a grid row's length without calling the worklet") {
+  ReactSide side;
+  NullListener listener;
+  int id = separatedStore(side, listener, 3, "0, 0, 0");
+  bound(id, 0);
+  side.rig.eval("__flume.setCell(id, function () { 'show source'; return {type: 'text', text: 'again'}; });");
+  flume::OpBatch out;
+  REQUIRE(flume::Engine::instance().relayout(id, 0, 30, out));
+  CHECK_FALSE(says(out, "again"));
+  CHECK(out.rootHeight == 30);
+  CHECK(flume::Engine::instance().relayout(id, 0, NAN, out));
+  CHECK(out.rootHeight == 11);
+  CHECK_FALSE(flume::Engine::instance().relayout(id, 99, 30, out));
+}
