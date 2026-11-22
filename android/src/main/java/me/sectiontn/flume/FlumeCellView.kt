@@ -1,9 +1,12 @@
 package me.sectiontn.flume
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Outline
 import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Button
 import kotlin.math.min
@@ -27,7 +30,21 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
       isLongClickable = value
     }
 
+  // The root's box, background and border: drawn in its Yoga frame, which can be smaller than the cell.
+  private var rootPaint: GradientDrawable? = null
+
   init {
+    outlineProvider = object : ViewOutlineProvider() {
+      override fun getOutline(view: View, outline: Outline) {
+        val paint = rootPaint
+        if (paint != null) {
+          paint.getOutline(outline)
+        } else {
+          outline.setRect(0, 0, view.width, view.height)
+          outline.alpha = 0f
+        }
+      }
+    }
     setOnClickListener { onPress?.invoke(null, false) }
     setOnLongClickListener {
       onPress?.invoke(null, true)
@@ -96,11 +113,18 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
 
   override fun viewStyle(view: View, backgroundColor: Int, borderColor: Int, opacity: Float, radiiPx: FloatArray, borderWidthPx: Float, elevationPx: Float) {
     val drawn = backgroundColor != 0 || borderWidthPx > 0f || radiiPx.any { it > 0f }
-    view.background = if (drawn) GradientDrawable().apply {
+    val paint = if (drawn) GradientDrawable().apply {
       setColor(backgroundColor)
       cornerRadii = floatArrayOf(radiiPx[0], radiiPx[0], radiiPx[1], radiiPx[1], radiiPx[2], radiiPx[2], radiiPx[3], radiiPx[3])
       if (borderWidthPx > 0f) setStroke(borderWidthPx.roundToInt(), borderColor)
     } else null
+    if (view === this) {
+      rootPaint = paint
+      placeRootPaint()
+      invalidate()
+    } else {
+      view.background = paint
+    }
     view.elevation = elevationPx
     view.alpha = opacity
     (view as? FlumePressable)?.baseOpacity = opacity
@@ -169,6 +193,21 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
       view.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY))
       view.layout(left, top, left + width, top + height)
     }
+    placeRootPaint()
+  }
+
+  // A grid tile with its own height or width paints that box inside a longer row or a wider column, as React Native.
+  private fun placeRootPaint() {
+    val bounds = rootPaint?.bounds
+    if (bounds != null && (bounds.right != tree.rootWidthPx || bounds.bottom != tree.rootHeightPx)) {
+      rootPaint?.setBounds(0, 0, tree.rootWidthPx, tree.rootHeightPx)
+    }
+    invalidateOutline()
+  }
+
+  override fun dispatchDraw(canvas: Canvas) {
+    rootPaint?.draw(canvas)
+    super.dispatchDraw(canvas)
   }
 
   private object ButtonDelegate : View.AccessibilityDelegate() {
