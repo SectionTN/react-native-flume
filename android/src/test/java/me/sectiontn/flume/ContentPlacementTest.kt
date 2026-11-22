@@ -27,6 +27,13 @@ class ContentPlacementTest {
   }
 
   @Test
+  fun growingRowsSplitWhatTheFixedRowsLeave() {
+    assertEquals(250, ContentPlacement.growSharePx(viewportPx = 600, fixedPx = 100, growers = 2))
+    assertEquals(500, ContentPlacement.growSharePx(viewportPx = 600, fixedPx = 100, growers = 1))
+    assertEquals(0, ContentPlacement.growSharePx(viewportPx = 600, fixedPx = 700, growers = 2))
+  }
+
+  @Test
   fun aGrowingFooterTakesWhatTheRowsAboveLeave() {
     assertEquals(300, ContentPlacement.footerMinPx(contentStart = 0, footerStart = 300, viewportPx = 600))
     assertEquals(0, ContentPlacement.footerMinPx(contentStart = 0, footerStart = 700, viewportPx = 600))

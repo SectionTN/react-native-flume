@@ -183,5 +183,8 @@ object ContentPlacement {
   }
 
   // A growing footer takes what the rows above it leave of the viewport.
-  fun footerMinPx(contentStart: Int, footerStart: Int, viewportPx: Int): Int = maxOf(0, viewportPx - (footerStart - contentStart))
+  fun footerMinPx(contentStart: Int, footerStart: Int, viewportPx: Int): Int = growSharePx(viewportPx, footerStart - contentStart, 1)
+
+  // The empty row and a growing footer split what the other rows leave evenly, as two flex: 1 rows.
+  fun growSharePx(viewportPx: Int, fixedPx: Int, growers: Int): Int = maxOf(0, viewportPx - fixedPx) / maxOf(1, growers)
 }

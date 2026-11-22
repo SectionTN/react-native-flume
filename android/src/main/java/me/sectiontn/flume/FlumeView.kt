@@ -572,24 +572,30 @@ class FlumeView(context: Context) : FrameLayout(context) {
     val first = recycler.findViewHolderForAdapterPosition(0)?.itemView
     val lm = layoutManager
     val horizontal = geometry.horizontal
-    val px = if (!growFooter || inverted || first == null) {
+    val px = if (!footerGrows() || first == null) {
       0
     } else {
       val start = if (horizontal) lm.getDecoratedLeft(first) else lm.getDecoratedTop(first)
       val footerStart = if (horizontal) lm.getDecoratedLeft(footer.itemView) else lm.getDecoratedTop(footer.itemView)
-      ContentPlacement.footerMinPx(start, footerStart, if (horizontal) geometry.innerWidthPx else geometry.innerHeightPx)
+      // The empty row above grows too, so its own length is left out and the two split the rest.
+      val emptyPx = if (rows.hasEmptyRow) rowLengthPx(rows.headerCount) else 0
+      val viewportPx = if (horizontal) geometry.innerWidthPx else geometry.innerHeightPx
+      ContentPlacement.growSharePx(viewportPx, footerStart - start - emptyPx, if (rows.hasEmptyRow) 2 else 1)
     }
     slots.setMinMain(slot, px / density)
   }
+
+  private fun footerGrows() = growFooter && rows.footer && !inverted
   // The empty row fills what the header and footer leave of the viewport, so flex content centers in the visible area.
   private fun updateEmptyLength() {
     if (!rows.hasEmptyRow || !geometry.ready) return
     val holder = (recycler.findViewHolderForAdapterPosition(rows.headerCount) as? FlumeAdapter.Holder)?.slot ?: return
     val viewport = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
-    var usedPx = 0
-    if (rows.header) usedPx += rowLengthPx(0)
-    if (rows.footer) usedPx += rowLengthPx(rows.itemCount - 1)
-    slots.setMinMain(holder, maxOf(0, viewport - usedPx) / density)
+    val footerGrows = footerGrows()
+    var fixedPx = 0
+    if (rows.header) fixedPx += rowLengthPx(0)
+    if (rows.footer && !footerGrows) fixedPx += rowLengthPx(rows.itemCount - 1)
+    slots.setMinMain(holder, ContentPlacement.growSharePx(viewport, fixedPx, if (footerGrows) 2 else 1) / density)
   }
 
   // Offsets count from the content start; the visual delta flips for an inverted list.
