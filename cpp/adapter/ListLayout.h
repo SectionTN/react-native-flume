@@ -18,6 +18,10 @@ struct ListLayoutConfig {
   float estimatedItemLength = -1;  // estimatedItemSize; negative for the per-type mean
   float estimateFloor = 50;
   float separator = 0;  // the gap after every data row but the last, along the scroll axis
+  float mainGap = 0;  // after every row but the last, after the separator, the header and footer included
+  float gridRowGap = 0;  // after the separator of every data row but the last
+  float crossGap = 0;  // between the lanes of a grid row
+  float laneInsetStart = 0, laneInsetEnd = 0;  // a data row's cross insets, inside the cross padding
   int dataStart = 0, afterData = 0;  // the items before and after the data rows: the header and the footer
   int emptyIndex = -1;  // the empty row, -1 for none
   float separatorInsetStart = 0, separatorInsetEnd = 0;  // across the scroll axis, from the padded edges
@@ -62,6 +66,7 @@ class ListLayout {
   int rowCount() const { return static_cast<int>(rows_.size()); }
   int rowOf(int index) const { return rowOf_[index]; }
   float rowLength(int row) const { return rows_[row].length; }
+  float rowStride(int row) const;  // the row's length with the separator and the gaps after it
   IndexRange itemsOfRows(int firstRow, int lastRow) const;
   bool measured(int index) const;
   float estimate(int type) const;
@@ -103,7 +108,8 @@ class ListLayout {
   void rebuildRows();
   void updateRow(int row);
   bool gapAfter(int row) const;
-  float stride(int row) const;  // the row's length and the separator after it
+  bool isData(int index) const;  // not the header, the footer or the empty row
+  float lineAfter(int row) const;  // the separator after the row, 0 when it has none
   float rowStart(int row) const;  // from the start of item 0, inside the padding
   float slack(float viewportLength) const;  // the space a short list that stacks from the end leaves above its rows
   float startOf(int row, float viewportLength) const;  // in content coordinates

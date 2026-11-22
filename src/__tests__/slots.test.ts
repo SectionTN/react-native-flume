@@ -82,6 +82,14 @@ describe('gridCellWidth', () => {
   it('is unknown until the list is laid out', () => {
     expect(gridCellWidth({ width: -1, cellWidth: -1 }, 2, padding)).toBe(-1);
   });
+
+  it('takes the lane insets and the column gaps out of the row before dividing it', () => {
+    const lanes = { insetStart: 16, insetEnd: 16, gap: 8 };
+    const none = { left: 0, right: 0 };
+    expect(gridCellWidth({ width: 300, cellWidth: -1 }, 3, none, lanes)).toBe(84);
+    expect(gridCellWidth({ width: 300, cellWidth: 84.2 }, 3, none, lanes)).toBe(84.2);
+    expect(gridCellWidth({ width: 300, cellWidth: 84 }, 2, none, lanes)).toBe(130);
+  });
 });
 
 const blank: SlotTable = { native: [], pending: [], jsSeen: 0, cellWidth: -1, width: -1 };

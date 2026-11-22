@@ -286,8 +286,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   const auto &old = static_cast<const FlumeViewProps &>(*_props);
   // Fabric can send a prop again with the value the view already has, so only a changed value acts (bug-089).
   const BOOL shape = next.horizontal != old.horizontal || next.numColumns != old.numColumns ||
-      [self crossPadding:next] != [self crossPadding:old];
-  const BOOL layout = shape || next.inverted != old.inverted || next.contentPaddingTop != old.contentPaddingTop ||
+      [self crossPadding:next] != [self crossPadding:old] || next.crossGap != old.crossGap ||
+      next.laneInsetStart != old.laneInsetStart || next.laneInsetEnd != old.laneInsetEnd;
+  const BOOL layout = shape || next.inverted != old.inverted || next.mainGap != old.mainGap ||
+      next.gridRowGap != old.gridRowGap || next.contentPaddingTop != old.contentPaddingTop ||
       next.contentPaddingLeft != old.contentPaddingLeft || next.contentPaddingBottom != old.contentPaddingBottom ||
       next.contentPaddingRight != old.contentPaddingRight || next.estimatedItemSize != old.estimatedItemSize ||
       next.separatorSize != old.separatorSize ||
@@ -438,6 +440,11 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   config.separator = std::max(0.0, props.separatorSize);
   config.separatorInsetStart = props.separatorInsetStart;
   config.separatorInsetEnd = props.separatorInsetEnd;
+  config.mainGap = std::max(0.0, props.mainGap);
+  config.gridRowGap = std::max(0.0, props.gridRowGap);
+  config.crossGap = std::max(0.0, props.crossGap);
+  config.laneInsetStart = props.laneInsetStart;
+  config.laneInsetEnd = props.laneInsetEnd;
   config.stackFromEnd =
       !props.inverted && config.lanes == 1 && props.maintainVisibleContentPosition.startRenderingFromBottom;
   _layoutConfig = config;

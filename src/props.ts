@@ -23,6 +23,11 @@ export type FlatProps = Pick<
   | 'contentPaddingLeft'
   | 'contentPaddingBottom'
   | 'contentPaddingRight'
+  | 'mainGap'
+  | 'gridRowGap'
+  | 'crossGap'
+  | 'laneInsetStart'
+  | 'laneInsetEnd'
   | 'estimatedItemSize'
   | 'listHeader'
   | 'listFooter'
@@ -73,6 +78,18 @@ const PADDING_KEYS = new Set([
   'paddingEnd',
 ]);
 
+const GAP_KEYS = new Set(['gap', 'rowGap', 'columnGap']);
+
+const WRAPPER_KEYS = new Set([
+  ...GAP_KEYS,
+  'padding',
+  'paddingHorizontal',
+  'paddingLeft',
+  'paddingRight',
+  'paddingStart',
+  'paddingEnd',
+]);
+
 function flatten(style: StyleProp<ViewStyle>, into: Record<string, unknown>): void {
   if (!style) return;
   if (Array.isArray(style)) {
@@ -95,7 +112,8 @@ export function contentPadding(style: StyleProp<ViewStyle> | undefined): Content
     return undefined;
   };
   for (const key of Object.keys(flat)) {
-    if (!PADDING_KEYS.has(key)) unsupported.push(key);
+    if (GAP_KEYS.has(key)) number(key);
+    else if (!PADDING_KEYS.has(key)) unsupported.push(key);
   }
   const all = number('padding') ?? 0;
   const vertical = number('paddingVertical') ?? all;
@@ -106,6 +124,58 @@ export function contentPadding(style: StyleProp<ViewStyle> | undefined): Content
     left: number('paddingStart') ?? number('paddingLeft') ?? horizontal,
     right: number('paddingEnd') ?? number('paddingRight') ?? horizontal,
     unsupported,
+  };
+}
+
+export type Gaps = {
+  mainGap: number;
+  gridRowGap: number;
+  crossGap: number;
+  laneInsetStart: number;
+  laneInsetEnd: number;
+};
+
+function numberOf(flat: Record<string, unknown>, key: string): number | undefined {
+  const value = flat[key];
+  return typeof value === 'number' ? value : undefined;
+}
+
+// FlatList's meanings: the content gap spaces every pair of rows, the column wrapper's spaces a grid row's columns.
+export function gapsOf<T>(
+  props: Pick<FlumeProps<T>, 'contentContainerStyle' | 'columnWrapperStyle'>,
+  horizontal: boolean,
+  numColumns: number,
+  warn: Warn = () => {},
+): Gaps {
+  const content: Record<string, unknown> = {};
+  flatten(props.contentContainerStyle, content);
+  const mainGap =
+    numberOf(content, horizontal ? 'columnGap' : 'rowGap') ?? numberOf(content, 'gap') ?? 0;
+  const wrapper: Record<string, unknown> = {};
+  flatten(props.columnWrapperStyle, wrapper);
+  const none = { mainGap, gridRowGap: 0, crossGap: 0, laneInsetStart: 0, laneInsetEnd: 0 };
+  if (Object.keys(wrapper).length === 0) return none;
+  if (horizontal || numColumns <= 1) {
+    warn('columnWrapperStyle applies to grids only (numColumns above 1); ignored');
+    return none;
+  }
+  const unsupported = Object.keys(wrapper).filter(
+    (key) => !WRAPPER_KEYS.has(key) || numberOf(wrapper, key) === undefined,
+  );
+  const all = numberOf(wrapper, 'padding');
+  if (all !== undefined && all !== 0) unsupported.push('the vertical part of padding');
+  if (unsupported.length > 0) {
+    warn(
+      `columnWrapperStyle supports gap, columnGap, rowGap and horizontal padding only; ignored: ${unsupported.join(', ')}`,
+    );
+  }
+  const across = numberOf(wrapper, 'paddingHorizontal') ?? all ?? 0;
+  return {
+    mainGap,
+    gridRowGap: numberOf(wrapper, 'rowGap') ?? 0,
+    crossGap: numberOf(wrapper, 'columnGap') ?? numberOf(wrapper, 'gap') ?? 0,
+    laneInsetStart: numberOf(wrapper, 'paddingStart') ?? numberOf(wrapper, 'paddingLeft') ?? across,
+    laneInsetEnd: numberOf(wrapper, 'paddingEnd') ?? numberOf(wrapper, 'paddingRight') ?? across,
   };
 }
 
@@ -278,9 +348,12 @@ export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
   }
   const padding = contentPadding(props.contentContainerStyle);
   if (padding.unsupported.length > 0) {
-    warn(`contentContainerStyle supports padding only; ignored: ${padding.unsupported.join(', ')}`);
+    warn(
+      `contentContainerStyle supports padding and gaps only; ignored: ${padding.unsupported.join(', ')}`,
+    );
   }
   return {
+    ...gapsOf(props, horizontal, numColumns, warn),
     horizontal,
     numColumns,
     inverted: props.inverted === true,

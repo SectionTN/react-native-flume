@@ -46,9 +46,9 @@ class FlumeAdapter(
     return changed
   }
 
-  // Orientation, columns and padding come from the host; a change of the cell size rebinds every row.
-  fun configure(horizontal: Boolean, numColumns: Int, inverted: Boolean, paddingPx: IntArray) {
-    if (!geometry.configure(horizontal, numColumns, inverted, paddingPx)) return
+  // Orientation, columns, lanes and padding come from the host. A change of the cell size rebinds every row.
+  fun configure(horizontal: Boolean, numColumns: Int, inverted: Boolean, paddingPx: IntArray, lanes: Lanes) {
+    if (!geometry.configure(horizontal, numColumns, inverted, paddingPx, lanes)) return
     sendRowShape()
     rebindAll()
   }
@@ -121,6 +121,7 @@ class FlumeAdapter(
     val anchorLost = !reload && AnchorPolicy.losesEveryRow(laidOutDataIndices(), removed)
     setCount(count)
     ListOpsApplier.apply(reload, removed, inserted, moved, changed, this)
+    refreshDecorations()
     reindexSlots()
     anchor(before, inserted, count, anchorLost)
     onDataChanged?.invoke(reload)
@@ -244,6 +245,12 @@ class FlumeAdapter(
       if (after.hasEmptyRow) notifyItemInserted(after.headerCount) else notifyItemRemoved(after.headerCount)
     }
     if (before.footer != after.footer) if (after.footer) notifyItemInserted(after.itemCount - 1) else notifyItemRemoved(after.itemCount)
+    refreshDecorations()
+  }
+
+  // RecyclerView keeps a row's offsets until it rebinds, so a row that became or stopped being the last keeps a stale line or gap.
+  private fun refreshDecorations() {
+    if (recycler.itemDecorationCount > 0) recycler.invalidateItemDecorations()
   }
 
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {

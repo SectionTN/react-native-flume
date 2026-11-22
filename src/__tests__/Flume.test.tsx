@@ -650,6 +650,21 @@ describe('Flume React cells', () => {
     expect(slotViews(tree, 1)[0]?.props.style).toEqual({ position: 'absolute', width: 168 });
   });
 
+  it('renders the new column width with gaps in the same render as a numColumns change', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { renderItem } = recordingCell();
+    const columnWrapperStyle = { gap: 8, paddingHorizontal: 16 };
+    const props = { data: [item], renderItem, columnWrapperStyle, numColumns: 3 };
+    const tree = await mount(createElement(Flume, props));
+    await sendSlots(tree, [rowEntry(1, 'a', 0)], -1, 84, 300);
+    expect(slotViews(tree, 1)[0]?.props.style).toEqual({ position: 'absolute', width: 84 });
+    await act(async () => {
+      tree.update(createElement(Flume, { ...props, numColumns: 2 }));
+    });
+    expect(slotViews(tree, 1)[0]?.props.style).toEqual({ position: 'absolute', width: 130 });
+  });
+
   it('a cell under handled closes the keyboard when no child takes the tap', async () => {
     installHost();
     const { Keyboard } = await import('react-native');

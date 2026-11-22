@@ -54,6 +54,13 @@ export interface NativeProps extends ViewProps {
   contentPaddingLeft?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   contentPaddingBottom?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   contentPaddingRight?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  // In dp: between every pair of rows, then between grid rows, then between columns.
+  mainGap?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  gridRowGap?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  crossGap?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  // A grid's data rows, inside the content padding across the scroll axis.
+  laneInsetStart?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  laneInsetEnd?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   estimatedItemSize?: CodegenTypes.WithDefault<CodegenTypes.Double, -1>;
   listHeader?: CodegenTypes.WithDefault<boolean, false>;
   listFooter?: CodegenTypes.WithDefault<boolean, false>;

@@ -190,16 +190,21 @@ class StickyHeaderHost(
     val recycler = view.recycler
     val geometry = view.geometry
     pinnedView.forceLayout()
-    val widthSpec = if (horizontal) View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED) else View.MeasureSpec.makeMeasureSpec(geometry.innerWidthPx, View.MeasureSpec.EXACTLY)
+    val laneWidthPx = geometry.innerWidthPx - geometry.lanes.insetStartPx - geometry.lanes.insetEndPx
+    val widthSpec = if (horizontal) View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED) else View.MeasureSpec.makeMeasureSpec(laneWidthPx, View.MeasureSpec.EXACTLY)
     val heightSpec = if (horizontal) View.MeasureSpec.makeMeasureSpec(geometry.innerHeightPx, View.MeasureSpec.EXACTLY) else View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
     pinnedView.measure(widthSpec, heightSpec)
     val (left, top) = margins(horizontal)
     pinnedView.layout(left, top, left + pinnedView.measuredWidth, top + pinnedView.measuredHeight)
   }
 
+  // A sticky row is a data row, so it keeps a grid's lane insets.
   private fun margins(horizontal: Boolean): IntArray {
     val recycler = view.recycler
-    return StickyPlacement.margins(horizontal, recycler.paddingLeft, recycler.paddingTop, recycler.paddingRight, recycler.paddingBottom)
+    val lanes = view.geometry.lanes
+    return StickyPlacement.margins(
+      horizontal, recycler.paddingLeft + lanes.insetStartPx, recycler.paddingTop, recycler.paddingRight + lanes.insetEndPx, recycler.paddingBottom,
+    )
   }
 
   // A copy sits at the viewport's leading edge, inside the content padding across the scroll axis, full width or full height.
