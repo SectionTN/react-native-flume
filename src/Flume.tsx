@@ -27,6 +27,7 @@ import {
   gapsOf,
   nativeProps,
   refreshOf,
+  resolvePadding,
   settleProps,
   stickyIndicesOf,
 } from './props';
@@ -310,7 +311,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     const snapshot = event.nativeEvent;
     setTable((current) => applySnapshot(current, snapshot));
   }, []);
-  const padding = contentPadding(props.contentContainerStyle);
+  const padding = resolvePadding(contentPadding(props.contentContainerStyle), table.width);
   const gaps = gapsOf(props, horizontal, numColumns);
   const lanes = {
     insetStart: gaps.laneInsetStart,

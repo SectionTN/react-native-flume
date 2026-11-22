@@ -43,6 +43,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   // Null until the first build replaces the unhooked layout manager above.
   private var shape: LayoutShape? = null
   private val paddingPx = IntArray(4)
+  private val paddingPercent = FloatArray(4)
   private var initialScrollPending = false
   private var separator: SeparatorDecoration? = null
   private val gapsPx = IntArray(5)
@@ -650,8 +651,22 @@ class FlumeView(context: Context) : FrameLayout(context) {
   // Edges are 0 left, 1 top, 2 right, 3 bottom, in dp.
   fun setContentPadding(edge: Int, dp: Double) {
     paddingPx[edge] = (dp * density).roundToInt()
-    recycler.setPadding(paddingPx[0], paddingPx[1], paddingPx[2], paddingPx[3])
-    adapter.configure(horizontal, numColumns, inverted, paddingPx, lanes())
+    applyPadding()
+  }
+
+  // Edges as above, a fraction of the list width as Yoga resolves a percent on every edge.
+  fun setPaddingPercent(edge: Int, fraction: Double) {
+    if (paddingPercent[edge] == fraction.toFloat()) return
+    paddingPercent[edge] = fraction.toFloat()
+    applyPadding()
+  }
+
+  private fun resolvedPaddingPx() = ListGeometry.paddingPx(paddingPx, paddingPercent, width)
+
+  private fun applyPadding() {
+    val resolved = resolvedPaddingPx()
+    recycler.setPadding(resolved[0], resolved[1], resolved[2], resolved[3])
+    adapter.configure(horizontal, numColumns, inverted, resolved, lanes())
     sticky.refresh(force = true)
   }
 
@@ -660,7 +675,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     val px = (dp.coerceAtLeast(0.0) * density).roundToInt()
     if (gapsPx[kind] == px) return
     gapsPx[kind] = px
-    if (kind >= 2) adapter.configure(horizontal, numColumns, inverted, paddingPx, lanes())
+    if (kind >= 2) adapter.configure(horizontal, numColumns, inverted, resolvedPaddingPx(), lanes())
     val on = gapsPx.any { it > 0 }
     gaps?.takeIf { !on }?.let { recycler.removeItemDecoration(it) }
     gaps = if (on) gaps ?: GapDecoration(gapsPx) { rows }.also { recycler.addItemDecoration(it) } else null
@@ -686,7 +701,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     hookLayoutManager()
     recycler.layoutManager = layoutManager
     kept?.let { layoutManager.scrollToPositionWithOffset(it.firstVisiblePosition, it.firstVisibleOffsetPx) }
-    adapter.configure(horizontal, numColumns, inverted, paddingPx, lanes())
+    adapter.configure(horizontal, numColumns, inverted, resolvedPaddingPx(), lanes())
     sticky.refresh(force = true)
     layoutWithProps = true
   }
@@ -831,6 +846,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
     super.onSizeChanged(w, h, oldw, oldh)
+    if (w != oldw && paddingPercent.any { it != 0f }) applyPadding()
     if (adapter.onViewportChanged(w, h, resources.configuration.fontScale)) sticky.refresh(force = true)
   }
 

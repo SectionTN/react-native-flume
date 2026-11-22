@@ -1,5 +1,7 @@
 package me.sectiontn.flume
 
+import kotlin.math.roundToInt
+
 // A grid's lane insets and column gap.
 data class Lanes(val insetStartPx: Int = 0, val insetEndPx: Int = 0, val gapPx: Int = 0)
 
@@ -59,6 +61,12 @@ class ListGeometry(private val density: Float) {
   fun cellHeightDp(): Float = if (horizontal) innerHeightPx / density else Float.NaN
 
   private fun bindAxisPx(widthPx: Int, heightPx: Int) = if (horizontal) heightPx else widthPx
+
+  companion object {
+    // Points in px plus a fraction of the list width, Yoga's base for a percent on every edge.
+    fun paddingPx(pointsPx: IntArray, fractions: FloatArray, widthPx: Int): IntArray =
+      IntArray(4) { pointsPx[it] + (fractions[it] * widthPx.coerceAtLeast(0)).roundToInt() }
+  }
 
   private fun bindPadding(horizontal: Boolean, paddingPx: IntArray) =
     if (horizontal) paddingPx[1] + paddingPx[3] else paddingPx[0] + paddingPx[2]

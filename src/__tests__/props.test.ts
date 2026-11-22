@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import type { RefreshControlProps } from 'react-native';
 import { describe, expect, it, vi } from 'vitest';
-import { contentPadding, nativeProps, refreshOf, stickyIndicesOf } from '../props';
+import { contentPadding, nativeProps, refreshOf, resolvePadding, stickyIndicesOf } from '../props';
 import type { FlumeProps } from '../types';
 
 // Stands in for React Native's RefreshControl.
@@ -24,9 +24,8 @@ describe('contentPadding', () => {
     });
   });
 
-  it('reports keys that are not padding', () => {
+  it('reports keys that are not padding, gaps or the background', () => {
     expect(contentPadding({ padding: 4, backgroundColor: 'red', margin: 2 }).unsupported).toEqual([
-      'backgroundColor',
       'margin',
     ]);
   });
@@ -62,8 +61,8 @@ describe('nativeProps', () => {
 
   it('warns once about non-padding keys in contentContainerStyle', () => {
     const warn = vi.fn();
-    nativeProps({ data: [], contentContainerStyle: { padding: 4, backgroundColor: 'red' } }, warn);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('backgroundColor'));
+    nativeProps({ data: [], contentContainerStyle: { padding: 4, borderWidth: 1 } }, warn);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('borderWidth'));
   });
 });
 
@@ -424,5 +423,37 @@ describe('nativeProps gaps', () => {
     const warn = vi.fn();
     nativeProps({ data: [], contentContainerStyle: { padding: 4, gap: 8, rowGap: 2 } }, warn);
     expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe('content background and percent padding', () => {
+  it('takes backgroundColor and percent padding from contentContainerStyle without a warning', () => {
+    const warn = vi.fn();
+    const out = nativeProps(
+      { data: [], contentContainerStyle: { backgroundColor: 'red', padding: '5%', paddingTop: 8 } },
+      warn,
+    );
+    expect(out).toMatchObject({
+      contentBackgroundColor: 'red',
+      contentPaddingTop: 8,
+      paddingPercentTop: 0,
+      contentPaddingLeft: 0,
+      paddingPercentLeft: 0.05,
+      paddingPercentBottom: 0.05,
+      paddingPercentRight: 0.05,
+    });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('resolves percent padding against the list width on every edge', () => {
+    const padding = contentPadding({ padding: '5%', paddingLeft: 12 });
+    expect(resolvePadding(padding, 400)).toEqual({ top: 20, left: 12, bottom: 20, right: 20 });
+    expect(resolvePadding(padding, -1)).toEqual({ top: 0, left: 12, bottom: 0, right: 0 });
+  });
+
+  it('warns about a padding string that is not a percent', () => {
+    const warn = vi.fn();
+    nativeProps({ data: [], contentContainerStyle: { padding: 'auto' as never } }, warn);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('padding'));
   });
 });

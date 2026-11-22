@@ -1,8 +1,10 @@
 #pragma once
 
+#include <algorithm>
 #include <functional>
 #include <optional>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "core/KeyDiff.h"
@@ -28,6 +30,11 @@ struct ListLayoutConfig {
   // startRenderingFromBottom on an upright list; short content sits at the end, sizes keep the last row in view.
   bool stackFromEnd = false;
 };
+
+// Percent padding is a fraction of the list width on every edge, as Yoga resolves it.
+inline float paddingOf(float points, float fraction, float listWidth) {
+  return points + fraction * std::max(0.f, listWidth);
+}
 
 struct ItemRect {
   float x, y, width, height;
@@ -72,6 +79,8 @@ class ListLayout {
   bool measured(int index) const;
   float estimate(int type) const;
   float contentLength(float viewportLength) const;
+  // From the start of the padding to the end of it, at the bottom of a short list that sits there.
+  std::pair<float, float> contentSpan(float viewportLength) const;
   float crossLength(int index, float listCrossLength) const;  // the size a cell binds at across the scroll axis
   float laneLength(float listCrossLength) const;  // one column of a grid, the whole width with one lane
   ItemRect rectOf(int index, float listCrossLength, float viewportLength) const;

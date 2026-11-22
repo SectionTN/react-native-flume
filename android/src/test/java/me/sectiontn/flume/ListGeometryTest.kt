@@ -1,5 +1,6 @@
 package me.sectiontn.flume
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -71,5 +72,18 @@ class ListGeometryTest {
     assertTrue(g.configure(horizontal = false, numColumns = 3, inverted = false, paddingPx = IntArray(4), lanes = lanes))
     assertFalse(g.configure(horizontal = false, numColumns = 3, inverted = false, paddingPx = IntArray(4), lanes = lanes.copy()))
     assertTrue(g.configure(horizontal = false, numColumns = 3, inverted = false, paddingPx = IntArray(4), lanes = lanes.copy(gapPx = 4)))
+  }
+
+  @Test
+  fun percentPaddingResolvesAgainstTheListWidthOnEveryEdge() {
+    assertArrayEquals(intArrayOf(20, 20, 20, 20), ListGeometry.paddingPx(IntArray(4), FloatArray(4) { 0.05f }, widthPx = 400))
+    assertArrayEquals(intArrayOf(12, 20, 0, 0), ListGeometry.paddingPx(intArrayOf(12, 0, 0, 0), floatArrayOf(0f, 0.05f, 0f, 0f), widthPx = 400))
+  }
+
+  // Three rows of 50 inside padding of 10 and 20, laid out from the top of the view.
+  @Test
+  fun theBackgroundSpansTheLaidOutContentAndItsPadding() {
+    assertArrayEquals(intArrayOf(0, 180), ContentBackground.span(firstStart = 10, lastEnd = 160, hasFirst = true, hasLast = true, paddingStart = 10, paddingEnd = 20, viewLength = 1000))
+    assertArrayEquals(intArrayOf(0, 1000), ContentBackground.span(firstStart = -40, lastEnd = 1200, hasFirst = false, hasLast = false, paddingStart = 10, paddingEnd = 20, viewLength = 1000))
   }
 }

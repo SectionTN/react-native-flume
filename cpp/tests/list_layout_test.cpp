@@ -603,3 +603,18 @@ TEST_CASE("every cell of a grid row is as long as the row's longest and keeps it
   for (int i = 0; i < 3; i++) CHECK(length(layout, i) == 120);
   CHECK(layout.itemLength(1) == 90);
 }
+
+TEST_CASE("percent padding resolves against the list width on every edge") {
+  CHECK(paddingOf(0, 0.05f, 400) == 20);
+  CHECK(paddingOf(8, 0, 400) == 8);
+  CHECK(paddingOf(0, 0.05f, 0) == 0);
+}
+
+TEST_CASE("the content span covers the rows and their padding, at the bottom when inverted") {
+  ListLayoutConfig config;
+  config.paddingStart = 10;
+  config.paddingEnd = 20;
+  CHECK(measured(3, 50, config).contentSpan(1000) == std::pair<float, float>{0, 180});
+  config.inverted = true;
+  CHECK(measured(3, 50, config).contentSpan(1000) == std::pair<float, float>{820, 1000});
+}

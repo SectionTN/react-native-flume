@@ -10,6 +10,8 @@ export type ContentPadding = {
   left: number;
   bottom: number;
   right: number;
+  // Fractions of the list width, one per edge. An edge has points or a fraction, never both.
+  percent: { top: number; left: number; bottom: number; right: number };
   unsupported: string[];
 };
 
@@ -23,6 +25,11 @@ export type FlatProps = Pick<
   | 'contentPaddingLeft'
   | 'contentPaddingBottom'
   | 'contentPaddingRight'
+  | 'paddingPercentTop'
+  | 'paddingPercentLeft'
+  | 'paddingPercentBottom'
+  | 'paddingPercentRight'
+  | 'contentBackgroundColor'
   | 'mainGap'
   | 'gridRowGap'
   | 'crossGap'
@@ -99,31 +106,69 @@ function flatten(style: StyleProp<ViewStyle>, into: Record<string, unknown>): vo
   if (typeof style === 'object') Object.assign(into, style);
 }
 
-// Shorthands resolve as in React Native: padding, then the axis pairs, then each side; start and end map to left and right.
+type Amount = { points: number; fraction: number };
+
+const PERCENT = /^-?\d+(\.\d+)?%$/;
+
+// Shorthands resolve as in React Native: padding, then the axis pairs, then each side. Start and end map to left and right.
+// A percent stays a fraction of the list width, Yoga's base for every edge, and resolves where the width is known.
 export function contentPadding(style: StyleProp<ViewStyle> | undefined): ContentPadding {
   const flat: Record<string, unknown> = {};
   flatten(style, flat);
   const unsupported: string[] = [];
-  const number = (key: string): number | undefined => {
+  const amount = (key: string): Amount | undefined => {
     const value = flat[key];
     if (value === undefined || value === null) return undefined;
-    if (typeof value === 'number') return value;
+    if (typeof value === 'number') return { points: value, fraction: 0 };
+    if (PADDING_KEYS.has(key) && typeof value === 'string' && PERCENT.test(value)) {
+      return { points: 0, fraction: Number.parseFloat(value) / 100 };
+    }
     unsupported.push(key);
     return undefined;
   };
   for (const key of Object.keys(flat)) {
-    if (GAP_KEYS.has(key)) number(key);
-    else if (!PADDING_KEYS.has(key)) unsupported.push(key);
+    if (GAP_KEYS.has(key)) amount(key);
+    else if (!PADDING_KEYS.has(key) && key !== 'backgroundColor') unsupported.push(key);
   }
-  const all = number('padding') ?? 0;
-  const vertical = number('paddingVertical') ?? all;
-  const horizontal = number('paddingHorizontal') ?? all;
+  const none: Amount = { points: 0, fraction: 0 };
+  const all = amount('padding') ?? none;
+  const vertical = amount('paddingVertical') ?? all;
+  const horizontal = amount('paddingHorizontal') ?? all;
+  const top = amount('paddingTop') ?? vertical;
+  const bottom = amount('paddingBottom') ?? vertical;
+  const left = amount('paddingStart') ?? amount('paddingLeft') ?? horizontal;
+  const right = amount('paddingEnd') ?? amount('paddingRight') ?? horizontal;
   return {
-    top: number('paddingTop') ?? vertical,
-    bottom: number('paddingBottom') ?? vertical,
-    left: number('paddingStart') ?? number('paddingLeft') ?? horizontal,
-    right: number('paddingEnd') ?? number('paddingRight') ?? horizontal,
+    top: top.points,
+    left: left.points,
+    bottom: bottom.points,
+    right: right.points,
+    percent: {
+      top: top.fraction,
+      left: left.fraction,
+      bottom: bottom.fraction,
+      right: right.fraction,
+    },
     unsupported,
+  };
+}
+
+function contentBackground(style: StyleProp<ViewStyle> | undefined): ColorValue | undefined {
+  const flat: Record<string, unknown> = {};
+  flatten(style, flat);
+  return flat.backgroundColor as ColorValue | undefined;
+}
+
+type Edges = { top: number; left: number; bottom: number; right: number };
+
+// The padding in points once the list width is known. A percent counts as 0 before that.
+export function resolvePadding(padding: ContentPadding, width: number): Edges {
+  const base = width > 0 ? width : 0;
+  return {
+    top: padding.top + padding.percent.top * base,
+    left: padding.left + padding.percent.left * base,
+    bottom: padding.bottom + padding.percent.bottom * base,
+    right: padding.right + padding.percent.right * base,
   };
 }
 
@@ -352,7 +397,7 @@ export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
   const padding = contentPadding(props.contentContainerStyle);
   if (padding.unsupported.length > 0) {
     warn(
-      `contentContainerStyle supports padding and gaps only; ignored: ${padding.unsupported.join(', ')}`,
+      `contentContainerStyle supports padding, gaps and backgroundColor only; ignored: ${padding.unsupported.join(', ')}`,
     );
   }
   return {
@@ -364,6 +409,11 @@ export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
     contentPaddingLeft: padding.left,
     contentPaddingBottom: padding.bottom,
     contentPaddingRight: padding.right,
+    paddingPercentTop: padding.percent.top,
+    paddingPercentLeft: padding.percent.left,
+    paddingPercentBottom: padding.percent.bottom,
+    paddingPercentRight: padding.percent.right,
+    contentBackgroundColor: contentBackground(props.contentContainerStyle),
     estimatedItemSize: props.estimatedItemSize ?? -1,
     listHeader: props.ListHeaderComponent != null,
     listFooter: props.ListFooterComponent != null,

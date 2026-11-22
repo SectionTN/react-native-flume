@@ -54,6 +54,13 @@ export interface NativeProps extends ViewProps {
   contentPaddingLeft?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   contentPaddingBottom?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   contentPaddingRight?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  // Fractions of the list width, added to the padding in dp above.
+  paddingPercentTop?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  paddingPercentLeft?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  paddingPercentBottom?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  paddingPercentRight?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  // Paints the content and its padding, and scrolls with it.
+  contentBackgroundColor?: ColorValue;
   // In dp: between every pair of rows, then between grid rows, then between columns.
   mainGap?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   gridRowGap?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
