@@ -24,7 +24,7 @@ export type SeparatorUpdate = (props: Record<string, unknown>) => void;
 export type SeparatorLinks = {
   register(key: string, update: SeparatorUpdate): () => void;
   highlight(key: string, on: boolean): void;
-  update(key: string, select: 'leading' | 'trailing', props: Record<string, unknown>): void;
+  update(key: string, select: 'leading' | 'trailing', props: object): void;
 };
 
 type DataKeys = { readonly keys: readonly string[]; readonly index: ReadonlyMap<string, number> };
@@ -56,7 +56,7 @@ export function createSeparatorLinks(data: { readonly current: DataKeys }): Sepa
       send(before(key), { highlighted: on });
     },
     update(key, select, props) {
-      send(select === 'leading' ? before(key) : key, props);
+      send(select === 'leading' ? before(key) : key, { ...props });
     },
   };
 }

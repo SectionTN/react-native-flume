@@ -210,7 +210,7 @@ export type ScrollHandler = (event: NativeSyntheticEvent<NativeScrollEvent>) => 
 export type Separators = {
   highlight: () => void;
   unhighlight: () => void;
-  updateProps: (select: 'leading' | 'trailing', newProps: Record<string, unknown>) => void;
+  updateProps: (select: 'leading' | 'trailing', newProps: object) => void;
 };
 
 // FlashList's render info; a pinned copy of a sticky row renders with the StickyHeader target.
