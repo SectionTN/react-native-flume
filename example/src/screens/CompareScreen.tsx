@@ -9,6 +9,8 @@ type Case = {
   uneven?: boolean;
   // No height: the text runs one to three lines, so a row's tiles differ until the row stretches them.
   auto?: boolean;
+  // A footer with flex: 1 that a flexGrow content lets take the space the rows leave.
+  footer?: boolean;
   columnWrapperStyle?: ViewStyle;
   contentContainerStyle?: ViewStyle;
 };
@@ -41,6 +43,17 @@ const CASES: Case[] = [
     tile: { flex: 1 },
     contentContainerStyle: { padding: '5%', backgroundColor: '#fff59d' },
   },
+  {
+    name: 'flexGrow, center',
+    tile: { flex: 1 },
+    contentContainerStyle: { flexGrow: 1, justifyContent: 'center' },
+  },
+  {
+    name: 'flexGrow, growing footer',
+    tile: { flex: 1 },
+    contentContainerStyle: { flexGrow: 1 },
+    footer: true,
+  },
 ];
 
 const IMPLS = ['FlatList', 'Flume React', 'Flume worklet'] as const;
@@ -63,6 +76,15 @@ function tileStyle(c: Case, n: number): ViewStyle {
 }
 
 const Divider = () => <View style={{ height: 4, backgroundColor: '#333333' }} />;
+
+const Footer = () => (
+  <View
+    testID="footer"
+    accessible
+    accessibilityLabel="footer"
+    style={{ flex: 1, minHeight: 20, backgroundColor: '#ce93d8' }}
+  />
+);
 
 function label(c: Case, n: number): string {
   return c.auto ? [String(n), ...Array<string>(n % 3).fill('more')].join('\n') : String(n);
@@ -113,6 +135,8 @@ export default function CompareScreen() {
     keyExtractor: (item: Item) => item.id,
     contentContainerStyle: c.contentContainerStyle,
     columnWrapperStyle: c.columnWrapperStyle,
+    ListFooterComponent: c.footer ? Footer : undefined,
+    ListFooterComponentStyle: c.footer ? { flex: 1 } : undefined,
     ItemSeparatorComponent: separated ? Divider : undefined,
     style: { flex: 1 },
   };

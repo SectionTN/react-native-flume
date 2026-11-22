@@ -148,6 +148,11 @@ struct FLMAnchorUpdate {
   return pinned ? pinned->index : -1;
 }
 
+- (CGFloat)growMinLength
+{
+  return _model.growMinLength(static_cast<float>([self viewportFor:self.collectionView.bounds].length));
+}
+
 - (CGFloat)emptyMinLength
 {
   return _model.emptyMinLength(static_cast<float>([self viewportFor:self.collectionView.bounds].length));

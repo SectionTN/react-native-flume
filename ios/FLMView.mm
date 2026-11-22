@@ -291,6 +291,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
       next.laneInsetStart != old.laneInsetStart || next.laneInsetEnd != old.laneInsetEnd;
   const BOOL layout = shape || next.inverted != old.inverted || next.mainGap != old.mainGap ||
       next.gridRowGap != old.gridRowGap || next.contentPaddingTop != old.contentPaddingTop ||
+      next.contentJustify != old.contentJustify || next.growFooter != old.growFooter ||
       next.paddingPercentTop != old.paddingPercentTop || next.paddingPercentLeft != old.paddingPercentLeft ||
       next.paddingPercentBottom != old.paddingPercentBottom || next.paddingPercentRight != old.paddingPercentRight ||
       next.contentPaddingLeft != old.contentPaddingLeft || next.contentPaddingBottom != old.contentPaddingBottom ||
@@ -462,8 +463,12 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   config.crossGap = std::max(0.0, props.crossGap);
   config.laneInsetStart = props.laneInsetStart;
   config.laneInsetEnd = props.laneInsetEnd;
+  config.justify = props.contentJustify == FlumeViewContentJustify::Center ? flume::ListLayoutConfig::Justify::Center
+                                                                          : flume::ListLayoutConfig::Justify::Start;
+  config.growFooter = props.growFooter;
   config.stackFromEnd =
-      !props.inverted && config.lanes == 1 && props.maintainVisibleContentPosition.startRenderingFromBottom;
+      !props.inverted && config.lanes == 1 &&
+      (props.maintainVisibleContentPosition.startRenderingFromBottom || props.contentJustify == FlumeViewContentJustify::End);
   _layoutConfig = config;
   [self sendRowShape];
   [self configureLayoutRows];
@@ -1217,12 +1222,21 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 // The empty row fills what the header and footer leave of the viewport, so its content centers in the visible area.
 - (void)sizeEmptyRow
 {
-  if (!_attached || !_rows.hasEmptyRow()) {
+  if (!_attached) {
     return;
   }
-  const float length = static_cast<float>([_layout emptyMinLength]);
-  for (int slot : [_slots pool].slotsFor(flume::kSlotEmpty, "empty")) {
-    [_slots pool].setMinMain(slot, length);
+  if (_rows.hasEmptyRow()) {
+    const float length = static_cast<float>([_layout emptyMinLength]);
+    for (int slot : [_slots pool].slotsFor(flume::kSlotEmpty, "empty")) {
+      [_slots pool].setMinMain(slot, length);
+    }
+  }
+  // A growing footer takes what the other rows leave, as a FlatList footer with flex: 1 under flexGrow content.
+  if (_rows.footer) {
+    const float length = static_cast<float>([_layout growMinLength]);
+    for (int slot : [_slots pool].slotsFor(flume::kSlotFooter, "footer")) {
+      [_slots pool].setMinMain(slot, length);
+    }
   }
   if ([_slots pool].dirty()) {
     [self requestSlotsFlush];

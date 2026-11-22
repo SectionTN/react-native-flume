@@ -59,6 +59,9 @@ export interface NativeProps extends ViewProps {
   paddingPercentLeft?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   paddingPercentBottom?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
   paddingPercentRight?: CodegenTypes.WithDefault<CodegenTypes.Double, 0>;
+  // With contentContainerStyle flexGrow: where short content sits, and whether the footer takes the slack.
+  contentJustify?: CodegenTypes.WithDefault<'start' | 'center' | 'end', 'start'>;
+  growFooter?: CodegenTypes.WithDefault<boolean, false>;
   // Paints the content and its padding, and scrolls with it.
   contentBackgroundColor?: ColorValue;
   // In dp: between every pair of rows, then between grid rows, then between columns.
