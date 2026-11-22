@@ -239,17 +239,27 @@ std::optional<ItemRect> ListLayout::separatorRect(int index, float listCrossLeng
   return ItemRect{from, main, to - from, config_.separator};
 }
 
-float ListLayout::emptyMinLength(float viewportLength) const { return minLengthOf(config_.emptyIndex, viewportLength); }
-
-float ListLayout::growMinLength(float viewportLength) const {
-  return config_.growFooter && config_.afterData > 0 ? minLengthOf(count() - 1, viewportLength) : 0;
+float ListLayout::emptyMinLength(float viewportLength) const {
+  return config_.emptyIndex >= 0 && config_.emptyIndex < count() ? growShare(viewportLength) : 0;
 }
 
-float ListLayout::minLengthOf(int index, float viewportLength) const {
-  if (index < 0 || index >= count()) return 0;
-  const float used = config_.paddingStart + config_.paddingEnd + rowStart(static_cast<int>(rows_.size())) -
-                     rows_[rowOf_[index]].length;
-  return std::max(0.f, viewportLength - used);
+float ListLayout::growMinLength(float viewportLength) const {
+  return growsFooter() ? growShare(viewportLength) : 0;
+}
+
+bool ListLayout::growsFooter() const { return config_.growFooter && config_.afterData > 0 && count() > 0; }
+
+float ListLayout::growShare(float viewportLength) const {
+  int growers = 0;
+  float grown = 0;
+  for (int index : {config_.emptyIndex, growsFooter() ? count() - 1 : -1}) {
+    if (index < 0 || index >= count()) continue;
+    growers++;
+    grown += rows_[rowOf_[index]].length;
+  }
+  if (growers == 0) return 0;
+  const float used = config_.paddingStart + config_.paddingEnd + rowStart(static_cast<int>(rows_.size())) - grown;
+  return std::max(0.f, viewportLength - used) / static_cast<float>(growers);
 }
 
 bool ListLayout::fullSpan(int index) const { return std::binary_search(fullSpan_.begin(), fullSpan_.end(), index); }

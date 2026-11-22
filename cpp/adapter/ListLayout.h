@@ -129,7 +129,9 @@ class ListLayout {
   float lineAfter(int row) const;  // the separator after the row, 0 when it has none
   float rowStart(int row) const;  // from the start of item 0, inside the padding
   float slack(float viewportLength) const;  // the space short content leaves above its rows: all of it at the end, half centered
-  float minLengthOf(int index, float viewportLength) const;
+  bool growsFooter() const;
+  // What the other rows leave of the viewport, split evenly between the empty row and a growing footer, as two flex: 1 rows.
+  float growShare(float viewportLength) const;
   float startOf(int row, float viewportLength) const;  // in content coordinates
   float anchorEdge(int row, float viewportLength) const;
   int rowAt(float offset, float viewportLength) const;  // offset in content coordinates

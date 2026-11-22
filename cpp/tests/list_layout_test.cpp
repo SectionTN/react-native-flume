@@ -571,6 +571,24 @@ TEST_CASE("a pushed sticky header ends with its line at the pusher, over the gap
   CHECK(gapped.pinned({0, 5}, 500, 1000)->start == 448);
 }
 
+TEST_CASE("an empty row and a growing footer split what the other rows leave, whatever they grew to") {
+  ListLayoutConfig config;
+  config.dataStart = 1;
+  config.afterData = 1;
+  config.emptyIndex = 1;
+  config.growFooter = true;
+  ListLayout layout = list(3, config, {0, 1, 2});
+  layout.setLength(0, 100, 0);
+  layout.setLength(1, 50, 0);
+  layout.setLength(2, 50, 0);
+  CHECK(layout.emptyMinLength(600) == 250);
+  CHECK(layout.growMinLength(600) == 250);
+  layout.setLength(1, 250, 0);
+  layout.setLength(2, 250, 0);
+  CHECK(layout.emptyMinLength(600) == 250);
+  CHECK(layout.growMinLength(600) == 250);
+}
+
 TEST_CASE("the empty row leaves the viewport the other rows and every gap leave") {
   ListLayoutConfig config;
   config.mainGap = 8;
