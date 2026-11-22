@@ -185,6 +185,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   BOOL _stackFromEnd;
   int _initialScrollIndex;
   CGFloat _lastCross;
+  CGFloat _paddingWidth;  // the width percent padding last resolved against
   CGFloat _fontScale;  // the font size multiplier the store's text was measured at
   UILongPressGestureRecognizer *_rowLongPress;
   flume::ScrollEvents _scrollEvents;
@@ -290,12 +291,17 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
       next.laneInsetStart != old.laneInsetStart || next.laneInsetEnd != old.laneInsetEnd;
   const BOOL layout = shape || next.inverted != old.inverted || next.mainGap != old.mainGap ||
       next.gridRowGap != old.gridRowGap || next.contentPaddingTop != old.contentPaddingTop ||
+      next.paddingPercentTop != old.paddingPercentTop || next.paddingPercentLeft != old.paddingPercentLeft ||
+      next.paddingPercentBottom != old.paddingPercentBottom || next.paddingPercentRight != old.paddingPercentRight ||
       next.contentPaddingLeft != old.contentPaddingLeft || next.contentPaddingBottom != old.contentPaddingBottom ||
       next.contentPaddingRight != old.contentPaddingRight || next.estimatedItemSize != old.estimatedItemSize ||
       next.separatorSize != old.separatorSize ||
       next.separatorInsetStart != old.separatorInsetStart || next.separatorInsetEnd != old.separatorInsetEnd ||
       next.maintainVisibleContentPosition.startRenderingFromBottom !=
           old.maintainVisibleContentPosition.startRenderingFromBottom;
+  if (next.contentBackgroundColor != old.contentBackgroundColor) {
+    _layout.contentBackgroundColor = RCTUIColorFromSharedColor(next.contentBackgroundColor);
+  }
   if (next.separatorColor != old.separatorColor) {
     _layout.separatorColor = RCTUIColorFromSharedColor(next.separatorColor);
   }
@@ -419,10 +425,20 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
 }
 
+// Points plus a fraction of the list width, Yoga's base for a percent on every edge.
+- (UIEdgeInsets)paddingOf:(const FlumeViewProps &)props
+{
+  const float width = static_cast<float>(self.bounds.size.width);
+  return UIEdgeInsetsMake(flume::paddingOf(props.contentPaddingTop, props.paddingPercentTop, width),
+                          flume::paddingOf(props.contentPaddingLeft, props.paddingPercentLeft, width),
+                          flume::paddingOf(props.contentPaddingBottom, props.paddingPercentBottom, width),
+                          flume::paddingOf(props.contentPaddingRight, props.paddingPercentRight, width));
+}
+
 - (std::pair<double, double>)crossPadding:(const FlumeViewProps &)props
 {
-  return props.horizontal ? std::make_pair(props.contentPaddingTop, props.contentPaddingBottom)
-                          : std::make_pair(props.contentPaddingLeft, props.contentPaddingRight);
+  const UIEdgeInsets padding = [self paddingOf:props];
+  return props.horizontal ? std::make_pair(padding.top, padding.bottom) : std::make_pair(padding.left, padding.right);
 }
 
 - (void)configureLayout:(const FlumeViewProps &)props
@@ -431,8 +447,9 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   config.horizontal = props.horizontal;
   config.inverted = props.inverted;
   config.lanes = std::max(1, props.numColumns);
-  config.paddingStart = props.horizontal ? props.contentPaddingLeft : props.contentPaddingTop;
-  config.paddingEnd = props.horizontal ? props.contentPaddingRight : props.contentPaddingBottom;
+  const UIEdgeInsets padding = [self paddingOf:props];
+  config.paddingStart = props.horizontal ? padding.left : padding.top;
+  config.paddingEnd = props.horizontal ? padding.right : padding.bottom;
   const auto cross = [self crossPadding:props];
   config.paddingCrossStart = cross.first;
   config.paddingCrossEnd = cross.second;
@@ -537,6 +554,15 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 
 - (void)layoutSubviews
 {
+  // Percent padding follows the list width, resolved before the rows lay out.
+  const auto &props = static_cast<const FlumeViewProps &>(*_props);
+  if (self.bounds.size.width != _paddingWidth) {
+    _paddingWidth = self.bounds.size.width;
+    if (props.paddingPercentTop != 0 || props.paddingPercentLeft != 0 || props.paddingPercentBottom != 0 ||
+        props.paddingPercentRight != 0) {
+      [self configureLayout:props];
+    }
+  }
   [super layoutSubviews];
   const CGSize size = _collectionView.bounds.size;
   const CGFloat cross = _horizontal ? size.height : size.width;

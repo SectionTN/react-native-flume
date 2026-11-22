@@ -1,6 +1,9 @@
 package me.sectiontn.flume
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.os.Build
 import android.view.MotionEvent
 import android.view.View
@@ -8,6 +11,7 @@ import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.uimanager.TouchTargetHelper
@@ -109,6 +113,54 @@ class FlumeRecyclerView(context: Context) : RecyclerView(context) {
   var keyboardShouldPersistTaps = KeyboardTaps.NEVER
   private val keyboardGesture = KeyboardGesture()
   private val nativeGesture = NativeGestureTracker()
+  private val backgroundPaint = Paint()
+
+  // contentContainerStyle's backgroundColor, 0 for none: the rows and their padding, scrolled with them.
+  var contentBackground = 0
+    set(value) {
+      if (field == value) return
+      field = value
+      backgroundPaint.color = value
+      setWillNotDraw(false)
+      invalidate()
+    }
+
+  // Under the decorations, so a separator line draws over it.
+  override fun onDraw(c: Canvas) {
+    if (Color.alpha(contentBackground) != 0) drawContentBackground(c)
+    super.onDraw(c)
+  }
+
+  private fun drawContentBackground(c: Canvas) {
+    val lm = layoutManager as? LinearLayoutManager ?: return
+    val count = adapter?.itemCount ?: 0
+    if (childCount == 0 || count == 0) return
+    val horizontal = lm.orientation == HORIZONTAL
+    val firstPosition = if (lm.reverseLayout) count - 1 else 0
+    val lastPosition = if (lm.reverseLayout) 0 else count - 1
+    var firstStart = Int.MAX_VALUE
+    var lastEnd = Int.MIN_VALUE
+    var hasFirst = false
+    var hasLast = false
+    for (i in 0 until childCount) {
+      val child = getChildAt(i)
+      val shift = if (horizontal) child.translationX else child.translationY
+      val start = (if (horizontal) lm.getDecoratedLeft(child) else lm.getDecoratedTop(child)) + shift.toInt()
+      val end = (if (horizontal) lm.getDecoratedRight(child) else lm.getDecoratedBottom(child)) + shift.toInt()
+      firstStart = minOf(firstStart, start)
+      lastEnd = maxOf(lastEnd, end)
+      val position = getChildAdapterPosition(child)
+      if (position == firstPosition) hasFirst = true
+      if (position == lastPosition) hasLast = true
+    }
+    val span = ContentBackground.span(
+      firstStart, lastEnd, hasFirst, hasLast,
+      if (horizontal) paddingLeft else paddingTop, if (horizontal) paddingRight else paddingBottom,
+      if (horizontal) width else height,
+    )
+    if (horizontal) c.drawRect(span[0].toFloat(), 0f, span[1].toFloat(), height.toFloat(), backgroundPaint)
+    else c.drawRect(0f, span[0].toFloat(), width.toFloat(), span[1].toFloat(), backgroundPaint)
+  }
 
   // The keyboard policy sees every gesture here, including the ones a row consumes.
   override fun dispatchTouchEvent(e: MotionEvent): Boolean {
@@ -178,4 +230,10 @@ class FlumeRecyclerView(context: Context) : RecyclerView(context) {
     val cell = child as? FlumeCellView ?: return false
     return cell.isClickable || cell.hasPressableAt((x - cell.left - cell.translationX).toInt(), (y - cell.top - cell.translationY).toInt())
   }
+}
+
+// Along the scroll axis: the padding past the first and last laid-out rows, the view's edge where those rows are off screen.
+object ContentBackground {
+  fun span(firstStart: Int, lastEnd: Int, hasFirst: Boolean, hasLast: Boolean, paddingStart: Int, paddingEnd: Int, viewLength: Int): IntArray =
+    intArrayOf(if (hasFirst) firstStart - paddingStart else 0, if (hasLast) lastEnd + paddingEnd else viewLength)
 }

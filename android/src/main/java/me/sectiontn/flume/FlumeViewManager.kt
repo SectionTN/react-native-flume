@@ -104,6 +104,23 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
   @ReactProp(name = "contentPaddingRight")
   override fun setContentPaddingRight(view: FlumeView, value: Double) = view.setContentPadding(2, value)
 
+  @ReactProp(name = "paddingPercentTop")
+  override fun setPaddingPercentTop(view: FlumeView, value: Double) = view.setPaddingPercent(1, value)
+
+  @ReactProp(name = "paddingPercentLeft")
+  override fun setPaddingPercentLeft(view: FlumeView, value: Double) = view.setPaddingPercent(0, value)
+
+  @ReactProp(name = "paddingPercentBottom")
+  override fun setPaddingPercentBottom(view: FlumeView, value: Double) = view.setPaddingPercent(3, value)
+
+  @ReactProp(name = "paddingPercentRight")
+  override fun setPaddingPercentRight(view: FlumeView, value: Double) = view.setPaddingPercent(2, value)
+
+  @ReactProp(name = "contentBackgroundColor", customType = "Color")
+  override fun setContentBackgroundColor(view: FlumeView, value: Int?) {
+    view.recycler.contentBackground = value ?: 0
+  }
+
   @ReactProp(name = "mainGap")
   override fun setMainGap(view: FlumeView, value: Double) = view.setGap(0, value)
 

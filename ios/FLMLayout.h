@@ -26,6 +26,8 @@ struct FLMPendingOffset {
 - (FLMViewport)viewportFor:(CGRect)bounds;  // the part of the bounds inside the adjusted content insets
 
 @property (nonatomic, strong, nullable) UIColor *separatorColor;  // nil keeps the gap and draws nothing
+// contentContainerStyle's backgroundColor: the rows and their padding, scrolled with them. nil for none.
+@property (nonatomic, strong, nullable) UIColor *contentBackgroundColor;
 
 - (std::vector<flume::ItemSpan>)spansIn:(FLMViewport)viewport;  // the items in it, from its start, unpinned
 - (std::vector<int>)itemsFrom:(CGFloat)start to:(CGFloat)end;  // along the scroll axis, in content coordinates

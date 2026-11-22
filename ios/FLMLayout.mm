@@ -22,6 +22,7 @@ struct FLMAnchorUpdate {
 @implementation FLMLayout {
   flume::ListLayout _model;
   flume::ListLayoutConfig _config;
+  UIView *_contentBackground;
   std::vector<int> _sticky;
   CGSize _bounds;
   CGFloat _viewportLength;  // inside the adjusted insets, as of the last prepareLayout
@@ -184,6 +185,38 @@ struct FLMAnchorUpdate {
   return attributes;
 }
 
+
+- (void)setContentBackgroundColor:(UIColor *)color
+{
+  _contentBackgroundColor = color;
+  if (color != nil && _contentBackground == nil) {
+    _contentBackground = [UIView new];
+    _contentBackground.userInteractionEnabled = NO;
+    _contentBackground.layer.zPosition = -1;  // under the cells, which UIKit reorders
+  }
+  _contentBackground.backgroundColor = color;
+  [self placeContentBackground];
+}
+
+// The content span from the model, so it scrolls with the rows and ends where they end.
+- (void)placeContentBackground
+{
+  UICollectionView *view = self.collectionView;
+  if (_contentBackground == nil || view == nil) {
+    return;
+  }
+  if (_contentBackgroundColor == nil) {
+    [_contentBackground removeFromSuperview];
+    return;
+  }
+  if (_contentBackground.superview != view) {
+    [view insertSubview:_contentBackground atIndex:0];
+  }
+  const auto [from, to] = _model.contentSpan(_viewportLength);
+  const CGSize size = view.bounds.size;
+  _contentBackground.frame = _config.horizontal ? CGRectMake(from, 0, to - from, size.height)
+                                                : CGRectMake(0, from, size.width, to - from);
+}
 - (void)setSeparatorColor:(UIColor *)separatorColor
 {
   if (separatorColor == _separatorColor || [separatorColor isEqual:_separatorColor]) {
@@ -478,6 +511,7 @@ struct FLMAnchorUpdate {
     }
     self.collectionView.contentOffset = point;
   }
+  [self placeContentBackground];
   _preparing = NO;
 }
 

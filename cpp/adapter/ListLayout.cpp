@@ -120,6 +120,13 @@ float ListLayout::contentLength(float viewportLength) const {
   return bottomAnchored() ? std::max(viewportLength, length) : length;
 }
 
+std::pair<float, float> ListLayout::contentSpan(float viewportLength) const {
+  const float length = config_.paddingStart + rowStart(static_cast<int>(rows_.size())) + config_.paddingEnd;
+  if (!bottomAnchored()) return {0, length};
+  const float end = contentLength(viewportLength);
+  return {end - length, end};
+}
+
 float ListLayout::crossLength(int index, float listCrossLength) const {
   if (!fullSpan(index)) return laneLength(listCrossLength);
   const float insets = isData(index) ? config_.laneInsetStart + config_.laneInsetEnd : 0;

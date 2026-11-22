@@ -36,6 +36,11 @@ const CASES: Case[] = [
   },
   { name: 'uneven heights', tile: { flex: 1 }, uneven: true },
   { name: 'auto heights', tile: { flex: 1 }, auto: true },
+  {
+    name: "content '5%', background",
+    tile: { flex: 1 },
+    contentContainerStyle: { padding: '5%', backgroundColor: '#fff59d' },
+  },
 ];
 
 const IMPLS = ['FlatList', 'Flume React', 'Flume worklet'] as const;
