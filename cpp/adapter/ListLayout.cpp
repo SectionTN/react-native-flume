@@ -122,11 +122,14 @@ float ListLayout::contentLength(float viewportLength) const {
 
 float ListLayout::crossLength(int index, float listCrossLength) const {
   if (!fullSpan(index)) return laneLength(listCrossLength);
-  return std::max(0.f, listCrossLength - config_.paddingCrossStart - config_.paddingCrossEnd);
+  const float insets = isData(index) ? config_.laneInsetStart + config_.laneInsetEnd : 0;
+  return std::max(0.f, listCrossLength - config_.paddingCrossStart - config_.paddingCrossEnd - insets);
 }
 
 float ListLayout::laneLength(float listCrossLength) const {
-  return std::max(0.f, listCrossLength - config_.paddingCrossStart - config_.paddingCrossEnd) / config_.lanes;
+  const float row = listCrossLength - config_.paddingCrossStart - config_.paddingCrossEnd - config_.laneInsetStart -
+                    config_.laneInsetEnd - config_.crossGap * static_cast<float>(config_.lanes - 1);
+  return std::max(0.f, row) / config_.lanes;
 }
 
 ItemRect ListLayout::rectOf(int index, float listCrossLength, float viewportLength) const {
@@ -134,7 +137,9 @@ ItemRect ListLayout::rectOf(int index, float listCrossLength, float viewportLeng
   const int row = rowOf_[index];
   const float main = startOf(row, viewportLength);
   const float cross = crossLength(index, listCrossLength);
-  const float crossAt = config_.paddingCrossStart + cross * static_cast<float>(index - rows_[row].first);
+  const float lane = static_cast<float>(index - rows_[row].first);
+  const float crossAt =
+      config_.paddingCrossStart + (isData(index) ? config_.laneInsetStart : 0) + (cross + config_.crossGap) * lane;
   const float length = items_[index].length;
   if (config_.horizontal) return ItemRect{main, crossAt, length, cross};
   return ItemRect{crossAt, main, cross, length};
@@ -173,8 +178,8 @@ std::vector<int> ListLayout::itemsIn(float start, float end, float viewportLengt
   const int b = rowAt(end, viewportLength);
   for (int row = std::min(a, b); row <= std::max(a, b); row++) {
     // An inverted row's separator sits above it; either way a row whose separator shows is listed.
-    const float rowFrom = startOf(row, viewportLength) - (config_.inverted ? stride(row) - rows_[row].length : 0);
-    if (rowFrom >= end || rowFrom + stride(row) <= start) continue;
+    const float rowFrom = startOf(row, viewportLength) - (config_.inverted ? rowStride(row) - rows_[row].length : 0);
+    if (rowFrom >= end || rowFrom + rowStride(row) <= start) continue;
     for (int i = 0; i < rows_[row].count; i++) out.push_back(rows_[row].first + i);
   }
   return out;
@@ -196,7 +201,11 @@ std::optional<Pinned> ListLayout::pinned(const std::vector<int>& sticky, float v
     if (config_.inverted ? s < *index && (!pusher || s > *pusher) : s > *index && (!pusher || s < *pusher)) pusher = s;
   }
   float start = viewportStart;
-  if (pusher) start = std::min(start, startOf(rowOf_[*pusher], viewportLength) - items_[*index].length);
+  if (pusher) {
+    // The pinned row ends at the pusher with the line between them, which is its own upright and the pusher's inverted.
+    const float line = lineAfter(rowOf_[config_.inverted ? *pusher : *index]);
+    start = std::min(start, startOf(rowOf_[*pusher], viewportLength) - line - items_[*index].length);
+  }
   return Pinned{*index, start};
 }
 
@@ -206,9 +215,14 @@ std::optional<ItemRect> ListLayout::separatorRect(int index, float listCrossLeng
   if (!gapAfter(row)) return std::nullopt;
   const ItemRect item = rectOf(index, listCrossLength, 0);
   const float crossAt = config_.horizontal ? item.y : item.x;
-  const float cross = config_.horizontal ? item.height : item.width;
-  const float from = std::max(0.f, config_.paddingCrossStart + config_.separatorInsetStart - crossAt);
-  const float to = std::min(cross, listCrossLength - config_.paddingCrossEnd - config_.separatorInsetEnd - crossAt);
+  // Each cell draws its share of the padded width, so the row's line runs across the column gaps and lane insets.
+  const float padded = std::max(0.f, listCrossLength - config_.paddingCrossStart - config_.paddingCrossEnd);
+  const bool alone = fullSpan(index);
+  const float slot = alone ? padded : padded / config_.lanes;
+  const float slotAt = config_.paddingCrossStart + slot * static_cast<float>(alone ? 0 : index - rows_[row].first);
+  const float from = std::max(slotAt, config_.paddingCrossStart + config_.separatorInsetStart) - crossAt;
+  const float to =
+      std::min(slotAt + slot, listCrossLength - config_.paddingCrossEnd - config_.separatorInsetEnd) - crossAt;
   if (to <= from) return std::nullopt;
   const float main = config_.inverted ? -config_.separator : rows_[row].length;
   if (config_.horizontal) return ItemRect{main, from, config_.separator, to - from};
@@ -217,10 +231,8 @@ std::optional<ItemRect> ListLayout::separatorRect(int index, float listCrossLeng
 
 float ListLayout::emptyMinLength(float viewportLength) const {
   if (config_.emptyIndex < 0 || config_.emptyIndex >= count()) return 0;
-  float used = config_.paddingStart + config_.paddingEnd;
-  for (int row = 0; row < static_cast<int>(rows_.size()); row++) {
-    if (row != rowOf_[config_.emptyIndex]) used += stride(row);
-  }
+  const float used = config_.paddingStart + config_.paddingEnd + rowStart(static_cast<int>(rows_.size())) -
+                     rows_[rowOf_[config_.emptyIndex]].length;
   return std::max(0.f, viewportLength - used);
 }
 
@@ -259,10 +271,21 @@ bool ListLayout::gapAfter(int row) const {
   return rows_[row].first >= config_.dataStart && rows_[row].first + rows_[row].count < count() - config_.afterData;
 }
 
-float ListLayout::stride(int row) const { return rows_[row].length + (gapAfter(row) ? config_.separator : 0); }
+bool ListLayout::isData(int index) const {
+  return index >= config_.dataStart && index < count() - config_.afterData && index != config_.emptyIndex;
+}
+
+float ListLayout::lineAfter(int row) const { return gapAfter(row) ? config_.separator : 0; }
+
+// Along the scroll axis: the row, its line, the grid row gap, then the main gap before the next row.
+float ListLayout::rowStride(int row) const {
+  const float data = gapAfter(row) ? config_.separator + config_.gridRowGap : 0;
+  const float main = row + 1 < static_cast<int>(rows_.size()) ? config_.mainGap : 0;
+  return rows_[row].length + data + main;
+}
 
 float ListLayout::rowStart(int row) const {
-  for (; dirtyFrom_ < row; dirtyFrom_++) starts_[dirtyFrom_ + 1] = starts_[dirtyFrom_] + stride(dirtyFrom_);
+  for (; dirtyFrom_ < row; dirtyFrom_++) starts_[dirtyFrom_ + 1] = starts_[dirtyFrom_] + rowStride(dirtyFrom_);
   return starts_[row];
 }
 

@@ -1,5 +1,8 @@
 package me.sectiontn.flume
 
+// A grid's lane insets and column gap.
+data class Lanes(val insetStartPx: Int = 0, val insetEndPx: Int = 0, val gapPx: Int = 0)
+
 // Orientation, columns, padding, viewport and font scale of one list; cells bind at the size computed here.
 class ListGeometry(private val density: Float) {
   var horizontal = false
@@ -7,6 +10,8 @@ class ListGeometry(private val density: Float) {
   var numColumns = 1
     private set
   var inverted = false
+    private set
+  var lanes = Lanes()
     private set
   var paddingPx = IntArray(4)
     private set
@@ -32,19 +37,24 @@ class ListGeometry(private val density: Float) {
     return changed
   }
 
-  // True when cells must rebind: the orientation, the columns or the padding along the bind axis changed.
-  fun configure(horizontal: Boolean, numColumns: Int, inverted: Boolean, paddingPx: IntArray): Boolean {
-    val changed = horizontal != this.horizontal || numColumns != this.numColumns ||
+  // True when cells must rebind: the orientation, the columns, the lanes or the padding along the bind axis changed.
+  fun configure(horizontal: Boolean, numColumns: Int, inverted: Boolean, paddingPx: IntArray, lanes: Lanes = Lanes()): Boolean {
+    val changed = horizontal != this.horizontal || numColumns != this.numColumns || lanes != this.lanes ||
       bindPadding(horizontal, paddingPx) != bindPadding(this.horizontal, this.paddingPx)
     this.horizontal = horizontal
     this.numColumns = numColumns
     this.inverted = inverted
     this.paddingPx = paddingPx.copyOf()
+    this.lanes = lanes
     return changed
   }
 
-  fun cellWidthDp(fullSpan: Boolean): Float =
-    if (horizontal) Float.NaN else innerWidthPx / (if (fullSpan) 1f else numColumns.toFloat()) / density
+  // A data row's width: inside the lane insets, a grid column also leaves the gaps between columns.
+  fun cellWidthDp(fullSpan: Boolean): Float {
+    if (horizontal) return Float.NaN
+    val row = (innerWidthPx - lanes.insetStartPx - lanes.insetEndPx).toFloat()
+    return (if (fullSpan) row else (row - lanes.gapPx * (numColumns - 1)) / numColumns) / density
+  }
 
   fun cellHeightDp(): Float = if (horizontal) innerHeightPx / density else Float.NaN
 

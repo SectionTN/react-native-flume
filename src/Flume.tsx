@@ -22,7 +22,14 @@ import { cellKinds, itemComponentCell, type ResolvedCell, resolveCell } from './
 import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './data';
 import { FlumeSlot } from './FlumeSlot';
 import { hostProps } from './foreign';
-import { contentPadding, nativeProps, refreshOf, settleProps, stickyIndicesOf } from './props';
+import {
+  contentPadding,
+  gapsOf,
+  nativeProps,
+  refreshOf,
+  settleProps,
+  stickyIndicesOf,
+} from './props';
 import { createSeparatorLinks, lastRowStart } from './separators';
 import {
   applySnapshot,
@@ -304,7 +311,14 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     setTable((current) => applySnapshot(current, snapshot));
   }, []);
   const padding = contentPadding(props.contentContainerStyle);
-  const cellWidth = !horizontal && numColumns > 1 ? gridCellWidth(table, numColumns, padding) : -1;
+  const gaps = gapsOf(props, horizontal, numColumns);
+  const lanes = {
+    insetStart: gaps.laneInsetStart,
+    insetEnd: gaps.laneInsetEnd,
+    gap: gaps.crossGap,
+  };
+  const cellWidth =
+    !horizontal && numColumns > 1 ? gridCellWidth(table, numColumns, padding, lanes) : -1;
   const layout = useMemo<SlotLayout>(
     () => ({
       horizontal,

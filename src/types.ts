@@ -268,8 +268,10 @@ export type FlumeOwnProps<T> = {
   horizontal?: boolean | null;
   numColumns?: number;
   inverted?: boolean | null;
-  // Padding only, as the spec says; other keys warn in development.
+  // Padding, and gap with rowGap or columnGap between every pair of rows. Other keys warn in development.
   contentContainerStyle?: StyleProp<ViewStyle>;
+  // A grid row's gap or columnGap between its columns, its horizontal padding, and rowGap between grid rows.
+  columnWrapperStyle?: StyleProp<ViewStyle>;
   // React cells only: the length in dp a cell takes until it measures; else the mean of its type, at least 50.
   estimatedItemSize?: number;
   // How far past the viewport, in dp, cells are bound ahead; the default is one viewport.

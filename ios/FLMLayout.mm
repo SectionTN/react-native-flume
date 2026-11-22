@@ -274,14 +274,13 @@ struct FLMAnchorUpdate {
   [self invalidateLayout];
 }
 
-// The walk counts each row with the separator after it.
+// The walk counts each row with the separator and the gaps after it.
 - (flume::IndexRange)measureLandingOfRow:(int)row viewPosition:(CGFloat)viewPosition
 {
-  const float separator = _config.separator;
   const flume::IndexRange rows =
       flume::landingRows(row, static_cast<float>(viewPosition), _measureViewport, _model.rowCount(), [&](int at) {
         [self measureRows:flume::IndexRange{at, at}];
-        return _model.rowLength(at) + separator;
+        return _model.rowStride(at);
       });
   [self measureRows:rows];
   return rows;
@@ -379,10 +378,9 @@ struct FLMAnchorUpdate {
     const auto [low, high] = std::minmax_element(visible.begin(), visible.end());
     const flume::IndexRange rows{_model.rowOf(*low), _model.rowOf(*high)};
     [self measureRows:rows through:&ops];
-    const float separator = _config.separator;
     flume::batchRows(rows, _measureViewport, _model.rowCount(), [&](int row) {
       [self measureRows:flume::IndexRange{row, row} through:&ops];
-      return _model.rowLength(row) + separator;
+      return _model.rowStride(row);
     });
   }
   [self endMeasuring];

@@ -326,3 +326,89 @@ describe('nativeProps list components', () => {
     expect(nativeProps({ data: [] }, warn)).toMatchObject({ listHeader: false, listEmpty: false });
   });
 });
+
+describe('nativeProps gaps', () => {
+  const none = { mainGap: 0, gridRowGap: 0, crossGap: 0, laneInsetStart: 0, laneInsetEnd: 0 };
+
+  it('sends no gaps without container styles', () => {
+    expect(nativeProps({ data: [] }, vi.fn())).toMatchObject(none);
+  });
+
+  it('spaces the rows of a vertical list with rowGap, then gap, from contentContainerStyle', () => {
+    const warn = vi.fn();
+    expect(nativeProps({ data: [], contentContainerStyle: { gap: 8 } }, warn)).toMatchObject({
+      mainGap: 8,
+    });
+    expect(
+      nativeProps({ data: [], contentContainerStyle: { gap: 8, rowGap: 4, columnGap: 6 } }, warn),
+    ).toMatchObject({ mainGap: 4 });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('spaces the rows of a horizontal list with columnGap, then gap', () => {
+    const warn = vi.fn();
+    const horizontal = (contentContainerStyle: object) =>
+      nativeProps({ data: [], horizontal: true, contentContainerStyle }, warn);
+    expect(horizontal({ gap: 8, columnGap: 6, rowGap: 4 })).toMatchObject({ mainGap: 6 });
+    expect(horizontal({ gap: 8 })).toMatchObject({ mainGap: 8 });
+    expect(horizontal({ rowGap: 4 })).toMatchObject({ mainGap: 0 });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('spaces grid columns and grid rows and insets the lanes from columnWrapperStyle', () => {
+    const warn = vi.fn();
+    const grid = (columnWrapperStyle: object) =>
+      nativeProps({ data: [], numColumns: 3, columnWrapperStyle }, warn);
+    expect(grid({ gap: 8, rowGap: 12, paddingHorizontal: 16 })).toMatchObject({
+      crossGap: 8,
+      gridRowGap: 12,
+      laneInsetStart: 16,
+      laneInsetEnd: 16,
+      mainGap: 0,
+    });
+    expect(grid({ gap: 8, columnGap: 6 })).toMatchObject({ crossGap: 6, gridRowGap: 0 });
+    expect(grid([{ paddingHorizontal: 4 }, { paddingLeft: 10 }, { paddingEnd: 6 }])).toMatchObject({
+      laneInsetStart: 10,
+      laneInsetEnd: 6,
+    });
+    expect(grid({ paddingStart: 12, paddingRight: 2 })).toMatchObject({
+      laneInsetStart: 12,
+      laneInsetEnd: 2,
+    });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('warns about the columnWrapperStyle keys it does not lay out', () => {
+    const warn = vi.fn();
+    nativeProps(
+      {
+        data: [],
+        numColumns: 2,
+        columnWrapperStyle: { gap: 8, backgroundColor: 'red', paddingTop: 4, padding: 2 },
+      },
+      warn,
+    );
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      'columnWrapperStyle supports gap, columnGap, rowGap and horizontal padding only; ignored: backgroundColor, paddingTop, the vertical part of padding',
+    );
+  });
+
+  it('ignores columnWrapperStyle on one column, which FlatList rejects', () => {
+    const warn = vi.fn();
+    const one = nativeProps(
+      { data: [], horizontal: true, numColumns: 3, columnWrapperStyle: { gap: 8, padding: 4 } },
+      warn,
+    );
+    expect(one).toMatchObject(none);
+    expect(warn).toHaveBeenCalledWith(
+      'columnWrapperStyle applies to grids only (numColumns above 1); ignored',
+    );
+  });
+
+  it('takes the gap keys of contentContainerStyle without a warning', () => {
+    const warn = vi.fn();
+    nativeProps({ data: [], contentContainerStyle: { padding: 4, gap: 8, rowGap: 2 } }, warn);
+    expect(warn).not.toHaveBeenCalled();
+  });
+});

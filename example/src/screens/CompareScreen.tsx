@@ -96,12 +96,10 @@ export default function CompareScreen() {
     numColumns: 3,
     keyExtractor: (item: Item) => item.id,
     contentContainerStyle: c.contentContainerStyle,
+    columnWrapperStyle: c.columnWrapperStyle,
     ItemSeparatorComponent: separated ? Divider : undefined,
     style: { flex: 1 },
   };
-  // Flume has no columnWrapperStyle prop yet, so it goes through untyped.
-  const wrapper: Record<string, unknown> =
-    c.columnWrapperStyle === undefined ? {} : { columnWrapperStyle: c.columnWrapperStyle };
   return (
     <View style={{ flex: 1 }}>
       <View
@@ -125,19 +123,13 @@ export default function CompareScreen() {
         {`${index + 1}/${CASES.length} ${c.name}`}
       </Text>
       {impl === 'FlatList' ? (
-        <FlatList
-          key={`flat-${index}`}
-          {...shared}
-          columnWrapperStyle={c.columnWrapperStyle}
-          renderItem={renderItem}
-        />
+        <FlatList key={`flat-${index}`} {...shared} renderItem={renderItem} />
       ) : impl === 'Flume React' ? (
-        <Flume key={`react-${index}`} {...shared} {...wrapper} renderItem={renderItem} />
+        <Flume key={`react-${index}`} {...shared} renderItem={renderItem} />
       ) : (
         <Flume
           key={`worklet-${index}`}
           {...shared}
-          {...wrapper}
           renderCell={renderCell}
           renderSeparatorCell={separated ? renderSeparatorCell : null}
         />

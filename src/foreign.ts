@@ -136,6 +136,7 @@ export const OWN_KEYS = [
   'numColumns',
   'inverted',
   'contentContainerStyle',
+  'columnWrapperStyle',
   'estimatedItemSize',
   'drawDistance',
   'initialScrollIndex',

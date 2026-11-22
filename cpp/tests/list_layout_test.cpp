@@ -481,3 +481,111 @@ TEST_CASE("the anchor edge is the bottom when inverted or stacking from the end"
   stacked.stackFromEnd = true;
   CHECK(measured(4, 50, stacked).anchorEdgeOf(1, 1000) == 900);
 }
+
+namespace {
+
+// A 3-lane grid 300 wide: 16 in from each side, 8 between columns.
+ListLayoutConfig gapped() {
+  ListLayoutConfig config;
+  config.lanes = 3;
+  config.crossGap = 8;
+  config.laneInsetStart = 16;
+  config.laneInsetEnd = 16;
+  return config;
+}
+
+}  // namespace
+
+TEST_CASE("lanes take the lane insets and the column gaps out of the row") {
+  ListLayout layout = measured(3, 50, gapped());
+  CHECK(layout.laneLength(300) == 84);
+  CHECK(layout.crossLength(0, 300) == 84);
+  CHECK(layout.rectOf(0, 300, 1000) == ItemRect{16, 0, 84, 50});
+  CHECK(layout.rectOf(1, 300, 1000) == ItemRect{108, 0, 84, 50});
+  CHECK(layout.rectOf(2, 300, 1000) == ItemRect{200, 0, 84, 50});
+}
+
+TEST_CASE("the header spans the padded width and a full-span data row keeps the lane insets") {
+  ListLayoutConfig config = gapped();
+  config.dataStart = 1;
+  ListLayout layout = list(5, config, {0, 4});
+  CHECK(layout.rectOf(0, 300, 1000).x == 0);
+  CHECK(layout.rectOf(0, 300, 1000).width == 300);
+  CHECK(layout.rectOf(1, 300, 1000).x == 16);
+  CHECK(layout.rectOf(4, 300, 1000).x == 16);
+  CHECK(layout.rectOf(4, 300, 1000).width == 268);
+  CHECK(layout.crossLength(4, 300) == 268);
+}
+
+TEST_CASE("the main gap follows every row but the last, after the line, header and footer included") {
+  ListLayoutConfig config = separated(1);
+  config.mainGap = 8;
+  config.dataStart = 1;
+  config.afterData = 1;
+  ListLayout layout = list(5, config, {0, 4});
+  for (int i = 0; i < 5; i++) layout.setLength(i, 50, 0);
+  CHECK(y(layout, 1) == 58);
+  CHECK(y(layout, 2) == 117);
+  CHECK(y(layout, 3) == 176);
+  CHECK(y(layout, 4) == 234);
+  CHECK(layout.contentLength(0) == 284);
+  CHECK(layout.rowStride(1) == 59);
+  CHECK(layout.rowStride(4) == 50);
+  CHECK(*layout.separatorRect(1, 400) == ItemRect{0, 50, 400, 1});
+}
+
+TEST_CASE("grid rows add the grid row gap after the line") {
+  ListLayoutConfig config = separated(1);
+  config.lanes = 2;
+  config.gridRowGap = 12;
+  ListLayout layout = measured(4, 50, config);
+  CHECK(y(layout, 2) == 63);
+  CHECK(layout.contentLength(0) == 113);
+}
+
+TEST_CASE("an inverted list keeps the line next to its row and the gap beyond it") {
+  ListLayoutConfig config = separated(1);
+  config.inverted = true;
+  config.mainGap = 8;
+  ListLayout layout = measured(2, 50, config);
+  CHECK(y(layout, 0) == 950);
+  CHECK(y(layout, 1) == 891);
+  CHECK(*layout.separatorRect(0, 400) == ItemRect{0, -1, 400, 1});
+}
+
+TEST_CASE("the line runs across the column gaps and the lane insets") {
+  ListLayoutConfig config = gapped();
+  config.separator = 1;
+  ListLayout layout = measured(6, 50, config);
+  CHECK(*layout.separatorRect(0, 300) == ItemRect{-16, 50, 100, 1});
+  CHECK(*layout.separatorRect(1, 300) == ItemRect{-8, 50, 100, 1});
+  CHECK(*layout.separatorRect(2, 300) == ItemRect{0, 50, 100, 1});
+}
+
+TEST_CASE("a pushed sticky header ends with its line at the pusher, over the gap") {
+  ListLayout layout = measured(10, 100, separated(2));
+  CHECK(layout.pinned({0, 5}, 450, 1000)->start == 408);
+  ListLayoutConfig config = separated(2);
+  config.mainGap = 8;
+  ListLayout gapped = measured(10, 100, config);
+  CHECK(gapped.pinned({0, 5}, 500, 1000)->start == 448);
+}
+
+TEST_CASE("the empty row leaves the viewport the other rows and every gap leave") {
+  ListLayoutConfig config;
+  config.mainGap = 8;
+  config.dataStart = 1;
+  config.afterData = 1;
+  config.emptyIndex = 1;
+  ListLayout layout = list(3, config, {0, 1, 2});
+  layout.setLength(0, 50, 0);
+  layout.setLength(2, 50, 0);
+  CHECK(layout.emptyMinLength(1000) == 884);
+}
+
+TEST_CASE("an inverted pinned header ends at the pusher's line, which sits above the pusher") {
+  ListLayoutConfig config = separated(2);
+  config.inverted = true;
+  ListLayout layout = measured(10, 100, config);
+  CHECK(layout.pinned({2, 7}, 650, 1000)->start == 612);
+}

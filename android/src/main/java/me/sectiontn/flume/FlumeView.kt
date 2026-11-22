@@ -45,6 +45,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private val paddingPx = IntArray(4)
   private var initialScrollPending = false
   private var separator: SeparatorDecoration? = null
+  private val gapsPx = IntArray(5)
+  private var gaps: GapDecoration? = null
   private val sticky = StickyHeaderHost(
     this,
     FlumeCellView(context, measurer),
@@ -646,9 +648,24 @@ class FlumeView(context: Context) : FrameLayout(context) {
   fun setContentPadding(edge: Int, dp: Double) {
     paddingPx[edge] = (dp * density).roundToInt()
     recycler.setPadding(paddingPx[0], paddingPx[1], paddingPx[2], paddingPx[3])
-    adapter.configure(horizontal, numColumns, inverted, paddingPx)
+    adapter.configure(horizontal, numColumns, inverted, paddingPx, lanes())
     sticky.refresh(force = true)
   }
+
+  // Kinds are 0 main, 1 grid row, 2 column, 3 lane inset start and 4 lane inset end, in dp.
+  fun setGap(kind: Int, dp: Double) {
+    val px = (dp.coerceAtLeast(0.0) * density).roundToInt()
+    if (gapsPx[kind] == px) return
+    gapsPx[kind] = px
+    if (kind >= 2) adapter.configure(horizontal, numColumns, inverted, paddingPx, lanes())
+    val on = gapsPx.any { it > 0 }
+    gaps?.takeIf { !on }?.let { recycler.removeItemDecoration(it) }
+    gaps = if (on) gaps ?: GapDecoration(gapsPx) { rows }.also { recycler.addItemDecoration(it) } else null
+    recycler.invalidateItemDecorations()
+    sticky.refresh(force = true)
+  }
+
+  private fun lanes() = Lanes(insetStartPx = gapsPx[3], insetEndPx = gapsPx[4], gapPx = gapsPx[2])
 
   // A grid only reverses; stackFromEnd is unsupported there, so an inverted grid with little content starts at the top.
   private fun rebuildLayoutManager() {
@@ -666,7 +683,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     hookLayoutManager()
     recycler.layoutManager = layoutManager
     kept?.let { layoutManager.scrollToPositionWithOffset(it.firstVisiblePosition, it.firstVisibleOffsetPx) }
-    adapter.configure(horizontal, numColumns, inverted, paddingPx)
+    adapter.configure(horizontal, numColumns, inverted, paddingPx, lanes())
     sticky.refresh(force = true)
     layoutWithProps = true
   }

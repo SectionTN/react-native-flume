@@ -104,6 +104,21 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
   @ReactProp(name = "contentPaddingRight")
   override fun setContentPaddingRight(view: FlumeView, value: Double) = view.setContentPadding(2, value)
 
+  @ReactProp(name = "mainGap")
+  override fun setMainGap(view: FlumeView, value: Double) = view.setGap(0, value)
+
+  @ReactProp(name = "gridRowGap")
+  override fun setGridRowGap(view: FlumeView, value: Double) = view.setGap(1, value)
+
+  @ReactProp(name = "crossGap")
+  override fun setCrossGap(view: FlumeView, value: Double) = view.setGap(2, value)
+
+  @ReactProp(name = "laneInsetStart")
+  override fun setLaneInsetStart(view: FlumeView, value: Double) = view.setGap(3, value)
+
+  @ReactProp(name = "laneInsetEnd")
+  override fun setLaneInsetEnd(view: FlumeView, value: Double) = view.setGap(4, value)
+
   @ReactProp(name = "drawDistance", defaultDouble = -1.0)
   override fun setDrawDistance(view: FlumeView, value: Double) {
     view.drawDistanceDp = value

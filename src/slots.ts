@@ -64,9 +64,15 @@ export function gridCellWidth(
   table: { width: number; cellWidth: number },
   numColumns: number,
   padding: { left: number; right: number },
+  lanes: { insetStart: number; insetEnd: number; gap: number } = {
+    insetStart: 0,
+    insetEnd: 0,
+    gap: 0,
+  },
 ): number {
   if (table.width < 0) return -1;
-  const computed = Math.max(0, table.width - padding.left - padding.right) / numColumns;
+  const row = table.width - padding.left - padding.right - lanes.insetStart - lanes.insetEnd;
+  const computed = Math.max(0, row - lanes.gap * (numColumns - 1)) / numColumns;
   return Math.abs(table.cellWidth - computed) * numColumns < 1
     ? Math.max(0, table.cellWidth)
     : computed;

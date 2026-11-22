@@ -55,4 +55,21 @@ class ListGeometryTest {
     assertFalse(g.configure(horizontal = false, numColumns = 2, inverted = false, paddingPx = IntArray(4)))
     assertTrue(g.update(1080, 500, 1.3f))
   }
+
+  @Test
+  fun gridCellsLeaveTheLaneInsetsAndTheColumnGaps() {
+    val g = ListGeometry(1f).apply { update(300, 500, 1f) }
+    g.configure(horizontal = false, numColumns = 3, inverted = false, paddingPx = IntArray(4), lanes = Lanes(insetStartPx = 16, insetEndPx = 16, gapPx = 8))
+    assertEquals(84f, g.cellWidthDp(fullSpan = false), 0f)
+    assertEquals(268f, g.cellWidthDp(fullSpan = true), 0f)
+  }
+
+  @Test
+  fun aLaneChangeRebinds() {
+    val g = geometry()
+    val lanes = Lanes(insetStartPx = 16, insetEndPx = 16, gapPx = 8)
+    assertTrue(g.configure(horizontal = false, numColumns = 3, inverted = false, paddingPx = IntArray(4), lanes = lanes))
+    assertFalse(g.configure(horizontal = false, numColumns = 3, inverted = false, paddingPx = IntArray(4), lanes = lanes.copy()))
+    assertTrue(g.configure(horizontal = false, numColumns = 3, inverted = false, paddingPx = IntArray(4), lanes = lanes.copy(gapPx = 4)))
+  }
 }
