@@ -147,6 +147,28 @@ Feed:
 | legendlist | on | instant | 2.00 | 100.00 | 0.70 | 5.00 | 30.00 |
 | legendlist | on | animated | 108.00 | 100.00 | 26.80 | 5.00 | 38.00 |
 
+### Item separators
+
+With `--separators`, each list draws a 1 dp line between rows: `ItemSeparatorComponent` on the React lists and a worklet through `renderSeparatorCell` on Flume's worklet cells. These numbers come from a Pixel 9a emulator and an iPhone 17e simulator on 2026-11-22, three repeats on a release build, so they show what a separator costs and not how fast a phone is. On iOS, a script drives the same flings and reads the stats from the simulator's log.
+
+Bind p50 and p95 in ms for worklet cells, with the JS thread idle:
+
+| scenario | device | no separator | separator worklet |
+| --- | --- | --- | --- |
+| chat | Pixel 9a emulator | 0.32/0.95 | 0.34/0.98 |
+| feed | Pixel 9a emulator | 0.46/1.01 | 0.49/1.34 |
+| chat | iPhone 17e simulator | 0.64/1.50 | 0.65/1.51 |
+| feed | iPhone 17e simulator | 1.33/2.63 | 1.37/2.52 |
+
+`setData` with 10,000 React keys on the Pixel 9a emulator. An iOS release build doesn't log these times.
+
+| call | separator | diff ms | host ms |
+| --- | --- | --- | --- |
+| react 10,000 keys, mount | none | 2.59 | 1.16 |
+| react 10,000 keys, mount | `ItemSeparatorComponent` | 3.29 | 1.46 |
+| react 10,000 keys, replace | none | 3.21 | 0.91 |
+| react 10,000 keys, replace | `ItemSeparatorComponent` | 3.80 | 0.93 |
+
 ## Run it
 
 Requirements:
@@ -177,6 +199,7 @@ A run writes `results.json` and `summary.md` to `example/benchmark/out/`.
 | `--no-record` | | Skips the recorded pass and the blank area. |
 | `--setdata` | | Runs the `setData` rounds instead of the flings. |
 | `--jump` | | Runs the jump passes instead of the flings. |
+| `--separators` | | Draws each list's item separator, through `sep=1` in the Bench link. |
 
 The runner stops a run when:
 
