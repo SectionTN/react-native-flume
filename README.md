@@ -226,7 +226,7 @@ Then rename `<FlatList>` to `<Flume>`. `renderItem`, `keyExtractor`, the list co
 - `columnWrapperStyle` takes gaps and horizontal padding. Its `rowGap` spaces the grid's rows, where FlatList ignores it.
 - A horizontal list keeps each React row at its own height. FlatList stretches a row without a height to the list's height.
 - `stickyHeaderIndices` counts items only. With a `ListHeaderComponent`, subtract 1 from FlatList's indices.
-- `contentContainerStyle` takes padding, gaps, a background and `flexGrow`. Other style keys are ignored.
+- `contentContainerStyle` takes padding, gaps, a background, and `flexGrow` with `justifyContent` to place short content. Other style keys are ignored.
 - Rows animate when `data` changes and stay in place when items load above them. `itemAnimations` and `maintainVisibleContentPosition` turn this off.
 
 ## Roadmap
