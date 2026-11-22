@@ -378,6 +378,20 @@ describe('nativeProps gaps', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
+  it('reads a negative gap as 0, as Yoga does', () => {
+    expect(
+      nativeProps(
+        {
+          data: [],
+          numColumns: 3,
+          contentContainerStyle: { gap: -4 },
+          columnWrapperStyle: { gap: -8, rowGap: -2 },
+        },
+        vi.fn(),
+      ),
+    ).toMatchObject({ mainGap: 0, crossGap: 0, gridRowGap: 0 });
+  });
+
   it('warns about the columnWrapperStyle keys it does not lay out', () => {
     const warn = vi.fn();
     nativeProps(

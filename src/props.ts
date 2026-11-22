@@ -149,8 +149,11 @@ export function gapsOf<T>(
 ): Gaps {
   const content: Record<string, unknown> = {};
   flatten(props.contentContainerStyle, content);
-  const mainGap =
-    numberOf(content, horizontal ? 'columnGap' : 'rowGap') ?? numberOf(content, 'gap') ?? 0;
+  // Yoga reads a negative gap as 0.
+  const mainGap = Math.max(
+    0,
+    numberOf(content, horizontal ? 'columnGap' : 'rowGap') ?? numberOf(content, 'gap') ?? 0,
+  );
   const wrapper: Record<string, unknown> = {};
   flatten(props.columnWrapperStyle, wrapper);
   const none = { mainGap, gridRowGap: 0, crossGap: 0, laneInsetStart: 0, laneInsetEnd: 0 };
@@ -172,8 +175,8 @@ export function gapsOf<T>(
   const across = numberOf(wrapper, 'paddingHorizontal') ?? all ?? 0;
   return {
     mainGap,
-    gridRowGap: numberOf(wrapper, 'rowGap') ?? 0,
-    crossGap: numberOf(wrapper, 'columnGap') ?? numberOf(wrapper, 'gap') ?? 0,
+    gridRowGap: Math.max(0, numberOf(wrapper, 'rowGap') ?? 0),
+    crossGap: Math.max(0, numberOf(wrapper, 'columnGap') ?? numberOf(wrapper, 'gap') ?? 0),
     laneInsetStart: numberOf(wrapper, 'paddingStart') ?? numberOf(wrapper, 'paddingLeft') ?? across,
     laneInsetEnd: numberOf(wrapper, 'paddingEnd') ?? numberOf(wrapper, 'paddingRight') ?? across,
   };
