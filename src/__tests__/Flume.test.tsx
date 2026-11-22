@@ -1229,6 +1229,29 @@ describe('Flume item separators', () => {
     expectSeparated(tree, 'b', true);
   });
 
+  it('renders a leaving row with the index it last committed', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const x = { id: 'x' };
+    const seen: { id: string; index: number }[] = [];
+    const renderItem = (info: CellInfo<unknown>) => {
+      const id = (info.item as { id: string }).id;
+      seen.push({ id, index: info.index });
+      return createElement('Row', { id });
+    };
+    const tree = await mount(createElement(Flume, { data: [a, b, c], renderItem }));
+    await sendSlots(tree, [rowEntry(1, 'a', 0), rowEntry(2, 'b', 1), rowEntry(3, 'c', 2)]);
+    // Native still lists b at 1 while the data has moved it to 2.
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [x, a, b, c], renderItem }));
+    });
+    seen.length = 0;
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [x, a, c], renderItem }));
+    });
+    expect(seen.filter((call) => call.id === 'b').map((call) => call.index)).toEqual([]);
+  });
+
   it('draws one separator per grid item and none in the last grid row', async () => {
     installHost();
     const { Flume } = await import('../Flume');
