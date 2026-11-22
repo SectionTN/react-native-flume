@@ -10,6 +10,7 @@ it('round-trips every field through the URL', () => {
     action: 'jump',
     index: 499,
     animated: true,
+    separators: true,
     nonce: '7',
   } as const;
   const url = new URL(benchUrl(params));
@@ -25,6 +26,7 @@ it('falls back to chat, flume, no load, 1,000 items and no action', () => {
     action: 'none',
     index: 0,
     animated: false,
+    separators: false,
     nonce: '',
   };
   expect(parseBenchParams(undefined)).toEqual(fallback);

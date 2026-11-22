@@ -18,7 +18,7 @@ import {
   unstable_setFlumeStats,
 } from 'react-native-flume';
 import { type BenchBaselineHandle, BenchBaselineView } from '../../modules/bench-baseline';
-import { chatCell, feedCell } from '../bench/cells';
+import { chatCell, feedCell, separatorCell } from '../bench/cells';
 import {
   type BenchAction,
   type Impl,
@@ -34,7 +34,7 @@ import {
   makeBenchChats,
   makeFeed,
 } from '../bench/data';
-import { ChatRow, FeedRow } from '../bench/rows';
+import { ChatRow, FeedRow, FlashSeparator, LegendSeparator } from '../bench/rows';
 
 function busy(ms: number) {
   const end = Date.now() + ms;
@@ -53,6 +53,7 @@ type ListProps<T extends Item> = {
   Row: ComponentType<{ item: T }>;
   getItemType: (item: T, index: number) => string;
   jumper: RefObject<Jumper | null>;
+  separators: boolean;
 };
 
 // The part of each list's ref the jump action calls.
@@ -71,6 +72,7 @@ function BenchList<T extends Item>({
   Row,
   getItemType,
   jumper,
+  separators,
 }: ListProps<T>) {
   const renderItem = useCallback(({ item }: { item: T }) => <Row item={item} />, [Row]);
   const attach = useCallback(
@@ -86,18 +88,21 @@ function BenchList<T extends Item>({
           ref={attach}
           data={data}
           renderCell={renderCell}
+          renderSeparatorCell={separators ? separatorCell : null}
           keyExtractor={keyExtractor}
           getItemType={getItemType}
           maintainVisibleContentPosition={chat ? fromBottom : undefined}
           style={styles.fill}
         />
       );
+    // The FlashList below moved to Flume by the import and the name.
     case 'flume-react':
       return (
         <Flume
           ref={attach}
           data={data}
           renderItem={renderItem}
+          ItemSeparatorComponent={separators ? FlashSeparator : undefined}
           keyExtractor={keyExtractor}
           getItemType={getItemType}
           maintainVisibleContentPosition={chat ? fromBottom : undefined}
@@ -110,6 +115,7 @@ function BenchList<T extends Item>({
           ref={attach}
           data={data}
           renderItem={renderItem}
+          ItemSeparatorComponent={separators ? FlashSeparator : undefined}
           keyExtractor={keyExtractor}
           getItemType={getItemType}
           maintainVisibleContentPosition={chat ? fromBottom : undefined}
@@ -121,6 +127,7 @@ function BenchList<T extends Item>({
           ref={attach}
           data={data}
           renderItem={renderItem}
+          ItemSeparatorComponent={separators ? LegendSeparator : undefined}
           keyExtractor={keyExtractor}
           getItemType={getItemType}
           recycleItems
@@ -153,11 +160,22 @@ type RunProps = {
   action: BenchAction;
   index: number;
   animated: boolean;
+  separators: boolean;
   nonce: string;
 };
 
 // One configuration: the sentinel behind a transparent list, one ready line per mount, actions once per nonce.
-function BenchRun({ scenario, impl, load, count, action, index, animated, nonce }: RunProps) {
+function BenchRun({
+  scenario,
+  impl,
+  load,
+  count,
+  action,
+  index,
+  animated,
+  separators,
+  nonce,
+}: RunProps) {
   const flume = impl === 'flume' || impl === 'flume-react';
   // Before the list's first commit: its setData layout effect runs before this component's effects.
   useState(() => {
@@ -215,6 +233,7 @@ function BenchRun({ scenario, impl, load, count, action, index, animated, nonce 
           Row={ChatRow}
           getItemType={chatType}
           jumper={jumper}
+          separators={separators}
         />
       ) : (
         <BenchList
@@ -225,6 +244,7 @@ function BenchRun({ scenario, impl, load, count, action, index, animated, nonce 
           Row={FeedRow}
           getItemType={postType}
           jumper={jumper}
+          separators={separators}
         />
       )}
     </View>
@@ -233,7 +253,7 @@ function BenchRun({ scenario, impl, load, count, action, index, animated, nonce 
 
 export default function BenchScreen({ route, navigation }: BottomTabScreenProps<ParamListBase>) {
   const params = parseBenchParams(route.params as Record<string, string | undefined> | undefined);
-  const { scenario, impl, load, count } = params;
+  const { scenario, impl, load, count, separators } = params;
   useEffect(() => {
     if (!load) return;
     const id = setInterval(() => busy(80), 100);
@@ -248,7 +268,7 @@ export default function BenchScreen({ route, navigation }: BottomTabScreenProps<
           onPress={() => navigation.setParams({ load: load ? '0' : '1' })}
         />
       </View>
-      <BenchRun key={`${scenario}-${impl}-${load}-${count}`} {...params} />
+      <BenchRun key={`${scenario}-${impl}-${load}-${count}-${separators}`} {...params} />
     </View>
   );
 }

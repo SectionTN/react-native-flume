@@ -68,3 +68,9 @@ export function feedCell(item: FeedPost, _index: number): CellNode {
   );
   return cell.view({ backgroundColor: '#ffffff' }, children);
 }
+
+// The separator worklet: an opaque line, so the blank detector never sees the list background through it.
+export function separatorCell(): CellNode {
+  'worklet';
+  return cell.view({ height: 1, backgroundColor: '#dddddd' });
+}
