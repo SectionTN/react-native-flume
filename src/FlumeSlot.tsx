@@ -45,6 +45,8 @@ type Shown = {
   data?: readonly unknown[];
   last?: boolean;
   trailingItem?: unknown;
+  index?: number;
+  fullSpan?: boolean;
 };
 
 // ScrollView's handled rule: a tap no child of the cell claims closes the keyboard.
@@ -80,8 +82,11 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
   // A row that left the data renders its exit with what it last committed, type and data included.
   const live = item !== undefined && render !== undefined;
   const shown: Shown = live
-    ? { item, render, type, data: dataRef.current, last, trailingItem }
+    ? { item, render, type, data: dataRef.current, last, trailingItem, index, fullSpan }
     : snapshot.current;
+  // Native's index for a row that left can differ from the one it rendered with.
+  const rowIndex = shown.index ?? index;
+  const span = shown.fullSpan ?? fullSpan;
   // Written after the commit, so a render React discards cannot change the snapshot.
   useLayoutEffect(() => {
     if (live) snapshot.current = shown;
@@ -95,17 +100,17 @@ export const FlumeSlot = memo(function FlumeSlot(props: FlumeSlotProps): ReactEl
       cell
         ? (shown.render?.({
             item: shown.item,
-            index,
+            index: rowIndex,
             target,
             extraData,
             data: shown.data ?? dataRef.current,
             type: shown.type ?? type,
           }) ?? null)
         : null,
-    [cell, shown.render, shown.item, index, target, extraData, shown.type, type],
+    [cell, shown.render, shown.item, rowIndex, target, extraData, shown.type, type],
   );
-  const entry = { slot, kind, key: itemKey, index, bound: true, minMain };
-  const style = slotStyle(entry, fullSpan, layout);
+  const entry = { slot, kind, key: itemKey, index: rowIndex, bound: true, minMain };
+  const style = slotStyle(entry, span, layout);
   if (style === null) return null;
   const handled = keyboardTaps === 'handled';
   let content: ReactNode = cell ? rowContent : element;
