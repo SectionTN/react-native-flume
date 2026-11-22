@@ -89,7 +89,10 @@ Data and rows:
 | --- | --- | --- | --- |
 | `data` | `readonly T[] \| null` | Required | Sets the items the list shows. `null` and `undefined` show an empty list. |
 | `renderCell` | `(item, index) => CellNode` | | Builds each row from a worklet that returns [cell nodes](#cells). |
-| `renderItem` | `({ item, index, target, extraData, data, type }) => ReactNode` | | Renders each row with React when `renderCell` isn't set. |
+| `renderItem` | `({ item, index, separators, target, extraData, data, type }) => ReactNode` | | Renders each row with React when `renderCell` isn't set. `separators.highlight()` highlights the separators above and below the row, as on FlatList. |
+| `ListItemComponent` | `ComponentType \| ReactElement` | | Renders each row as `renderItem` does, and replaces it when both are set. |
+| `CellRendererComponent` | `ComponentType<CellRendererProps>` | | Wraps each React row and its separator in your own component, which gets `cellKey`, `index`, `item`, `style` and `children`. |
+| `renderSeparatorCell` | `({ leadingItem, trailingItem }) => CellNode \| null` | | Builds the separator under each worklet row from a worklet. `trailingItem` is `undefined` when the next row is a React row, and `null` draws no separator. |
 | `reactCells` | `Record<string, ReactCell<T>>` | | Renders the item types it names as React elements, in place of `renderCell`. |
 | `keyExtractor` | `(item, index) => string` | `item.id`, then `item.key`, then the index | Returns a unique key for each item. |
 | `getItemType` | `(item, index) => string \| number` | `'default'` | Returns each item's type. Rows are reused within a type, and `reactCells` picks a renderer by it. A number counts as its text, so `1` and `'1'` are one type. |
@@ -104,13 +107,18 @@ Layout:
 | --- | --- | --- | --- |
 | `horizontal` | `boolean` | `false` | Scrolls the list sideways. |
 | `numColumns` | `number` | `1` | Lays the rows out in a grid with this many columns. It works on vertical lists only. |
+| `columnWrapperStyle` | `StyleProp<ViewStyle>` | | Sets the gaps between a grid's columns and rows and its horizontal padding. Other style keys are ignored. |
 | `inverted` | `boolean` | `false` | Flips the list so the first item shows at the bottom, as in a chat. |
-| `contentContainerStyle` | `StyleProp<ViewStyle>` | | Adds padding around the rows. Other style keys are ignored. |
+| `contentContainerStyle` | `StyleProp<ViewStyle>` | | Sets the padding, the gaps between rows and the background behind them. `flexGrow` with `justifyContent` places short content, as on FlatList. Other style keys are ignored. |
+| `ItemSeparatorComponent` | `ComponentType \| ReactElement` | | Renders a component between React rows, with `leadingItem`, `trailingItem` and `highlighted` as props. Worklet rows take `renderSeparatorCell` instead. |
 | `separator` | `{ size, color?, insetStart?, insetEnd? }` | | Adds a line `size` dp thick between rows, inset from the start and end edges. |
 | `stickyHeaderIndices` | `readonly number[]` | | Pins the items at these indices to the top while their section scrolls. |
 | `ListHeaderComponent` | `ComponentType \| ReactElement` | | Renders a row before the first item. |
 | `ListFooterComponent` | `ComponentType \| ReactElement` | | Renders a row after the last item. |
 | `ListEmptyComponent` | `ComponentType \| ReactElement` | | Renders in place of the rows while `data` is empty, filling the list. |
+| `ListHeaderComponentStyle` | `StyleProp<ViewStyle>` | | Styles the view that wraps the header. |
+| `ListFooterComponentStyle` | `StyleProp<ViewStyle>` | | Styles the view that wraps the footer. |
+| `ListEmptyComponentStyle` | `StyleProp<ViewStyle>` | | Styles the view that wraps the empty component. |
 | `estimatedItemSize` | `number` | The mean of the item's type, at least 50 | Sets the length in dp that a React row takes until it's measured. |
 | `drawDistance` | `number` | One screen | Sets how far past the screen edges, in dp, rows are prepared ahead of scrolling. |
 | `initialScrollIndex` | `number \| { index }` | | Opens the list at this item. |
@@ -208,9 +216,13 @@ Change the import:
 
 Then rename `<FlatList>` to `<Flume>`. `renderItem`, `keyExtractor`, the list components, the scroll events, viewability, pull to refresh, `scrollToIndex`, `scrollToOffset` and `scrollToEnd` keep working. A few things change:
 
-- `ItemSeparatorComponent` becomes `separator`, a line with a size and a color.
+- `ItemSeparatorComponent` draws between React rows. With `renderCell`, draw separators with `renderSeparatorCell` or a `separator` line.
+- In a grid, `ItemSeparatorComponent` draws under each item and gets that item as `leadingItem`, as on FlashList. FlatList draws it once under each row of items.
+- In a grid, an item's `width: '33%'` is a third of its column, as on FlashList. FlatList measures it against the whole row.
+- `columnWrapperStyle` takes gaps and horizontal padding. Its `rowGap` spaces the grid's rows, where FlatList ignores it.
+- A horizontal list keeps each React row at its own height. FlatList stretches a row without a height to the list's height.
 - `stickyHeaderIndices` counts items only. With a `ListHeaderComponent`, subtract 1 from FlatList's indices.
-- `contentContainerStyle` takes padding only.
+- `contentContainerStyle` takes padding, gaps, a background and `flexGrow`. Other style keys are ignored.
 - Rows animate when `data` changes and stay in place when items load above them. `itemAnimations` and `maintainVisibleContentPosition` turn this off.
 
 ## Roadmap
