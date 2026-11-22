@@ -1229,6 +1229,31 @@ describe('Flume item separators', () => {
     expectSeparated(tree, 'b', true);
   });
 
+  it('keeps a row mounted when ItemSeparatorComponent comes and goes', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Sep } = separatorSpy();
+    const mounts = new Map<string, number>();
+    const Row = ({ id }: { id: string }) => {
+      useEffect(() => {
+        mounts.set(id, (mounts.get(id) ?? 0) + 1);
+      }, [id]);
+      return createElement('Row', { id });
+    };
+    const renderItem = (info: CellInfo<unknown>) =>
+      createElement(Row, { id: (info.item as { id: string }).id });
+    const tree = await mount(createElement(Flume, { data: [a, b], renderItem }));
+    await sendSlots(tree, [rowEntry(1, 'a', 0), rowEntry(2, 'b', 1)]);
+    const mounted = mounts.get('a');
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [a, b], renderItem, ItemSeparatorComponent: Sep }));
+    });
+    await act(async () => {
+      tree.update(createElement(Flume, { data: [a, b], renderItem }));
+    });
+    expect(mounts.get('a')).toBe(mounted);
+  });
+
   it('renders a leaving row with the index it last committed', async () => {
     installHost();
     const { Flume } = await import('../Flume');
