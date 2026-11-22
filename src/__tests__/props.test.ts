@@ -470,6 +470,13 @@ describe('content background and percent padding', () => {
     expect(resolvePadding(padding, -1)).toEqual({ top: 0, left: 12, bottom: 0, right: 0 });
   });
 
+  it('reads a percent with a leading decimal point, as React Native does', () => {
+    expect(resolvePadding(contentPadding({ padding: '.5%' }), 400)).toEqual(
+      resolvePadding(contentPadding({ padding: '0.5%' }), 400),
+    );
+    expect(resolvePadding(contentPadding({ padding: '.5%' }), 400).top).toBe(2);
+  });
+
   it('warns about a padding string that is not a percent', () => {
     const warn = vi.fn();
     nativeProps({ data: [], contentContainerStyle: { padding: 'auto' as never } }, warn);

@@ -110,7 +110,7 @@ function flatten(style: StyleProp<ViewStyle>, into: Record<string, unknown>): vo
 
 type Amount = { points: number; fraction: number };
 
-const PERCENT = /^-?\d+(\.\d+)?%$/;
+const PERCENT = /^-?(\d+(\.\d+)?|\.\d+)%$/;
 
 const JUSTIFY = new Set(['flex-start', 'center', 'flex-end']);
 
