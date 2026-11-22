@@ -308,6 +308,7 @@ class FlumeAdapter(
     cell.rowsPressable = rowsPressable
     val start = if (BindStats.enabled) SystemClock.elapsedRealtimeNanos() else 0L
     val batch = FlumeJni.bind(storeId, cell.cellId, index, geometry.cellWidthDp(fullSpans.contains(position)), geometry.cellHeightDp()) ?: return
+    cell.storeId = storeId
     cell.apply(batch)
     batch.stats?.let { BindStats.record(SystemClock.elapsedRealtimeNanos() - start, it) }
   }

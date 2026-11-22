@@ -24,6 +24,8 @@ class Layout {
   void invalidateText(Mounted& root);  // every text re-measures and is sent again, for a new font scale or size
   void layout(Mounted& root, float width, float height);  // NaN on an axis means automatic, as YGUndefined
   void readFrames(Mounted& root, OpBatch& out);  // Frame ops for nodes with a new layout, root size into out
+  // Lays the root out again at a new main length, its cross length and text measures kept. NaN gives its own length.
+  void relayout(Mounted& root, bool horizontal, float main);
   MeasureCache& cache() { return cache_; }
 
   int measureCalls = 0;  // reset by the caller per bind

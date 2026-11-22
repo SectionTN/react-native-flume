@@ -15,7 +15,6 @@ static UIView *FLMUIView(flume::ViewHandle handle)
 FLMCellViews::FLMCellViews(UIView *container) : pending_([NSMutableSet set])
 {
   FLMBoxView *root = [[FLMBoxView alloc] initWithFrame:container.bounds];
-  root.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
   [container addSubview:root];
   root_ = root;
 }

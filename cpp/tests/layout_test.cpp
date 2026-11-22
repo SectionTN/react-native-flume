@@ -186,3 +186,62 @@ TEST_CASE("a row laid out at a fixed height takes its content width") {
   CHECK(batch.rootWidth == 50);
   CHECK(batch.rootHeight == 48);
 }
+
+namespace {
+
+// A tree bound at 134 wide, like a grid column, kept for a relayout.
+struct Column {
+  FakeMeasurer fake;
+  flume::Layout layout{fake, 1};
+  std::unique_ptr<flume::Mounted> root;
+
+  explicit Column(const flume::Value& tree) {
+    int nextId = 1;
+    auto parsed = flume::parseTree(tree);
+    REQUIRE(parsed.root);
+    root = mount(layout, *parsed.root, nextId, true);
+    frames([&] { layout.layout(*root, 134, NAN); });
+  }
+
+  template <typename F>
+  flume::OpBatch frames(F run) {
+    run();
+    flume::OpBatch batch;
+    layout.readFrames(*root, batch);
+    return batch;
+  }
+
+  flume::OpBatch relayout(float main) {
+    return frames([&] { layout.relayout(*root, false, main); });
+  }
+};
+
+flume::Value tile(flume::Value style) {
+  return styled(std::move(style), {styled(obj({{"flex", V(1)}}), {obj({{"type", V("text")}, {"text", V("hello")}})})});
+}
+
+}  // namespace
+
+TEST_CASE("relayout stretches an auto root to the row length and keeps its text measures") {
+  Column column(tile(obj({{"padding", V(4)}})));
+  const float natural = YGNodeLayoutGetHeight(column.root->yoga);
+  const int calls = column.layout.measureCalls;
+  auto batch = column.relayout(150);
+  CHECK(batch.rootHeight == 150);
+  CHECK(frameOf(batch, 1) == Frame{4, 4, 126, 142});
+  CHECK(column.layout.measureCalls == calls);
+  CHECK(column.relayout(NAN).rootHeight == natural);
+}
+
+TEST_CASE("relayout keeps a root that sets its own height") {
+  Column column(tile(obj({{"height", V(100)}})));
+  CHECK(column.relayout(150).rootHeight == 100);
+}
+
+TEST_CASE("a root with an aspect ratio takes its height from the bind width and keeps it") {
+  Column column(tile(obj({{"aspectRatio", V(1)}})));
+  auto bound = column.frames([&] { column.layout.layout(*column.root, 134, NAN); });
+  CHECK(column.root->yoga != nullptr);
+  CHECK(YGNodeLayoutGetHeight(column.root->yoga) == 134);
+  CHECK(column.relayout(150).rootHeight == 134);
+}

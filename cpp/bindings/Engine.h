@@ -61,6 +61,8 @@ class Engine {
   std::string keyAt(int storeId, int position);
   std::vector<int> stickyIndices(int storeId);  // UI thread, the applied data's sticky indices
   bool bind(int storeId, int holderId, int index, float widthDp, float heightDp, OpBatch& out);
+  // The holder's bound tree laid out again at a main length, NaN for its own, with no worklet call. False with no tree.
+  bool relayout(int storeId, int holderId, float mainDp, OpBatch& out);
   void releaseHolder(int storeId, int holderId);
   void invalidateMeasures(int storeId);  // clears the text measure cache
   void refresh(int storeId);             // applies deferred data

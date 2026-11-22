@@ -589,3 +589,17 @@ TEST_CASE("an inverted pinned header ends at the pusher's line, which sits above
   ListLayout layout = measured(10, 100, config);
   CHECK(layout.pinned({2, 7}, 650, 1000)->start == 612);
 }
+
+TEST_CASE("every cell of a grid row is as long as the row's longest and keeps its own length") {
+  ListLayoutConfig config;
+  config.lanes = 3;
+  ListLayout layout = list(3, config);
+  layout.setLength(0, 100, 0);
+  layout.setLength(1, 150, 0);
+  layout.setLength(2, 120, 0);
+  for (int i = 0; i < 3; i++) CHECK(length(layout, i) == 150);
+  CHECK(layout.itemLength(0) == 100);
+  layout.setLength(1, 90, 0);
+  for (int i = 0; i < 3; i++) CHECK(length(layout, i) == 120);
+  CHECK(layout.itemLength(1) == 90);
+}

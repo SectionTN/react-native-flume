@@ -101,12 +101,38 @@ void Layout::invalidateText(Mounted& node) {
 
 static bool sameConstraint(float a, float b) { return (std::isnan(a) && std::isnan(b)) || a == b; }
 
+static bool open(const Dimension& dimension) {
+  return dimension.unit == Dimension::Unit::Undefined || dimension.unit == Dimension::Unit::Auto;
+}
+
+// Yoga sizes a root from the constraints it is given, so the root's own aspect ratio turns one axis into the other here.
+static void applyRatio(const Mounted& root, float& width, float& height) {
+  const std::optional<float> ratio = root.style.aspectRatio;
+  if (!ratio || *ratio <= 0) return;
+  if (std::isnan(height) && !std::isnan(width) && open(root.style.height)) {
+    height = width / *ratio;
+  } else if (std::isnan(width) && !std::isnan(height) && open(root.style.width)) {
+    width = height * *ratio;
+  }
+}
+
 // A root laid out at another size re-measures every text first, or Yoga reuses a width it measured before.
 void Layout::layout(Mounted& root, float width, float height) {
+  applyRatio(root, width, height);
   if (!sameConstraint(root.lastLayoutSize[0], width) || !sameConstraint(root.lastLayoutSize[1], height)) {
     invalidateText(root);
     root.lastLayoutSize = {width, height};
   }
+  YGNodeCalculateLayout(root.yoga, width, height, YGDirectionLTR);
+}
+
+// The cross length stays the bound one, so Yoga keeps every text measure. A root with an aspect ratio keeps its length.
+void Layout::relayout(Mounted& root, bool horizontal, float main) {
+  if (root.yoga == nullptr) return;
+  float width = horizontal ? main : root.lastLayoutSize[0];
+  float height = horizontal ? root.lastLayoutSize[1] : main;
+  if (root.style.aspectRatio) (horizontal ? width : height) = NAN;
+  applyRatio(root, width, height);
   YGNodeCalculateLayout(root.yoga, width, height, YGDirectionLTR);
 }
 

@@ -38,6 +38,11 @@ std::unique_ptr<Node> composeRow(std::unique_ptr<Node> row, std::unique_ptr<Node
   row->accessibilityLabel.clear();
   row->accessible.reset();
   clearParentLayout(row->style);
+  // Stretched to a grid row's length, an auto-length row grows like a FlatList row child and the line stays at the end.
+  root->style.justifyContent = YGJustifySpaceBetween;
+  const Dimension& length = horizontal ? row->style.width : row->style.height;
+  const bool own = length.unit == Dimension::Unit::Point || length.unit == Dimension::Unit::Percent;
+  if (!own && !row->style.aspectRatio) row->style.flexGrow = 1;
   row->key = "r";
   root->children.push_back(std::move(row));
   if (separator != nullptr) {

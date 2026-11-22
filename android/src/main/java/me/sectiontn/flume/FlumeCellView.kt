@@ -44,9 +44,24 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
   val rootWidthPx: Int get() = tree.rootWidthPx
   val rootHeightPx: Int get() = tree.rootHeightPx
 
+  // A list's own cell, which can stretch to its grid row. The pinned copy and the measuring holder keep 0.
+  var storeId = 0
+  private var naturalHeightPx = 0
+  private var stretchedPx = 0
+
+  // A bind lays the root out at its own height, so the next measure stretches it again.
   fun apply(batch: FlumeBatch) {
     tree.apply(batch)
+    naturalHeightPx = tree.rootHeightPx
+    stretchedPx = 0
     requestLayout()
+  }
+
+  private fun stretchTo(targetPx: Int) {
+    if (storeId == 0 || targetPx == stretchedPx) return
+    val batch = FlumeJni.relayout(storeId, cellId, if (targetPx > 0) targetPx / density else Float.NaN) ?: return
+    tree.apply(batch)
+    stretchedPx = targetPx
   }
 
   override fun create(kind: Int): View = when (kind) {
@@ -137,9 +152,15 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
     return false
   }
 
+  // GridLayoutManager measures a row's shorter cells again at the row's height, exactly, and they stretch to it.
   override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-    if (horizontal) setMeasuredDimension(tree.rootWidthPx, MeasureSpec.getSize(heightMeasureSpec))
-    else setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), tree.rootHeightPx)
+    if (horizontal) {
+      setMeasuredDimension(tree.rootWidthPx, MeasureSpec.getSize(heightMeasureSpec))
+      return
+    }
+    val exact = MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY
+    stretchTo(CellStretch.target(exact, MeasureSpec.getSize(heightMeasureSpec), naturalHeightPx))
+    setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), if (stretchedPx > 0) stretchedPx else naturalHeightPx)
   }
 
   // Every descendant is placed here from its Yoga frame; FlumeGroup containers do no layout of their own.
@@ -156,4 +177,9 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
       info.className = Button::class.java.name
     }
   }
+}
+
+// The length a cell's root is laid out at: a longer exact spec stretches it, anything else gives its own, as 0.
+object CellStretch {
+  fun target(exact: Boolean, specPx: Int, naturalPx: Int): Int = if (exact && specPx > naturalPx) specPx else 0
 }
