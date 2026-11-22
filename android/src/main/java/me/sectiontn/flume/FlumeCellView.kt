@@ -189,6 +189,8 @@ class FlumeCellView(context: Context, private val measurer: FlumeTextMeasurer) :
 
   // Every descendant is placed here from its Yoga frame; FlumeGroup containers do no layout of their own.
   override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+    // The tallest cell of a row skips the exact pass, so its final height decides whether it stays stretched.
+    if (!horizontal) stretchTo(CellStretch.target(true, b - t, naturalHeightPx))
     tree.frames { view, left, top, width, height ->
       view.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY))
       view.layout(left, top, left + width, top + height)
