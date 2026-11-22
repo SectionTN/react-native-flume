@@ -320,7 +320,12 @@ void Reconciler::emitRootLabel(Holder& holder, OpBatch& out) {
 void Reconciler::emitPressableLabels(Mounted& node, OpBatch& out) {
   if (node.viewId != 0 && node.type == NodeType::Pressable && node.accessibilityLabel.empty()) {
     std::string joined;
-    appendTexts(node, joined);
+    // A separator root is left out of its row's label, not out of its own.
+    if (node.separator) {
+      for (const auto& child : node.children) appendTexts(*child, joined);
+    } else {
+      appendTexts(node, joined);
+    }
     if (joined != node.derivedLabel) {
       node.derivedLabel = joined;
       out.accessibility(node.viewId, joined, node.testID, 1, node.accessible);
