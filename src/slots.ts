@@ -16,6 +16,8 @@ export type SlotLayout = {
   horizontal: boolean;
   numColumns: number;
   padding: { top: number; left: number; bottom: number; right: number };
+  // A grid's lane insets from columnWrapperStyle, which native also gives its full-span data rows.
+  lanes: { insetStart: number; insetEnd: number };
   cellWidth: number;
 };
 
@@ -33,7 +35,13 @@ export function slotStyle(
     return min === undefined ? style : { ...style, minWidth: min };
   }
   if (layout.numColumns <= 1 || fullSpan) {
-    const style: ViewStyle = { position: 'absolute', left: padding.left, right: padding.right };
+    const data =
+      layout.numColumns > 1 && (entry.kind === SlotKind.row || entry.kind === SlotKind.sticky);
+    const style: ViewStyle = {
+      position: 'absolute',
+      left: padding.left + (data ? layout.lanes.insetStart : 0),
+      right: padding.right + (data ? layout.lanes.insetEnd : 0),
+    };
     return min === undefined ? style : { ...style, minHeight: min };
   }
   if (layout.cellWidth < 0) return null;

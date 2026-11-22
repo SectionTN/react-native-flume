@@ -329,9 +329,20 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         bottom: padding.bottom,
         right: padding.right,
       },
+      lanes: { insetStart: lanes.insetStart, insetEnd: lanes.insetEnd },
       cellWidth,
     }),
-    [horizontal, numColumns, padding.top, padding.left, padding.bottom, padding.right, cellWidth],
+    [
+      horizontal,
+      numColumns,
+      padding.top,
+      padding.left,
+      padding.bottom,
+      padding.right,
+      lanes.insetStart,
+      lanes.insetEnd,
+      cellWidth,
+    ],
   );
   const sticky = useMemo(() => new Set(stickyHeaderIndices), [stickyHeaderIndices]);
   const header = useMemo(
