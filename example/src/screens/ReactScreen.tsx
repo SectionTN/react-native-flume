@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   dividerOn: { height: 3, backgroundColor: '#0066ff' },
   headerFrame: { borderBottomWidth: 2, borderBottomColor: '#0066ff' },
   footerFrame: { backgroundColor: '#fff3d6' },
-  emptyFrame: { backgroundColor: '#fdecec' },
+  emptyFrame: { flex: 1, backgroundColor: '#fdecec' },
   chipDivider: { width: 1, marginVertical: 20, backgroundColor: '#b0b0b8' },
   chip: {
     marginVertical: 12,
