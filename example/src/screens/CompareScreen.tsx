@@ -11,6 +11,8 @@ type Case = {
   auto?: boolean;
   // A footer with flex: 1 that a flexGrow content lets take the space the rows leave.
   footer?: boolean;
+  // The footer keeps its own height.
+  fixedFooter?: boolean;
   columnWrapperStyle?: ViewStyle;
   contentContainerStyle?: ViewStyle;
   columns?: number;
@@ -76,6 +78,23 @@ const CASES: Case[] = [
     count: 0,
     contentContainerStyle: { flexGrow: 1 },
     footer: true,
+    empty: true,
+  },
+  {
+    name: 'flexGrow, gap, empty and growing footer',
+    tile: { flex: 1 },
+    count: 0,
+    contentContainerStyle: { flexGrow: 1, gap: 24 },
+    footer: true,
+    empty: true,
+  },
+  {
+    name: 'flexGrow, gap, empty and footer',
+    tile: { flex: 1 },
+    count: 0,
+    contentContainerStyle: { flexGrow: 1, gap: 24 },
+    footer: true,
+    fixedFooter: true,
     empty: true,
   },
 ];
@@ -171,7 +190,7 @@ export default function CompareScreen() {
     contentContainerStyle: c.contentContainerStyle,
     columnWrapperStyle: c.columnWrapperStyle,
     ListFooterComponent: c.footer ? Footer : undefined,
-    ListFooterComponentStyle: c.footer ? { flex: 1 } : undefined,
+    ListFooterComponentStyle: c.footer && !c.fixedFooter ? { flex: 1 } : undefined,
     ListEmptyComponent: c.empty ? Empty : undefined,
     ItemSeparatorComponent: separated ? Divider : undefined,
     style: { flex: 1 },
