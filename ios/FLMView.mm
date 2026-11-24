@@ -536,7 +536,14 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   _fontScale = RCTFontSizeMultiplier();
   [_layout invalidateLengths];
   [self lendSlotCells];
+  [self reloadCollection];
+}
+
+// UIKit performs a reloadData at its next layout, so until then a batch would land on rows reloaded from the new data.
+- (void)reloadCollection
+{
   [_collectionView reloadData];
+  _layout.reloadPending = YES;
 }
 
 // A list component came or went, so every row after it moved.
@@ -550,7 +557,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   _itemCount = _rows.itemCount();
   [_layout resetWithCount:_itemCount typeOf:[self typeOf]];
   [self lendSlotCells];
-  [_collectionView reloadData];
+  [self reloadCollection];
 }
 
 - (void)contentSizeCategoryChanged:(NSNotification *)notification
@@ -685,7 +692,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   _everAttached = YES;
   _viewability.invalidate();
   [self lendSlotCells];
-  [_collectionView reloadData];
+  [self reloadCollection];
   [self scheduleOpening];
 }
 
@@ -745,7 +752,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     _openingArmed = YES;
   }
   const flume::ListOps positions = _rows.positions(ops);
-  flume::BatchUpdates batch = flume::toBatchUpdates(positions, static_cast<int>(_itemCount));
+  flume::BatchUpdates batch = flume::toBatchUpdates(positions, static_cast<int>(_itemCount), _layout.reloadPending);
   const BOOL first = _rows.dataCount == 0;
   const BOOL hadEmptyRow = _rows.hasEmptyRow();
   // The store holds the new data from here on, and the layout measures the rows a batch can show from it.
@@ -758,7 +765,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     [self configureLayoutRows];
     [_layout resetWithCount:itemCount typeOf:[self typeOf]];
     [self lendSlotCells];
-    [_collectionView reloadData];
+    [self reloadCollection];
     [self scheduleOpening];
     return;
   }

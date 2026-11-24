@@ -13,9 +13,9 @@ struct Entry {
 
 }  // namespace
 
-BatchUpdates toBatchUpdates(const ListOps& ops, int previousCount) {
+BatchUpdates toBatchUpdates(const ListOps& ops, int previousCount, bool reloadPending) {
   BatchUpdates batch;
-  if (ops.reset) {
+  if (ops.reset || reloadPending) {
     batch.reload = true;
     return batch;
   }

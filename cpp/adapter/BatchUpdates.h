@@ -16,6 +16,7 @@ struct BatchUpdates {
   std::vector<int> reconfigures;           // next indices, applied after the batch
 };
 
-BatchUpdates toBatchUpdates(const ListOps& ops, int previousCount);
+// A batch run before UIKit performs a pending reloadData lands on rows reloaded from the new data, so it reloads too.
+BatchUpdates toBatchUpdates(const ListOps& ops, int previousCount, bool reloadPending = false);
 
 }  // namespace flume

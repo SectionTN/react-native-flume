@@ -89,6 +89,14 @@ TEST_CASE("a reset reloads") {
   CHECK(toBatchUpdates(ops, 3).reload);
 }
 
+TEST_CASE("a batch while a reload is still owed reloads too") {
+  ListOps ops = diffKeys({"a", "b", "c"}, {"a", "c"}, {}, true);
+  CHECK_FALSE(toBatchUpdates(ops, 3).reload);
+  BatchUpdates batch = toBatchUpdates(ops, 3, true);
+  CHECK(batch.reload);
+  CHECK(batch.deletes.empty());
+}
+
 TEST_CASE("separator neighbors are reconfigured with the changed items") {
   ListOps ops = diffKeys({"a", "b", "c"}, {"a", "b", "c", "d"}, {}, true);
   ops.neighbors = {2};
