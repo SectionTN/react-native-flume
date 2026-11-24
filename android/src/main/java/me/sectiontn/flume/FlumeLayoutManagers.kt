@@ -187,4 +187,10 @@ object ContentPlacement {
 
   // The empty row and a growing footer split what the other rows leave evenly, as two flex: 1 rows.
   fun growSharePx(viewportPx: Int, fixedPx: Int, growers: Int): Int = maxOf(0, viewportPx - fixedPx) / maxOf(1, growers)
+
+  // An empty list's growing rows share what its header, a footer that keeps its height and the gaps between its rows leave.
+  fun emptyListGrowSharePx(viewportPx: Int, headerPx: Int, footerPx: Int, footerGrows: Boolean, rowCount: Int, mainGapPx: Int): Int {
+    val fixedPx = headerPx + (if (footerGrows) 0 else footerPx) + mainGapPx * maxOf(0, rowCount - 1)
+    return growSharePx(viewportPx, fixedPx, if (footerGrows) 2 else 1)
+  }
 }

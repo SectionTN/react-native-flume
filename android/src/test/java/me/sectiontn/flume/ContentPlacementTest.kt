@@ -34,6 +34,20 @@ class ContentPlacementTest {
   }
 
   @Test
+  fun anEmptyListsGrowingRowsLeaveRoomForTheGapsBetweenItsRows() {
+    // Header 100, the empty row, a growing footer and 10 between rows: 100 + 10 + 240 + 10 + 240 = 600.
+    assertEquals(
+      240,
+      ContentPlacement.emptyListGrowSharePx(viewportPx = 600, headerPx = 100, footerPx = 50, footerGrows = true, rowCount = 3, mainGapPx = 10),
+    )
+    // A footer of 50 that keeps its height: 100 + 10 + 430 + 10 + 50 = 600.
+    assertEquals(
+      430,
+      ContentPlacement.emptyListGrowSharePx(viewportPx = 600, headerPx = 100, footerPx = 50, footerGrows = false, rowCount = 3, mainGapPx = 10),
+    )
+  }
+
+  @Test
   fun aGrowingFooterTakesWhatTheRowsAboveLeave() {
     assertEquals(300, ContentPlacement.footerMinPx(contentStart = 0, footerStart = 300, viewportPx = 600))
     assertEquals(0, ContentPlacement.footerMinPx(contentStart = 0, footerStart = 700, viewportPx = 600))
