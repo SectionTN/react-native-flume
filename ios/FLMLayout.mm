@@ -511,6 +511,7 @@ bool FLMLengthsDiffer(const flume::ListLayoutConfig &a, const flume::ListLayoutC
 - (void)prepareLayout
 {
   [super prepareLayout];
+  _reloadPending = NO;
   _preparing = YES;
   _bounds = self.collectionView.bounds.size;
   _viewportLength = [self viewportFor:self.collectionView.bounds].length;

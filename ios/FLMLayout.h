@@ -69,5 +69,6 @@ struct FLMPendingOffset {
 // A React row's length from its slot: the anchor's move becomes the offset adjustment, or it waits for the batch.
 - (void)setLength:(CGFloat)length forItem:(NSInteger)index;
 @property (nonatomic, readonly) BOOL updating;  // between prepareForCollectionViewUpdates: and finalizeCollectionViewUpdates
+@property (nonatomic) BOOL reloadPending;  // set with each reloadData, cleared when UIKit lays the reload out
 
 @end
