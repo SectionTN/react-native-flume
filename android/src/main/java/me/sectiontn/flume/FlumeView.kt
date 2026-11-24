@@ -569,33 +569,43 @@ class FlumeView(context: Context) : FrameLayout(context) {
     if (!rows.footer || !geometry.ready) return
     val footer = recycler.findViewHolderForAdapterPosition(rows.itemCount - 1) as? FlumeAdapter.Holder ?: return
     val slot = footer.slot ?: return
-    val first = recycler.findViewHolderForAdapterPosition(0)?.itemView
-    val lm = layoutManager
-    val horizontal = geometry.horizontal
-    val px = if (!footerGrows() || first == null) {
-      0
-    } else {
-      val start = if (horizontal) lm.getDecoratedLeft(first) else lm.getDecoratedTop(first)
-      val footerStart = if (horizontal) lm.getDecoratedLeft(footer.itemView) else lm.getDecoratedTop(footer.itemView)
-      // The empty row above grows too, so its own length is left out and the two split the rest.
-      val emptyPx = if (rows.hasEmptyRow) rowLengthPx(rows.headerCount) else 0
-      val viewportPx = if (horizontal) geometry.innerWidthPx else geometry.innerHeightPx
-      ContentPlacement.growSharePx(viewportPx, footerStart - start - emptyPx, if (rows.hasEmptyRow) 2 else 1)
+    val px = when {
+      !footerGrows() -> 0
+      rows.hasEmptyRow -> emptyListGrowSharePx()
+      else -> {
+        val first = recycler.findViewHolderForAdapterPosition(0)?.itemView
+        val lm = layoutManager
+        val horizontal = geometry.horizontal
+        if (first == null) {
+          0
+        } else {
+          val start = if (horizontal) lm.getDecoratedLeft(first) else lm.getDecoratedTop(first)
+          val footerStart = if (horizontal) lm.getDecoratedLeft(footer.itemView) else lm.getDecoratedTop(footer.itemView)
+          ContentPlacement.footerMinPx(start, footerStart, if (horizontal) geometry.innerWidthPx else geometry.innerHeightPx)
+        }
+      }
     }
     slots.setMinMain(slot, px / density)
   }
 
   private fun footerGrows() = growFooter && rows.footer && !inverted
+
+  // The empty row and a growing footer reserve the same rows and gaps, so together they fill the viewport.
+  private fun emptyListGrowSharePx(): Int =
+    ContentPlacement.emptyListGrowSharePx(
+      viewportPx = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx,
+      headerPx = if (rows.header) rowLengthPx(0) else 0,
+      footerPx = if (rows.footer) rowLengthPx(rows.itemCount - 1) else 0,
+      footerGrows = footerGrows(),
+      rowCount = rows.itemCount,
+      mainGapPx = gapsPx[0],
+    )
+
   // The empty row fills what the header and footer leave of the viewport, so flex content centers in the visible area.
   private fun updateEmptyLength() {
     if (!rows.hasEmptyRow || !geometry.ready) return
     val holder = (recycler.findViewHolderForAdapterPosition(rows.headerCount) as? FlumeAdapter.Holder)?.slot ?: return
-    val viewport = if (geometry.horizontal) geometry.innerWidthPx else geometry.innerHeightPx
-    val footerGrows = footerGrows()
-    var fixedPx = 0
-    if (rows.header) fixedPx += rowLengthPx(0)
-    if (rows.footer && !footerGrows) fixedPx += rowLengthPx(rows.itemCount - 1)
-    slots.setMinMain(holder, ContentPlacement.growSharePx(viewport, fixedPx, if (footerGrows) 2 else 1) / density)
+    slots.setMinMain(holder, emptyListGrowSharePx() / density)
   }
 
   // Offsets count from the content start; the visual delta flips for an inverted list.
