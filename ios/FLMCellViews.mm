@@ -152,7 +152,11 @@ void FLMCellViews::accessibility(flume::ViewHandle handle, const std::optional<s
   } else {
     view.accessibilityTraits &= ~UIAccessibilityTraitButton;
   }
+  // Without accessible a reused view goes back to its own default, as Android's AUTO does.
   if (accessible == 0 || accessible == 1) {
     view.isAccessibilityElement = accessible == 1;
+  } else {
+    view.isAccessibilityElement =
+        [view isKindOfClass:[FLMPressableView class]] || [view isKindOfClass:[FLMTextView class]];
   }
 }
