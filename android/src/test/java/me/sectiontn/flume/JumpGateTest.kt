@@ -48,4 +48,37 @@ class JumpGateTest {
     assertNull(gate.rendered(5))
     assertEquals("a", gate.pending)
   }
+
+  @Test
+  fun aRetargetKeepsTheFirstDeadline() {
+    val gate = JumpGate<String>(waitMs = 1000)
+    gate.request("a", setOf(1), nowMs = 0)
+    assertEquals("a", gate.retarget("b", setOf(2)))
+    assertNull(gate.due(nowMs = 999))
+    assertEquals("b", gate.due(nowMs = 1000))
+  }
+
+  @Test
+  fun aRetargetWaitsForItsOwnSlots() {
+    val gate = JumpGate<String>()
+    gate.request("a", setOf(1), nowMs = 0)
+    gate.retarget("b", setOf(2))
+    assertNull(gate.rendered(1))
+    assertEquals("b", gate.rendered(2))
+  }
+
+  @Test
+  fun aRetargetWithNoJumpWaitingDoesNothing() {
+    val gate = JumpGate<String>()
+    assertNull(gate.retarget("b", setOf(2)))
+    assertNull(gate.pending)
+  }
+
+  @Test
+  fun aJumpWithNoSlotsWaitsForItsDeadline() {
+    val gate = JumpGate<String>(waitMs = 1000)
+    gate.request("a", emptySet(), nowMs = 0)
+    assertNull(gate.rendered(1))
+    assertEquals("a", gate.due(nowMs = 1000))
+  }
 }

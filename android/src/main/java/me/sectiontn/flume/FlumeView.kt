@@ -68,7 +68,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     get() = scrollState == RecyclerView.SCROLL_STATE_IDLE || !recycler.scrollEnabled
 
   // A jump onto React rows waits for the rows it shows; its retained slots are lent to their binds when it runs.
-  private data class Jump(val position: Int, val animated: Boolean, val viewPosition: Float, val viewOffsetDp: Double, val owner: Int)
+  private data class Jump(val target: JumpTarget, val animated: Boolean, val viewPosition: Float, val viewOffsetDp: Double, val owner: Int)
 
   private val jumps = JumpGate<Jump>()
   private val jumpDue = Runnable { jumps.due(SystemClock.uptimeMillis())?.let { runJump(it) } }
@@ -205,7 +205,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
       if (index >= 0) emitPress(index, FlumeJni.keyAt(storeId, index), pressId, long)
     }
     adapter.onFirstData = { applyInitialScroll() }
-    adapter.onAutoscroll = { position, viewPosition, animated -> scrollToPosition(position, animated, viewPosition, 0.0) }
+    adapter.onAutoscroll = { position, viewPosition, animated -> requestJump(JumpTarget.Position(position), animated, viewPosition, 0.0) }
     refreshLayout.addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     refreshLayout.setOnRefreshListener { dispatch(FlumeRefreshEvent(UIManagerHelper.getSurfaceId(this), id)) }
     addView(slots.parking, LayoutParams(0, 0))
@@ -219,6 +219,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
         pendingAlign = null
       }
       applySpans()
+      retargetJump()
     }
     adapter.onStickyIndicesChanged = { applySpans() }
     recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -395,21 +396,16 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   // index counts data items, as FlatList's does; the header and footer are reached by offset and scrollToEnd.
-  fun scrollToIndex(index: Int, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
-    val target = ScrollTargets.clampIndex(index, rows.dataCount) ?: return
-    scrollToPosition(rows.position(target), animated, viewPosition, viewOffsetDp)
-  }
+  fun scrollToIndex(index: Int, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) =
+    requestJump(JumpTarget.Index(index), animated, viewPosition, viewOffsetDp)
 
   // React rows paint a frame or more after their bind, so a jump first has the rows it will show rendered.
-  private fun scrollToPosition(position: Int, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
-    val target = ScrollTargets.clampIndex(position, rows.itemCount) ?: return
+  private fun requestJump(target: JumpTarget, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
     jumps.cancel()?.let { dropJump(it) }
-    val owner = adapter.allocateHolderId()
-    val window = jumpWindow(target, animated, viewPosition)
-    val requests = window.filter { isReactRow(it) }.map { adapter.slotRequest(it, viewTypeAt(it)) }
-    val waiting = slots.reserve(owner, requests)
-    val jump = Jump(target, animated, viewPosition, viewOffsetDp, owner)
-    if (waiting.isEmpty()) {
+    if (target.position(rows) == null && !target.waitsForData(rows)) return
+    val jump = Jump(target, animated, viewPosition, viewOffsetDp, adapter.allocateHolderId())
+    val waiting = reserveJump(jump)
+    if (waiting.isEmpty() && !target.waitsForData(rows)) {
       runJump(jump)
       return
     }
@@ -418,11 +414,30 @@ class FlumeView(context: Context) : FrameLayout(context) {
     postDelayed(jumpDue, ScrollTargets.JUMP_WAIT_MS)
   }
 
+  // The slots of the React rows the jump shows that have not rendered yet.
+  private fun reserveJump(jump: Jump): Set<Int> {
+    val position = jump.target.position(rows) ?: return emptySet()
+    val window = jumpWindow(position, jump.animated, jump.viewPosition)
+    val requests = window.filter { isReactRow(it) }.map { adapter.slotRequest(it, viewTypeAt(it)) }
+    return slots.reserve(jump.owner, requests)
+  }
+
+  // New data moves a waiting jump's target, so it waits for the new rows it shows, before the same deadline.
+  private fun retargetJump() {
+    val waiting = jumps.pending ?: return
+    slots.dropReserved(waiting.owner)
+    val jump = waiting.copy(owner = adapter.allocateHolderId())
+    val slotsLeft = reserveJump(jump)
+    jumps.retarget(jump, slotsLeft)
+    if (slotsLeft.isEmpty() && !jump.target.waitsForData(rows)) jumps.cancel()?.let { runJump(it) }
+  }
+
   private fun runJump(jump: Jump) {
     removeCallbacks(jumpDue)
     slots.lend(jump.owner)
+    val position = jump.target.position(rows) ?: return
     if (jump.animated) reclaimOnIdle = true else reclaimOnLayout = true
-    startScroll(jump.position, jump.animated, jump.viewPosition, jump.viewOffsetDp)
+    startScroll(position, jump.animated, jump.viewPosition, jump.viewOffsetDp)
   }
 
   private fun dropJump(jump: Jump) {
@@ -617,7 +632,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     recycler.stopScroll()
     val targetPx = (offsetDp * density).roundToInt()
     ScrollTargets.startRow(targetPx)?.let { row ->
-      scrollToPosition(row, animated, 0f, 0.0)
+      requestJump(JumpTarget.Position(row), animated, 0f, 0.0)
       return
     }
     val (offsetPx, rangePx, extentPx) = scrollMetrics()
@@ -628,7 +643,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     if (animated) recycler.smoothScrollBy(dx, dy) else recycler.scrollBy(dx, dy)
   }
 
-  fun scrollToEnd(animated: Boolean) = scrollToPosition(rows.itemCount - 1, animated, 1f, 0.0)
+  fun scrollToEnd(animated: Boolean) = requestJump(JumpTarget.End, animated, 1f, 0.0)
 
   fun setListOverScrollMode(value: String?) {
     recycler.overScrollMode = OverScroll.mode(value)
@@ -789,7 +804,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     if (initialScrollIndex < rows.dataCount) {
       layoutManager.scrollToPositionWithOffset(ScrollTargets.initialPosition(initialScrollIndex, rows), 0)
     } else {
-      scrollToPosition(ScrollTargets.initialPosition(initialScrollIndex, rows), false, 1f, 0.0)
+      requestJump(JumpTarget.Position(ScrollTargets.initialPosition(initialScrollIndex, rows)), false, 1f, 0.0)
     }
   }
 
