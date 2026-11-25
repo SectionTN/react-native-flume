@@ -767,6 +767,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     [self lendSlotCells];
     [self reloadCollection];
     [self scheduleOpening];
+    [self retargetJump];
     return;
   }
   const flume::AnchorDecision anchor =
@@ -818,6 +819,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     [self scrollTo:[_layout offsetForVisualEdge:anchor.edge] animated:anchor.animated];
   }
   [self reindexSlotCells];
+  [self retargetJump];
 }
 
 // Inserts and removes move rows without a rebind, so each slot's index follows its cell.
@@ -1558,9 +1560,9 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 {
   [self dropJump];
   const int owner = ++_nextHolderId;
-  const std::unordered_set<int> waiting = [self reserveJumpTo:target animated:animated owner:owner];
+  const std::unordered_set<int> waiting = [self reserveJumpTo:[self landingFor:target] animated:animated owner:owner];
   const FLMJump jump{target, static_cast<bool>(animated), owner};
-  if (waiting.empty()) {
+  if (waiting.empty() && ![self waitsForData:target]) {
     [self runJump:jump];
     return;
   }
@@ -1676,12 +1678,57 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   } else {
     _reclaimSlots = YES;
   }
+  const FLMPendingTarget landing = [self landingFor:jump.target];
   _realign.reset();
   if (jump.timedOut) {
-    _realign = jump.target;
+    _realign = landing;
     _realigns = 0;
   }
-  [self startScrollToTarget:jump.target animated:jump.animated];
+  [self startScrollToTarget:landing animated:jump.animated];
+}
+
+// The target on the rows there are now: an index past the data lands on the last item, the end on the new end.
+- (FLMPendingTarget)landingFor:(const FLMPendingTarget &)target
+{
+  FLMPendingTarget landing = target;
+  if (target.kind == FLMPendingTarget::Kind::End) {
+    landing.index = std::max(0, _rows.dataCount - 1);
+  } else if (target.kind == FLMPendingTarget::Kind::Index) {
+    landing.index = flume::clampIndex(target.index, _rows.dataCount).value_or(0);
+  }
+  return landing;
+}
+
+// An index past the data waits for the data to grow, as when new data and the scroll come from one handler.
+- (BOOL)waitsForData:(const FLMPendingTarget &)target
+{
+  return target.kind == FLMPendingTarget::Kind::Index && target.index >= _rows.dataCount;
+}
+
+// New data moves a waiting jump's target, so it waits for the new rows it shows, before the same deadline.
+- (void)retargetJump
+{
+  if (!_jumps.pending()) {
+    return;
+  }
+  FLMJump jump = *_jumps.pending();
+  flume::SlotPool &pool = [_slots pool];
+  pool.lend(jump.owner);
+  pool.reclaim();
+  jump.owner = ++_nextHolderId;
+  std::unordered_set<int> waiting = [self reserveJumpTo:[self landingFor:jump.target]
+                                               animated:jump.animated
+                                                  owner:jump.owner];
+  const BOOL ready = waiting.empty() && ![self waitsForData:jump.target];
+  _jumps.retarget(jump, std::move(waiting));
+  [self requestSlotsFlush];
+  if (ready) {
+    _readyJump = _jumps.cancel();
+    __weak FLMView *weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [weakSelf runReadyJump];
+    });
+  }
 }
 
 // A drag, another command, a reload or leaving the window ends a waiting jump and gives its slots back.
@@ -1765,11 +1812,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 
 - (void)scrollToIndex:(NSInteger)index animated:(BOOL)animated viewPosition:(double)viewPosition viewOffset:(double)viewOffset
 {
-  if (!_attached || _rows.dataCount == 0) {
+  if (!_attached) {
     return;
   }
-  const int clamped = *flume::clampIndex(static_cast<int>(index), _rows.dataCount);
-  [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::Index, clamped, viewPosition, viewOffset}
+  [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::Index, static_cast<int>(index), viewPosition, viewOffset}
               animated:animated];
 }
 

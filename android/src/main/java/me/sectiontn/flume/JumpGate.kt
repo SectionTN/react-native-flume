@@ -16,6 +16,15 @@ class JumpGate<J>(private val waitMs: Long = ScrollTargets.JUMP_WAIT_MS) {
     return replaced
   }
 
+  // Swaps the waiting jump for one aimed at new rows, keeping its deadline. Returns the old one, or null when none waits.
+  fun retarget(jump: J, slots: Set<Int>): J? {
+    val replaced = pending ?: return null
+    pending = jump
+    waiting.clear()
+    waiting.addAll(slots)
+    return replaced
+  }
+
   fun rendered(slot: Int): J? {
     if (pending == null || !waiting.remove(slot) || waiting.isNotEmpty()) return null
     return take()
