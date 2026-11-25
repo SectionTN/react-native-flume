@@ -72,6 +72,15 @@ class FlumeView(context: Context) : FrameLayout(context) {
 
   private val jumps = JumpGate<Jump>()
   private val jumpDue = Runnable { jumps.due(SystemClock.uptimeMillis())?.let { runJump(it) } }
+  private val commands = ScrollCommands()
+  // The jump of the command in flight once it has run, which new data sends again at its target.
+  private var landing: Jump? = null
+  // An instant scroll lands with the next layout pass, an offset glide at its first idle state after it moved.
+  private var landOnLayout = false
+  private var landOnIdle = false
+  private var movedSinceScroll = false
+  // Bumped by every scroll the view starts, so a stopped smooth scroller of an earlier one lands nothing.
+  private var scrollToken = 0
   private var reclaimOnLayout = false
   private var reclaimOnIdle = false
   var emitScrollEvents = false
@@ -205,7 +214,10 @@ class FlumeView(context: Context) : FrameLayout(context) {
       if (index >= 0) emitPress(index, FlumeJni.keyAt(storeId, index), pressId, long)
     }
     adapter.onFirstData = { applyInitialScroll() }
-    adapter.onAutoscroll = { position, viewPosition, animated -> requestJump(JumpTarget.Position(position), animated, viewPosition, 0.0) }
+    adapter.onAutoscroll = { position, viewPosition, animated ->
+      endScrollCommand()
+      requestJump(JumpTarget.Position(position), animated, viewPosition, 0.0)
+    }
     refreshLayout.addView(recycler, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     refreshLayout.setOnRefreshListener { dispatch(FlumeRefreshEvent(UIManagerHelper.getSurfaceId(this), id)) }
     addView(slots.parking, LayoutParams(0, 0))
@@ -214,12 +226,23 @@ class FlumeView(context: Context) : FrameLayout(context) {
     addView(sticky.reactPinned, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
     adapter.onDataChanged = { reset ->
       viewability.invalidate()
+      // A command still on its way lands on its target in the new rows, not where anchoring keeps the old ones.
+      val again = landing?.takeIf { commands.pending != 0 && jumps.pending == null }
+      if (again != null) {
+        scrollToken++
+        pendingAlign = null
+      }
       if (reset) {
         recycler.stopScroll()
         pendingAlign = null
       }
       applySpans()
-      retargetJump()
+      if (again != null) {
+        commands.begin(commands.pending)
+        requestJump(again.target, again.animated, again.viewPosition, again.viewOffsetDp)
+      } else {
+        retargetJump()
+      }
     }
     adapter.onStickyIndicesChanged = { applySpans() }
     recycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -244,9 +267,11 @@ class FlumeView(context: Context) : FrameLayout(context) {
           emitScroll(kind, afterDrag = scrollState == RecyclerView.SCROLL_STATE_DRAGGING)
         }
         scrollState = newState
+        if (newState == RecyclerView.SCROLL_STATE_SETTLING) movedSinceScroll = true
         if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
           pendingAlign = null
           jumps.cancel()?.let { dropJump(it) }
+          endScrollCommand()
           viewability.interacted = true
           evaluateViewability()
           if (keyboardDismissOnDrag) recycler.dismissKeyboard()
@@ -256,6 +281,11 @@ class FlumeView(context: Context) : FrameLayout(context) {
           realign()
           // Inline, so the state is queued before a touch the next looper turn delivers.
           writeOrigins()
+          if (landOnIdle && movedSinceScroll) {
+            landOnIdle = false
+            commands.land()
+          }
+          settleCommand()
         }
         if (newState == RecyclerView.SCROLL_STATE_IDLE && reclaimOnIdle) {
           reclaimOnIdle = false
@@ -321,6 +351,11 @@ class FlumeView(context: Context) : FrameLayout(context) {
       removeCallbacks(realignAfterLayout)
       post(realignAfterLayout)
     }
+    if (landOnLayout) {
+      landOnLayout = false
+      commands.land()
+    }
+    settleCommand()
     sticky.refresh()
     updateEmptyLength()
     updateFooterLength()
@@ -396,13 +431,19 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   // index counts data items, as FlatList's does; the header and footer are reached by offset and scrollToEnd.
-  fun scrollToIndex(index: Int, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) =
+  fun scrollToIndex(id: Int, index: Int, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
+    commands.begin(id)
     requestJump(JumpTarget.Index(index), animated, viewPosition, viewOffsetDp)
+  }
 
   // React rows paint a frame or more after their bind, so a jump first has the rows it will show rendered.
   private fun requestJump(target: JumpTarget, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
     jumps.cancel()?.let { dropJump(it) }
-    if (target.position(rows) == null && !target.waitsForData(rows)) return
+    forgetLanding()
+    if (target.position(rows) == null && !target.waitsForData(rows)) {
+      landCommand()
+      return
+    }
     val jump = Jump(target, animated, viewPosition, viewOffsetDp, adapter.allocateHolderId())
     val waiting = reserveJump(jump)
     if (waiting.isEmpty() && !target.waitsForData(rows)) {
@@ -435,9 +476,47 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private fun runJump(jump: Jump) {
     removeCallbacks(jumpDue)
     slots.lend(jump.owner)
-    val position = jump.target.position(rows) ?: return
+    val position = jump.target.position(rows) ?: return landCommand()
     if (jump.animated) reclaimOnIdle = true else reclaimOnLayout = true
+    landing = jump
     startScroll(position, jump.animated, jump.viewPosition, jump.viewOffsetDp)
+  }
+
+  // A new scroll replaces the landing of the one before it.
+  private fun forgetLanding() {
+    landing = null
+    landOnLayout = false
+    landOnIdle = false
+    scrollToken++
+  }
+
+  private fun landCommand() {
+    commands.land()
+    settleCommand()
+  }
+
+  private fun settleCommand() {
+    val ended = commands.settle(
+      ScrollCommands.Rest(
+        moving = scrollState == RecyclerView.SCROLL_STATE_SETTLING,
+        dragging = scrollState == RecyclerView.SCROLL_STATE_DRAGGING,
+        jumpWaiting = jumps.pending != null,
+        realignPending = pendingAlign != null,
+      ),
+    )
+    if (ended != 0) {
+      landing = null
+      dispatch(FlumeScrollCommandEndEvent(UIManagerHelper.getSurfaceId(this), id, ended))
+    }
+  }
+
+  // A drag, leaving the window, anchoring's own scroll or a dropped view ends the command in flight.
+  fun endScrollCommand() {
+    landing = null
+    landOnLayout = false
+    landOnIdle = false
+    val ended = commands.end()
+    if (ended != 0) dispatch(FlumeScrollCommandEndEvent(UIManagerHelper.getSurfaceId(this), id, ended))
   }
 
   private fun dropJump(jump: Jump) {
@@ -470,7 +549,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   private fun startScroll(position: Int, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
-    val target = ScrollTargets.clampIndex(position, rows.itemCount) ?: return
+    val target = ScrollTargets.clampIndex(position, rows.itemCount) ?: return landCommand()
+    val token = scrollToken
     viewability.interacted = true
     recycler.stopScroll()
     val viewOffsetPx = (viewOffsetDp * density).roundToInt()
@@ -502,6 +582,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
           )
         }
       }
+      scroller.onStopped = { if (token == scrollToken) landCommand() }
       layoutManager.startSmoothScroll(scroller)
       return
     }
@@ -509,6 +590,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     val itemPx = if (ScrollTargets.needsLength(viewPosition)) rowLengthPx(target) else 0
     if (realigns) pendingAlign = PendingAlign(target, viewPosition, viewOffsetPx, itemPx, anchoredAtEnd = anchoredAtEnd)
     layoutManager.scrollToPositionWithOffset(target, ScrollTargets.offsetPx(viewPosition, viewOffsetPx, viewportPx, itemPx))
+    landOnLayout = true
   }
 
   // RecyclerView drops a layout request made inside its own layout pass, so a correction found there waits for the pass to end.
@@ -530,6 +612,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     } else if (offset != null || (target != null && reactRowsReady())) {
       pendingAlign = null
     }
+    settleCommand()
   }
 
   // The start as scrollToPositionWithOffset counts it: from the padded start edge, or from the end under a reversed layout.
@@ -624,11 +707,13 @@ class FlumeView(context: Context) : FrameLayout(context) {
   }
 
   // Offsets count from the content start; the visual delta flips for an inverted list.
-  fun scrollToOffset(offsetDp: Double, animated: Boolean) {
+  fun scrollToOffset(id: Int, offsetDp: Double, animated: Boolean) {
+    commands.begin(id)
     viewability.interacted = true
     // Before stopScroll, whose idle state would run an older command's realign.
     pendingAlign = null
     jumps.cancel()?.let { dropJump(it) }
+    forgetLanding()
     recycler.stopScroll()
     val targetPx = (offsetDp * density).roundToInt()
     ScrollTargets.startRow(targetPx)?.let { row ->
@@ -640,10 +725,20 @@ class FlumeView(context: Context) : FrameLayout(context) {
     val visual = if (inverted) -delta else delta
     val dx = if (geometry.horizontal) visual else 0
     val dy = if (geometry.horizontal) 0 else visual
-    if (animated) recycler.smoothScrollBy(dx, dy) else recycler.scrollBy(dx, dy)
+    if (visual != 0 && animated) {
+      movedSinceScroll = false
+      landOnIdle = true
+      recycler.smoothScrollBy(dx, dy)
+      return
+    }
+    if (visual != 0) recycler.scrollBy(dx, dy)
+    landCommand()
   }
 
-  fun scrollToEnd(animated: Boolean) = requestJump(JumpTarget.End, animated, 1f, 0.0)
+  fun scrollToEnd(id: Int, animated: Boolean) {
+    commands.begin(id)
+    requestJump(JumpTarget.End, animated, 1f, 0.0)
+  }
 
   fun setListOverScrollMode(value: String?) {
     recycler.overScrollMode = OverScroll.mode(value)
@@ -930,6 +1025,9 @@ class FlumeView(context: Context) : FrameLayout(context) {
   override fun onDetachedFromWindow() {
     dropMountListener()
     adapter.detach()
+    // As on iOS, leaving the window ends a waiting jump and the command in flight.
+    jumps.cancel()?.let { dropJump(it) }
+    endScrollCommand()
     super.onDetachedFromWindow()
   }
 

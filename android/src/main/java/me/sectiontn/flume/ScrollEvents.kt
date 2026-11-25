@@ -149,3 +149,17 @@ class FlumeScrollEvent(
     putDouble("right", right.toDouble())
   }
 }
+
+// Every scroll command up to commandId has ended. Never coalesced, so no end the wrapper waits for is replaced.
+class FlumeScrollCommandEndEvent(surfaceId: Int, viewTag: Int, val commandId: Int) :
+  Event<FlumeScrollCommandEndEvent>(surfaceId, viewTag) {
+  override fun getEventName(): String = NAME
+
+  override fun canCoalesce(): Boolean = false
+
+  override fun getEventData(): WritableMap = Arguments.createMap().apply { putInt("id", commandId) }
+
+  companion object {
+    const val NAME = "topScrollCommandEnd"
+  }
+}

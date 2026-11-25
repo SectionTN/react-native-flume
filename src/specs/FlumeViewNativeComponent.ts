@@ -153,14 +153,17 @@ export interface NativeProps extends ViewProps {
   >;
   onRefresh?: CodegenTypes.DirectEventHandler<null>;
   onSlotsChanged?: CodegenTypes.DirectEventHandler<SlotsEvent>;
+  // Every scroll command up to id has ended.
+  onScrollCommandEnd?: CodegenTypes.DirectEventHandler<Readonly<{ id: CodegenTypes.Int32 }>>;
 }
 
 type FlumeViewType = HostComponent<NativeProps>;
 
-// viewPosition is in content order; offsets are in dp.
+// viewPosition is in content order and offsets are in dp. requestId grows per command and comes back in onScrollCommandEnd.
 interface NativeCommands {
   scrollToIndex: (
     viewRef: React.ElementRef<FlumeViewType>,
+    requestId: CodegenTypes.Int32,
     index: CodegenTypes.Int32,
     animated: boolean,
     viewPosition: CodegenTypes.Double,
@@ -168,10 +171,15 @@ interface NativeCommands {
   ) => void;
   scrollToOffset: (
     viewRef: React.ElementRef<FlumeViewType>,
+    requestId: CodegenTypes.Int32,
     offset: CodegenTypes.Double,
     animated: boolean,
   ) => void;
-  scrollToEnd: (viewRef: React.ElementRef<FlumeViewType>, animated: boolean) => void;
+  scrollToEnd: (
+    viewRef: React.ElementRef<FlumeViewType>,
+    requestId: CodegenTypes.Int32,
+    animated: boolean,
+  ) => void;
   // A pull starts refreshing natively; the wrapper sends the controlled prop back when it did not change.
   setNativeRefreshing: (viewRef: React.ElementRef<FlumeViewType>, refreshing: boolean) => void;
 }

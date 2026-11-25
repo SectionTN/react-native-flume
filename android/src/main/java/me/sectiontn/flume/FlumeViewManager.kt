@@ -38,6 +38,7 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
   }
 
   override fun onDropViewInstance(view: FlumeView) {
+    view.endScrollCommand()
     // A view dropped while detached registered its mount listener after its own detach cleanup.
     view.dropMountListener()
     view.setStateWrapper(null)
@@ -70,6 +71,7 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
     FlumeEdgeEvent.START to mapOf("registrationName" to "onStartReached"),
     FlumeRefreshEvent.NAME to mapOf("registrationName" to "onRefresh"),
     FlumeSlotsEvent.NAME to mapOf("registrationName" to "onSlotsChanged"),
+    FlumeScrollCommandEndEvent.NAME to mapOf("registrationName" to "onScrollCommandEnd"),
   )
 
   @ReactProp(name = "itemAnimations", defaultBoolean = true)
@@ -312,12 +314,19 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
     view.rowsPressable = value
   }
 
-  override fun scrollToIndex(view: FlumeView, index: Int, animated: Boolean, viewPosition: Double, viewOffset: Double) =
-    view.scrollToIndex(index, animated, viewPosition.toFloat(), viewOffset)
+  override fun scrollToIndex(
+    view: FlumeView,
+    requestId: Int,
+    index: Int,
+    animated: Boolean,
+    viewPosition: Double,
+    viewOffset: Double,
+  ) = view.scrollToIndex(requestId, index, animated, viewPosition.toFloat(), viewOffset)
 
-  override fun scrollToOffset(view: FlumeView, offset: Double, animated: Boolean) = view.scrollToOffset(offset, animated)
+  override fun scrollToOffset(view: FlumeView, requestId: Int, offset: Double, animated: Boolean) =
+    view.scrollToOffset(requestId, offset, animated)
 
-  override fun scrollToEnd(view: FlumeView, animated: Boolean) = view.scrollToEnd(animated)
+  override fun scrollToEnd(view: FlumeView, requestId: Int, animated: Boolean) = view.scrollToEnd(requestId, animated)
 
   override fun setNativeRefreshing(view: FlumeView, refreshing: Boolean) = view.setNativeRefreshing(refreshing)
 

@@ -48,4 +48,14 @@ class ScrollEventsTest {
     // Across a horizontal list: 4 left and 6 right of a 360 px viewport leave an extent of 350.
     assertEquals(Pair(1000 - 350 + 360, 300), ScrollMetrics.contentSizePx(true, 1000, padding, 360, 300))
   }
+
+  @Test
+  fun theCommandEndEventNeverCoalesces() {
+    assertFalse(FlumeScrollCommandEndEvent(1, 2, 7).canCoalesce())
+  }
+
+  @Test
+  fun theCommandEndEventCarriesTheId() {
+    assertEquals(7, FlumeScrollCommandEndEvent(1, 2, 7).commandId)
+  }
 }
