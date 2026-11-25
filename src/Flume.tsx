@@ -126,6 +126,8 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const prev = useRef<{ storeId: number; signature?: string; state?: DataState<T> }>({ storeId });
   const warned = useRef({ duplicates: false, messages: new Set<string>() });
   const nativeRef = useRef<ComponentRef<typeof FlumeViewNativeComponent>>(null);
+  // Native reports the end of a scroll command by this id, which only grows.
+  const commandId = useRef(0);
   // React Native's RefreshControl rule: a pull starts native refreshing, so an unchanged prop is sent back.
   const wantsRefreshing = refresh.refreshing;
   const nativeRefreshing = useRef(wantsRefreshing);
@@ -464,15 +466,23 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         if (index < 0 || index >= count.current) {
           warn(`scrollToIndex: index ${index} is out of range for ${count.current} items`);
         }
-        Commands.scrollToIndex(native, index, animated, viewPosition, viewOffset);
+        Commands.scrollToIndex(
+          native,
+          ++commandId.current,
+          index,
+          animated,
+          viewPosition,
+          viewOffset,
+        );
       },
       scrollToOffset: ({ offset, animated = true }) => {
         const native = nativeRef.current;
-        if (native !== null) Commands.scrollToOffset(native, offset, animated);
+        if (native !== null) Commands.scrollToOffset(native, ++commandId.current, offset, animated);
       },
       scrollToEnd: (params) => {
         const native = nativeRef.current;
-        if (native !== null) Commands.scrollToEnd(native, params?.animated ?? true);
+        if (native !== null)
+          Commands.scrollToEnd(native, ++commandId.current, params?.animated ?? true);
       },
       getScrollableNode: () => nativeRef.current,
       getAnimatableRef: () => nativeRef.current,

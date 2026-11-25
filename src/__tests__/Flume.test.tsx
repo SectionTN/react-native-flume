@@ -840,7 +840,7 @@ describe('Flume ref', () => {
     vi.resetModules();
   });
 
-  it('sends the commands with FlatList defaults', async () => {
+  it('sends the commands with FlatList defaults and a growing id', async () => {
     installHost();
     const { Flume } = await import('../Flume');
     const { Commands } = await import('../specs/FlumeViewNativeComponent');
@@ -849,9 +849,9 @@ describe('Flume ref', () => {
     ref.current?.scrollToIndex({ index: 0 });
     ref.current?.scrollToOffset({ offset: 20, animated: false });
     ref.current?.scrollToEnd();
-    expect(Commands.scrollToIndex).toHaveBeenCalledWith(expect.anything(), 0, true, 0, 0);
-    expect(Commands.scrollToOffset).toHaveBeenCalledWith(expect.anything(), 20, false);
-    expect(Commands.scrollToEnd).toHaveBeenCalledWith(expect.anything(), true);
+    expect(Commands.scrollToIndex).toHaveBeenCalledWith(expect.anything(), 1, 0, true, 0, 0);
+    expect(Commands.scrollToOffset).toHaveBeenCalledWith(expect.anything(), 2, 20, false);
+    expect(Commands.scrollToEnd).toHaveBeenCalledWith(expect.anything(), 3, true);
   });
 });
 

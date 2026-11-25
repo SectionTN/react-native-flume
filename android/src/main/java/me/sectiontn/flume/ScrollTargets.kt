@@ -115,6 +115,13 @@ class FlumeSmoothScroller(
   private val msPerPx: Float? = null,
 ) : LinearSmoothScroller(context) {
   var onTarget: ((View) -> Unit)? = null
+  // RecyclerView may still run the last segment after this, so the list rests only at its idle state.
+  var onStopped: (() -> Unit)? = null
+
+  override fun onStop() {
+    super.onStop()
+    onStopped?.invoke()
+  }
 
   override fun calculateSpeedPerPixel(displayMetrics: DisplayMetrics): Float = msPerPx ?: super.calculateSpeedPerPixel(displayMetrics)
 
