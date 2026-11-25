@@ -1811,7 +1811,11 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   [self scrollTo:offset animated:YES];
 }
 
-- (void)scrollToIndex:(NSInteger)index animated:(BOOL)animated viewPosition:(double)viewPosition viewOffset:(double)viewOffset
+- (void)scrollToIndex:(NSInteger)requestId
+                index:(NSInteger)index
+             animated:(BOOL)animated
+         viewPosition:(double)viewPosition
+           viewOffset:(double)viewOffset
 {
   if (!_attached) {
     return;
@@ -1821,7 +1825,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 }
 
 // The content start lands on measured rows; further offsets stay on the estimates.
-- (void)scrollToOffset:(double)offset animated:(BOOL)animated
+- (void)scrollToOffset:(NSInteger)requestId offset:(double)offset animated:(BOOL)animated
 {
   if (!_attached || _rows.dataCount == 0) {
     return;
@@ -1845,7 +1849,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
         animated:animated];
 }
 
-- (void)scrollToEnd:(BOOL)animated
+- (void)scrollToEnd:(NSInteger)requestId animated:(BOOL)animated
 {
   if (!_attached || _rows.dataCount == 0) {
     return;
