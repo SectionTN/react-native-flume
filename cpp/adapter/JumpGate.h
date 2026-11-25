@@ -24,6 +24,14 @@ class JumpGate {
     return replaced;
   }
 
+  // Swaps the waiting jump for one aimed at new rows, keeping its deadline. Returns the old one, or nothing when none waits.
+  std::optional<Jump> retarget(Jump jump, std::unordered_set<int> slots) {
+    if (!pending_) return std::nullopt;
+    std::optional<Jump> replaced = std::exchange(pending_, std::move(jump));
+    waiting_ = std::move(slots);
+    return replaced;
+  }
+
   std::optional<Jump> rendered(int slot) {
     if (!pending_ || waiting_.erase(slot) == 0 || !waiting_.empty()) return std::nullopt;
     return take();
