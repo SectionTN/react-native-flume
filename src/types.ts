@@ -169,15 +169,16 @@ export type ViewabilityConfig = {
 };
 
 // scrollToIndex is exact for worklet rows; the last two members serve Animated and Reanimated, which read them by name.
+// A scroll resolves once the list rests after it, or when a drag, a newer scroll or an unmount ends it first.
 export type FlumeRef = {
   scrollToIndex(params: {
     index: number;
     animated?: boolean;
     viewPosition?: number;
     viewOffset?: number;
-  }): void;
-  scrollToOffset(params: { offset: number; animated?: boolean }): void;
-  scrollToEnd(params?: { animated?: boolean }): void;
+  }): Promise<void>;
+  scrollToOffset(params: { offset: number; animated?: boolean }): Promise<void>;
+  scrollToEnd(params?: { animated?: boolean }): Promise<void>;
   getScrollableNode(): unknown;
   getAnimatableRef(): unknown;
 };

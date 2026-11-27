@@ -19,6 +19,7 @@ import {
 import { type StyleProp, View, type ViewStyle } from 'react-native';
 import { createSerializable } from 'react-native-worklets';
 import { cellKinds, itemComponentCell, type ResolvedCell, resolveCell } from './cells';
+import { createScrollCommands } from './commands';
 import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './data';
 import { FlumeSlot } from './FlumeSlot';
 import { hostProps } from './foreign';
@@ -59,6 +60,9 @@ import type {
   SeparatorProps,
   ViewToken,
 } from './types';
+
+type NativeView = ComponentRef<typeof FlumeViewNativeComponent>;
+type RecentCommand = { send: (native: NativeView, id: number) => void; index?: number };
 
 // FlatList's rule for the list components: an element renders as given, a component through createElement.
 // A given style wraps it in a View, as FlatList and FlashList do.
@@ -125,9 +129,11 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   const released = useRef(false);
   const prev = useRef<{ storeId: number; signature?: string; state?: DataState<T> }>({ storeId });
   const warned = useRef({ duplicates: false, messages: new Set<string>() });
-  const nativeRef = useRef<ComponentRef<typeof FlumeViewNativeComponent>>(null);
-  // Native reports the end of a scroll command by this id, which only grows.
-  const commandId = useRef(0);
+  const nativeRef = useRef<NativeView>(null);
+  // Native reports the end of each scroll command by its id, which settles the command's Promise.
+  const [commands] = useState(createScrollCommands);
+  // The last scroll command until the next frame, sent again after data committed meanwhile.
+  const recent = useRef<RecentCommand | null>(null);
   // React Native's RefreshControl rule: a pull starts native refreshing, so an unchanged prop is sent back.
   const wantsRefreshing = refresh.refreshing;
   const nativeRefreshing = useRef(wantsRefreshing);
@@ -289,7 +295,11 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         commit.diffMs,
         performance.now() - start,
       );
-  }, [host, storeId, commit, report]);
+    // A scroll from this frame reached native before this data, so it goes again to land in the new rows.
+    const command = recent.current;
+    const native = nativeRef.current;
+    if (command !== null && native !== null) command.send(native, commands.move());
+  }, [host, storeId, commit, report, commands]);
 
   useLayoutEffect(() => {
     const sent = sentSticky.current;
@@ -456,38 +466,57 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     );
   });
 
+  // The index is checked once the frame ends, against the data a handler committed with the scroll.
+  const sendCommand = useCallback(
+    (send: RecentCommand['send'], index?: number): Promise<void> => {
+      const native = nativeRef.current;
+      if (native === null) return Promise.resolve();
+      const { id, done } = commands.start();
+      send(native, id);
+      const command: RecentCommand = { send, index };
+      recent.current = command;
+      requestAnimationFrame(() => {
+        if (recent.current !== command) return;
+        recent.current = null;
+        if (index !== undefined && (index < 0 || index >= count.current)) {
+          warn(`scrollToIndex: index ${index} is out of range for ${count.current} items`);
+        }
+      });
+      return done;
+    },
+    [commands, warn],
+  );
+  const endCommand = useCallback(
+    (event: { nativeEvent: { id: number } }) => commands.endThrough(event.nativeEvent.id),
+    [commands],
+  );
+  // StrictMode replays this effect, so the tracker keeps working after endAll.
+  useEffect(
+    () => () => {
+      recent.current = null;
+      commands.endAll();
+    },
+    [commands],
+  );
+
   // FlatList's defaults: animated, the item at the start edge; native clamps the index.
   useImperativeHandle(
     ref,
     () => ({
-      scrollToIndex: ({ index, animated = true, viewPosition = 0, viewOffset = 0 }) => {
-        const native = nativeRef.current;
-        if (native === null) return;
-        if (index < 0 || index >= count.current) {
-          warn(`scrollToIndex: index ${index} is out of range for ${count.current} items`);
-        }
-        Commands.scrollToIndex(
-          native,
-          ++commandId.current,
+      scrollToIndex: ({ index, animated = true, viewPosition = 0, viewOffset = 0 }) =>
+        sendCommand(
+          (native, id) =>
+            Commands.scrollToIndex(native, id, index, animated, viewPosition, viewOffset),
           index,
-          animated,
-          viewPosition,
-          viewOffset,
-        );
-      },
-      scrollToOffset: ({ offset, animated = true }) => {
-        const native = nativeRef.current;
-        if (native !== null) Commands.scrollToOffset(native, ++commandId.current, offset, animated);
-      },
-      scrollToEnd: (params) => {
-        const native = nativeRef.current;
-        if (native !== null)
-          Commands.scrollToEnd(native, ++commandId.current, params?.animated ?? true);
-      },
+        ),
+      scrollToOffset: ({ offset, animated = true }) =>
+        sendCommand((native, id) => Commands.scrollToOffset(native, id, offset, animated)),
+      scrollToEnd: (params) =>
+        sendCommand((native, id) => Commands.scrollToEnd(native, id, params?.animated ?? true)),
       getScrollableNode: () => nativeRef.current,
       getAnimatableRef: () => nativeRef.current,
     }),
-    [warn],
+    [sendCommand],
   );
 
   const press = (handler: ((info: PressInfo<T>) => void) | undefined) =>
@@ -520,6 +549,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       {...hostProps(given)}
       {...nativeProps(props, warn)}
       ref={nativeRef}
+      onScrollCommandEnd={endCommand}
       storeId={storeId}
       itemAnimations={itemAnimations}
       onCellPress={press(onPress)}
