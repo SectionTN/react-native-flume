@@ -31,6 +31,7 @@
 #include "adapter/EdgeTracker.h"
 #include "adapter/JumpGate.h"
 #include "adapter/ListRows.h"
+#include "adapter/ScrollCommands.h"
 #include "adapter/ScrollTargets.h"
 #include "adapter/Viewability.h"
 #include "bindings/Engine.h"
@@ -204,6 +205,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   BOOL _reclaimAfterGlide;  // a glide's lent slots go back to the pool when it ends
   std::optional<FLMPendingTarget> _realign;
   int _realigns;
+  flume::ScrollCommands _commands;
+  BOOL _commandGlides;  // the command in flight started the glide running, so its end lands the command
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -719,6 +722,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 
 - (void)detach
 {
+  // Leaving the window or the store ends the command in flight, as a drag does.
+  [self endCommand];
   if (!_attached) {
     return;
   }
@@ -814,6 +819,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
   _realign.reset();
   if (anchor.outcome == flume::AnchorOutcome::ScrollToEdge) {
+    // Anchoring's own scroll replaces the command in flight, as on Android.
+    [self endCommand];
     _pendingTarget.reset();
     [self dropJump];
     [self scrollTo:[_layout offsetForVisualEdge:anchor.edge] animated:anchor.animated];
@@ -1100,6 +1107,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 // React rows show bare under UIKit's own glide, so a list that can show them scrolls to its top through the jump gate.
 - (BOOL)scrollViewShouldScrollToTop:(UIScrollView *)scrollView
 {
+  [self endCommand];
   if (_attached && _rows.dataCount > 0 && [self showsReactRows]) {
     // The visual top, which is the content end when inverted.
     const BOOL end = _inverted;
@@ -1128,6 +1136,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   _pendingTarget.reset();
   _gliding = NO;
   [self dropJump];
+  [self endCommand];
   [self reclaimGlideSlots];
   // The list takes the touch, so no React handler under it may still press, as on Android.
   FLMCancelJSTouches(self);
@@ -1175,6 +1184,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
       [weakSelf realignIfIdle];
     });
   }
+  // As Android settles on each layout pass, so a realign that new data cleared still ends its command.
+  [self settleCommand];
   // A press starts only at rest, so the shadow tree learns where React rows show only then.
   const BOOL moving = _collectionView.isDragging || _collectionView.isDecelerating || _pendingTarget.has_value() || _gliding;
   if (!moving || !_collectionView.scrollEnabled) {
@@ -1414,6 +1425,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   [self reclaimGlideSlots];
   [self emitScrollEvents:_scrollEvents.didEndScrollingAnimation() velocity:CGPointZero];
   [self writeShadowOrigins];
+  // Also after a touch stopped the glide, which UIKit ends here too.
+  if (std::exchange(_commandGlides, NO)) {
+    [self landCommand];
+  }
 }
 
 #pragma mark - Presses
@@ -1526,17 +1541,21 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   if (std::fabs(offset - [self currentOffset]) <= 0.5) {
     _pendingTarget.reset();
     [self reclaimGlideSlots];
+    [self landCommand];
     return;
   }
   if (animated) {
     _scrollEvents.scrolledProgrammatically(true);
     [_collectionView setContentOffset:[self pointAt:offset] animated:YES];
     _gliding = YES;
+    // After the call, since UIKit ends a glide it interrupts inside it.
+    _commandGlides = _commands.pending() != 0;
     return;
   }
   _gliding = NO;
   [_collectionView setContentOffset:[self pointAt:offset] animated:NO];
   [self emitScrollEvents:_scrollEvents.scrolledProgrammatically(false) velocity:CGPointZero];
+  [self landCommand];
 }
 
 // The content start is the visual top, or the bottom when inverted.
@@ -1671,6 +1690,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   [self requestSlotsFlush];
   if (!_attached || _rows.dataCount == 0) {
     pool.reclaim();
+    [self landCommand];
     return;
   }
   if (jump.animated) {
@@ -1745,6 +1765,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     [_slots pool].reclaim();
     [self requestSlotsFlush];
   }
+  [self settleCommand];
 }
 
 // After the next layout pass, so the rows the glide ends on bind their lent slots first.
@@ -1771,10 +1792,47 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
       _realigns++;
       [_collectionView setContentOffset:[self pointAt:offset] animated:NO];
     }
-    return;
-  }
-  if ([self visibleSlotCellsShow]) {
+  } else if ([self visibleSlotCellsShow]) {
     _realign.reset();
+  }
+  [self settleCommand];
+}
+
+// A glide still running belongs to the command before, so its end lands nothing.
+- (void)beginCommand:(NSInteger)requestId
+{
+  _commands.begin(static_cast<int32_t>(requestId));
+  _commandGlides = NO;
+}
+
+- (void)landCommand
+{
+  _commands.land();
+  [self settleCommand];
+}
+
+// Ends the command once its own movement landed and the list rests.
+- (void)settleCommand
+{
+  flume::ScrollCommands::Rest rest;
+  rest.moving = _collectionView.isDecelerating || _gliding || _pendingTarget.has_value();
+  rest.dragging = _collectionView.isDragging;
+  rest.jumpWaiting = _jumps.pending().has_value() || _readyJump.has_value();
+  rest.realignPending = _realign.has_value();
+  [self emitCommandEnd:_commands.settle(rest)];
+}
+
+// A drag, the status bar, anchoring's own scroll or leaving the window ends the command in flight.
+- (void)endCommand
+{
+  [self emitCommandEnd:_commands.end()];
+}
+
+- (void)emitCommandEnd:(int32_t)commandId
+{
+  auto emitter = std::static_pointer_cast<const FlumeViewEventEmitter>(_eventEmitter);
+  if (commandId != 0 && emitter != nullptr) {
+    emitter->onScrollCommandEnd(FlumeViewEventEmitter::OnScrollCommandEnd{commandId});
   }
 }
 
@@ -1817,7 +1875,9 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
          viewPosition:(double)viewPosition
            viewOffset:(double)viewOffset
 {
+  [self beginCommand:requestId];
   if (!_attached) {
+    [self landCommand];
     return;
   }
   [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::Index, static_cast<int>(index), viewPosition, viewOffset}
@@ -1827,10 +1887,12 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 // The content start lands on measured rows; further offsets stay on the estimates.
 - (void)scrollToOffset:(NSInteger)requestId offset:(double)offset animated:(BOOL)animated
 {
+  [self beginCommand:requestId];
+  [self dropJump];
   if (!_attached || _rows.dataCount == 0) {
+    [self landCommand];
     return;
   }
-  [self dropJump];
   if (offset <= 0) {
     [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::Start, 0, 0, 0} animated:animated];
     return;
@@ -1851,7 +1913,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 
 - (void)scrollToEnd:(NSInteger)requestId animated:(BOOL)animated
 {
+  [self beginCommand:requestId];
   if (!_attached || _rows.dataCount == 0) {
+    [self dropJump];
+    [self landCommand];
     return;
   }
   [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::End, _rows.dataCount - 1, 1, 0}
