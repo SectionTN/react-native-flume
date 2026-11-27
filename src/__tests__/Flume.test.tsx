@@ -836,8 +836,158 @@ describe('Flume edges', () => {
 });
 
 describe('Flume ref', () => {
+  const frames: Array<() => void> = [];
+  const nextFrame = () => {
+    for (const run of frames.splice(0)) run();
+  };
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+  const track = (done: Promise<void> | undefined) => {
+    const state = { resolved: false };
+    void done?.then(() => {
+      state.resolved = true;
+    });
+    return state;
+  };
+  const endCommand = (tree: ReactTestRenderer, id: number) =>
+    act(() => {
+      tree.root
+        .find((node) => String(node.type) === 'FlumeView')
+        .props.onScrollCommandEnd({ nativeEvent: { id } });
+    });
+
   beforeEach(() => {
     vi.resetModules();
+    frames.length = 0;
+    vi.stubGlobal('requestAnimationFrame', (run: () => void) => frames.push(run));
+  });
+
+  it('scrollToIndex resolves when native reports its end', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const ref = createRef<FlumeRef>();
+    const tree = await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    const state = track(ref.current?.scrollToIndex({ index: 0 }));
+    await flush();
+    expect(state.resolved).toBe(false);
+    await endCommand(tree, 1);
+    await flush();
+    expect(state.resolved).toBe(true);
+  });
+
+  it('resolves at once without a native view', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const ref = createRef<FlumeRef>();
+    await act(async () => {
+      create(createElement(Flume, { ref, data: [item], renderCell }), {
+        createNodeMock: () => null,
+      });
+    });
+    const state = track(ref.current?.scrollToOffset({ offset: 10 }));
+    await flush();
+    expect(state.resolved).toBe(true);
+    expect(Commands.scrollToOffset).not.toHaveBeenCalled();
+  });
+
+  it('resolves pending scrolls on unmount', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const ref = createRef<FlumeRef>();
+    const tree = await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    const state = track(ref.current?.scrollToEnd());
+    await act(async () => tree.unmount());
+    await flush();
+    expect(state.resolved).toBe(true);
+  });
+
+  it('sends a command again under a new id after data of the same frame', async () => {
+    const host = installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    vi.mocked(Commands.scrollToIndex).mockImplementation((_view, id) => {
+      host.log.push(`index ${id}`);
+    });
+    const ref = createRef<FlumeRef>();
+    const tree = await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    ref.current?.scrollToIndex({ index: 1, animated: false });
+    await act(async () =>
+      tree.update(createElement(Flume, { ref, data: [item, { id: 'b' }], renderCell })),
+    );
+    expect(host.log.slice(-3)).toEqual(['index 1', 'data [1]', 'index 2']);
+    expect(Commands.scrollToIndex).toHaveBeenLastCalledWith(expect.anything(), 2, 1, false, 0, 0);
+  });
+
+  it('keeps a scroll sent again pending until its new id ends', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const ref = createRef<FlumeRef>();
+    const tree = await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    const state = track(ref.current?.scrollToIndex({ index: 1 }));
+    await act(async () =>
+      tree.update(createElement(Flume, { ref, data: [item, { id: 'b' }], renderCell })),
+    );
+    await endCommand(tree, 1);
+    await flush();
+    expect(state.resolved).toBe(false);
+    await endCommand(tree, 2);
+    await flush();
+    expect(state.resolved).toBe(true);
+  });
+
+  it('does not send a scroll again once its frame passed', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const ref = createRef<FlumeRef>();
+    const tree = await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    ref.current?.scrollToEnd();
+    nextFrame();
+    await act(async () =>
+      tree.update(createElement(Flume, { ref, data: [item, { id: 'b' }], renderCell })),
+    );
+    expect(Commands.scrollToEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not send a scroll again when native data is unchanged', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const ref = createRef<FlumeRef>();
+    const tree = await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    ref.current?.scrollToOffset({ offset: 10 });
+    await act(async () => tree.update(createElement(Flume, { ref, data: [item], renderCell })));
+    expect(Commands.scrollToOffset).toHaveBeenCalledTimes(1);
+  });
+
+  it('checks an index against the data of the same frame', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const ref = createRef<FlumeRef>();
+    const tree = await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    ref.current?.scrollToIndex({ index: 1 });
+    await act(async () =>
+      tree.update(createElement(Flume, { ref, data: [item, { id: 'b' }], renderCell })),
+    );
+    nextFrame();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('warns about an index past the data once its frame passes', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const ref = createRef<FlumeRef>();
+    await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    ref.current?.scrollToIndex({ index: 5 });
+    expect(warn).not.toHaveBeenCalled();
+    nextFrame();
+    expect(warn).toHaveBeenCalledWith(
+      'react-native-flume: scrollToIndex: index 5 is out of range for 1 items',
+    );
+    warn.mockRestore();
   });
 
   it('sends the commands with FlatList defaults and a growing id', async () => {
