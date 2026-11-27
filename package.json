@@ -33,7 +33,7 @@
     "prepare": "bob build",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "typecheck": "tsc",
+    "typecheck": "tsc && tsc -p tsconfig.legacy-types.json",
     "bench": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON example/benchmark/run.mts",
     "test": "vitest run",
     "test:cpp": "scripts/test-cpp.sh",
