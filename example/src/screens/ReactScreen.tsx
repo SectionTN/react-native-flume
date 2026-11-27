@@ -20,6 +20,7 @@ import {
 } from 'react-native-flume';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { CHIPS, type Chip, makeReactRows, type ReactRow, sectionIndices } from '../reactData';
+import { useScrollStatus } from '../scrollStatus';
 
 const TAPS = ['never', 'handled', 'always'] as const;
 type Taps = (typeof TAPS)[number];
@@ -182,6 +183,7 @@ export default function ReactScreen() {
   }, []);
   const sticky = useMemo(() => sectionIndices(rows), [rows]);
   const list = useRef<FlumeRef>(null);
+  const [scrolled, track] = useScrollStatus();
   const prepended = useRef(0);
   const version = useRef(0);
   const footer = useMemo(() => <Text style={styles.footer}>End of list</Text>, []);
@@ -223,8 +225,15 @@ export default function ReactScreen() {
     ['Replace all', () => setRows(makeReactRows(500, `v${++version.current}`))],
     ['Clear', () => setRows([])],
     ['Refill', () => setRows(all)],
-    ['To 300', () => list.current?.scrollToIndex({ index: 300, viewPosition: 1, animated })],
-    ['To end', () => list.current?.scrollToEnd({ animated })],
+    [
+      'To 300',
+      () => track('To 300', list.current?.scrollToIndex({ index: 300, viewPosition: 1, animated })),
+    ],
+    ['To end', () => track('To end', list.current?.scrollToEnd({ animated }))],
+    [
+      'Into view 40',
+      () => track('Into view 40', list.current?.scrollIndexIntoView({ index: 40, animated })),
+    ],
     [`Animated ${animated ? 'on' : 'off'}`, () => setAnimated((on) => !on)],
     [`Columns ${columns === 1 ? 2 : 1}`, () => setColumns((value) => (value === 1 ? 2 : 1))],
     [inverted ? 'Upright' : 'Inverted', () => setInverted((on) => !on)],
@@ -244,6 +253,9 @@ export default function ReactScreen() {
           pressed {pressed}
         </Text>
       ) : null}
+      <Text style={styles.status} testID="react-scroll">
+        {scrolled}
+      </Text>
       <Flume
         data={CHIPS}
         renderItem={renderChip}

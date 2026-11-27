@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Button, Platform, ToastAndroid, View } from 'react-native';
+import { Button, Platform, Text, ToastAndroid, View } from 'react-native';
 import { Flume, type FlumeRef, type PressInfo } from 'react-native-flume';
 import {
   accentColor,
@@ -9,6 +9,7 @@ import {
   makeRenderCell,
   makeRenderSeparatorCell,
 } from '../chat';
+import { useScrollStatus } from '../scrollStatus';
 
 function blockJs(ms: number) {
   const end = Date.now() + ms;
@@ -57,6 +58,7 @@ const toast = (message: string) => {
 
 export default function ChatScreen() {
   const ref = useRef<FlumeRef>(null);
+  const [scrolled, track] = useScrollStatus();
   const [dark, setDark] = useState(false);
   const [mounted, setMounted] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -121,11 +123,20 @@ export default function ChatScreen() {
           onPress={() => setList((s) => ({ ...s, chats: s.chats.slice(1) }))}
         />
         <Button title={mounted ? 'Unmount' : 'Mount'} onPress={() => setMounted((m) => !m)} />
-        <Button title="To end" onPress={() => ref.current?.scrollToEnd()} />
-        <Button title="To 500" onPress={() => ref.current?.scrollToIndex({ index: 500 })} />
-        <Button title="To top" onPress={() => ref.current?.scrollToOffset({ offset: 0 })} />
+        <Button title="To end" onPress={() => track('To end', ref.current?.scrollToEnd())} />
+        <Button
+          title="To 500"
+          onPress={() => track('To 500', ref.current?.scrollToIndex({ index: 500 }))}
+        />
+        <Button
+          title="To top"
+          onPress={() => track('To top', ref.current?.scrollToOffset({ offset: 0 }))}
+        />
         <Button title={`Separators ${nextLines(lines)}`} onPress={() => setLines(nextLines)} />
       </View>
+      <Text style={{ paddingHorizontal: 16, paddingBottom: 4, fontSize: 13, color: '#555555' }}>
+        {scrolled}
+      </Text>
       {mounted ? (
         <Flume
           ref={ref}

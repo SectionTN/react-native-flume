@@ -110,6 +110,7 @@ Layout:
 | `columnWrapperStyle` | `StyleProp<ViewStyle>` | | Sets the gaps between a grid's columns and rows and its horizontal padding. Other style keys are ignored. |
 | `inverted` | `boolean` | `false` | Flips the list so the first item shows at the bottom, as in a chat. |
 | `contentContainerStyle` | `StyleProp<ViewStyle>` | | Sets the padding, the gaps between rows and the background behind them. `flexGrow` with `justifyContent` places short content, as on FlatList. Other style keys are ignored. |
+| `alignItemsAtEnd` | `boolean` | `false` | Places content shorter than the list at its end, as on LegendList. |
 | `ItemSeparatorComponent` | `ComponentType \| ReactElement` | | Renders a component between React rows, with `leadingItem`, `trailingItem` and `highlighted` as props. Worklet rows take `renderSeparatorCell` instead. |
 | `separator` | `{ size, color?, insetStart?, insetEnd? }` | | Adds a line `size` dp thick between rows, inset from the start and end edges. |
 | `stickyHeaderIndices` | `readonly number[]` | | Pins the items at these indices to the top while their section scrolls. |
@@ -144,18 +145,28 @@ Scrolling:
 | `onScrollEndDrag` | `(event) => void` | | Called when the user lifts their finger. |
 | `onMomentumScrollBegin` | `(event) => void` | | Called when the list starts gliding after a fling. |
 | `onMomentumScrollEnd` | `(event) => void` | | Called when the list stops gliding. |
+| `onScrollToTop` | `(event) => void` | | Called on iOS when the list reaches its top after the user taps the status bar. |
+| `scrollsToTop` | `boolean` | `true` when vertical | Scrolls the list to its top on iOS when the user taps the status bar. |
 | `scrollEnabled` | `boolean` | `true` | Lets the user scroll the list. |
 | `decelerationRate` | `'normal' \| 'fast' \| number` | `'normal'` | Sets how quickly the list slows down after a fling. |
 | `showsVerticalScrollIndicator` | `boolean` | `true` | Shows the vertical scroll bar. |
 | `showsHorizontalScrollIndicator` | `boolean` | `true` | Shows the horizontal scroll bar. |
+| `persistentScrollbar` | `boolean` | `false` | Keeps the scroll bar on screen on Android instead of fading it out. |
+| `indicatorStyle` | `'default' \| 'black' \| 'white'` | `'default'` | Sets the color of the scroll bars on iOS. |
 | `keyboardDismissMode` | `'none' \| 'on-drag' \| 'interactive'` | `'none'` | Sets whether dragging the list hides the keyboard. `'interactive'` works on iOS only. |
 | `keyboardShouldPersistTaps` | `'always' \| 'never' \| 'handled'` | `'never'` | Sets whether the keyboard stays up when the user taps the list, as on ScrollView. |
+| `onKeyboardWillShow`, `onKeyboardDidShow`, `onKeyboardWillHide`, `onKeyboardDidHide` | `(event) => void` | | Called with React Native's `Keyboard` events of the same names, as on ScrollView. |
 | `nestedScrollEnabled` | `boolean` | `false` | Lets the list scroll inside another scrolling view on Android. |
 | `overScrollMode` | `'auto' \| 'always' \| 'never'` | `'auto'` | Sets when Android shows the overscroll effect at the ends of the list. |
 | `bounces` | `boolean` | `true` | Bounces the list past its ends on iOS. |
 | `alwaysBounceVertical` | `boolean` | `true` when vertical | Bounces the list on iOS even when its content is shorter than the list. |
+| `alwaysBounceHorizontal` | `boolean` | `true` when horizontal | Bounces a horizontal list on iOS even when its content is narrower than the list. |
+| `directionalLockEnabled` | `boolean` | `false` | Keeps a drag on iOS to the direction it started in. |
+| `canCancelContentTouches` | `boolean` | `true` | Lets a drag on iOS cancel the touches of native controls inside the rows, as on ScrollView. |
+| `scrollToOverflowEnabled` | `boolean` | `false` | Lets `scrollToOffset` scroll past the ends of the content on iOS. |
 | `contentInset` | `Insets` | | Adds space around the content on iOS. |
 | `scrollIndicatorInsets` | `Insets` | | Insets the scroll bars on iOS. |
+| `automaticallyAdjustsScrollIndicatorInsets` | `boolean` | `true` | Insets the scroll bars on iOS for the safe area. |
 | `contentInsetAdjustmentBehavior` | `'automatic' \| 'scrollableAxes' \| 'never' \| 'always'` | `'never'` | Sets how iOS insets the content for the safe area. |
 
 Visibility, loading and refresh:
@@ -171,6 +182,7 @@ Visibility, loading and refresh:
 | `onRefresh` | `() => void` | | Adds pull to refresh and is called when the user pulls. |
 | `refreshing` | `boolean` | `false` | Shows the refresh spinner while it's `true`. |
 | `refreshControl` | `ReactElement \| { tintColor?, colors?, progressViewOffset? }` | | Takes a `RefreshControl` element, as on FlatList, or only the spinner style. `tintColor` works on iOS and `colors` on Android. |
+| `progressViewOffset` | `number` | `0` | Moves the refresh spinner down by this many dp, as on FlatList. |
 
 The list view:
 
@@ -180,6 +192,7 @@ The list view:
 | `onLayout` | `(event) => void` | | Called when the list's size or position changes. |
 | `testID` | `string` | | Sets the ID that tests find the list by. |
 | `accessibilityLabel` | `string` | | Sets the label that screen readers read for the list. |
+| `scrollViewRef`, `refScrollView` | `Ref` | | Gets the object `getScrollResponder()` returns, for code written for FlashList's `scrollViewRef` or LegendList's `refScrollView`. |
 
 ### Cells
 
@@ -197,13 +210,21 @@ Define `renderCell` and `renderSeparatorCell` outside your component, or wrap th
 
 ### Methods
 
-`scrollToIndex`, `scrollToOffset` and `scrollToEnd` animate unless `animated` is `false`.
+The scroll methods animate unless `animated` is `false`. Each returns a Promise that resolves when the list comes to rest, or when a drag, a newer scroll or an unmount stops the scroll first. It never rejects. Type the ref as `useRef<FlumeRef<Item>>(null)` to await them.
 
 | Method | Description |
 | --- | --- |
 | `scrollToIndex({ index, animated?, viewPosition?, viewOffset? })` | Scrolls to the item at `index`. A `viewPosition` of 0 puts it at the top, 0.5 in the middle and 1 at the bottom. |
+| `scrollToItem({ item, animated?, viewPosition?, viewOffset? })` | Scrolls to `item`, found in `data` by reference. It resolves at once when `item` isn't in `data`. |
 | `scrollToOffset({ offset, animated? })` | Scrolls to `offset` dp from the start of the content. |
+| `scrollToTop({ animated? })` | Scrolls to the start of the list. |
 | `scrollToEnd({ animated? })` | Scrolls to the end of the list. |
+| `scrollIndexIntoView({ index, animated?, viewOffset? })` | Scrolls the item at `index` fully into view at the nearest edge, and leaves the list where it is when the item is already in view. |
+| `scrollItemIntoView({ item, animated?, viewOffset? })` | Scrolls `item` fully into view as `scrollIndexIntoView` does. |
+| `flashScrollIndicators()` | Shows the scroll bars for a moment. |
+| `setNativeProps(props)` | Sets props such as `scrollEnabled` on the native list view without a render. |
+| `getScrollResponder()` | Returns an object with ScrollView's `scrollTo`, `scrollToEnd`, `flashScrollIndicators`, `getScrollableNode` and `getNativeScrollRef`. |
+| `getNativeScrollRef()` | Returns the native list view. |
 | `getScrollableNode()` | Returns the native list view. |
 | `getAnimatableRef()` | Returns the native list view for Animated and Reanimated. |
 
@@ -228,6 +249,10 @@ Then rename `<FlatList>` to `<Flume>`. `renderItem`, `keyExtractor`, the list co
 - `stickyHeaderIndices` counts items only. With a `ListHeaderComponent`, subtract 1 from FlatList's indices.
 - `contentContainerStyle` takes padding, gaps, a background, and `flexGrow` with `justifyContent` to place short content. Other style keys are ignored.
 - Rows animate when `data` changes and stay in place when items load above them. `itemAnimations` and `maintainVisibleContentPosition` turn this off.
+- The scroll methods return a Promise. A ref typed as `FlatList<Item>`, `FlashListRef<Item>` or `LegendListRef` still fits the `ref` prop.
+- Coming from FlashList, flip the sign of `viewOffset`. Flume subtracts it, as FlatList and LegendList do.
+- `scrollsToTop` is on for vertical lists only. FlatList turns it on for horizontal lists too.
+- `getScrollResponder()` returns an object with ScrollView's scroll methods, not the ScrollView itself.
 
 ## Roadmap
 
