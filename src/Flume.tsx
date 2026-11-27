@@ -23,6 +23,7 @@ import { createScrollCommands } from './commands';
 import { type DataState, diffData, itemOf, type NativeItems, typeOf } from './data';
 import { FlumeSlot } from './FlumeSlot';
 import { hostProps } from './foreign';
+import { useKeyboardEvent } from './keyboard';
 import {
   contentPadding,
   gapsOf,
@@ -117,6 +118,10 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     onStartReached,
     keyboardShouldPersistTaps,
   } = props;
+  useKeyboardEvent('keyboardWillShow', props.onKeyboardWillShow);
+  useKeyboardEvent('keyboardWillHide', props.onKeyboardWillHide);
+  useKeyboardEvent('keyboardDidShow', props.onKeyboardDidShow);
+  useKeyboardEvent('keyboardDidHide', props.onKeyboardDidHide);
   const refresh = refreshOf(props);
   const { onRefresh } = refresh;
   const host = getHost();
@@ -468,7 +473,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
 
   // The index is checked once the frame ends, against the data a handler committed with the scroll.
   const sendCommand = useCallback(
-    (send: RecentCommand['send'], index?: number): Promise<void> => {
+    (send: RecentCommand['send'], index?: number, method = 'scrollToIndex'): Promise<void> => {
       const native = nativeRef.current;
       if (native === null) return Promise.resolve();
       const { id, done } = commands.start();
@@ -479,7 +484,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         if (recent.current !== command) return;
         recent.current = null;
         if (index !== undefined && (index < 0 || index >= count.current)) {
-          warn(`scrollToIndex: index ${index} is out of range for ${count.current} items`);
+          warn(`${method}: index ${index} is out of range for ${count.current} items`);
         }
       });
       return done;
@@ -500,24 +505,53 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   );
 
   // FlatList's defaults: animated, the item at the start edge; native clamps the index.
-  useImperativeHandle(
-    ref,
-    () => ({
+  useImperativeHandle(ref, () => {
+    const toIndex = (
+      index: number,
+      animated: boolean,
+      viewPosition: number,
+      viewOffset: number,
+      method?: string,
+    ) =>
+      sendCommand(
+        (native, id) =>
+          Commands.scrollToIndex(native, id, index, animated, viewPosition, viewOffset),
+        index,
+        method,
+      );
+    const intoView = (index: number, animated: boolean, viewOffset: number, method: string) =>
+      sendCommand(
+        (native, id) => Commands.scrollIndexIntoView(native, id, index, animated, viewOffset),
+        index,
+        method,
+      );
+    // FlatList finds the item by identity in the data it rendered last.
+    const found = (item: unknown, scroll: (index: number) => Promise<void>) => {
+      const index = dataRef.current.indexOf(item);
+      return index < 0 ? Promise.resolve() : scroll(index);
+    };
+    return {
       scrollToIndex: ({ index, animated = true, viewPosition = 0, viewOffset = 0 }) =>
-        sendCommand(
-          (native, id) =>
-            Commands.scrollToIndex(native, id, index, animated, viewPosition, viewOffset),
-          index,
-        ),
+        toIndex(index, animated, viewPosition, viewOffset),
       scrollToOffset: ({ offset, animated = true }) =>
         sendCommand((native, id) => Commands.scrollToOffset(native, id, offset, animated)),
       scrollToEnd: (params) =>
         sendCommand((native, id) => Commands.scrollToEnd(native, id, params?.animated ?? true)),
+      scrollToItem: ({ item, animated = true, viewPosition = 0, viewOffset = 0 }) =>
+        found(item, (index) => toIndex(index, animated, viewPosition, viewOffset, 'scrollToItem')),
+      scrollToTop: (params) =>
+        sendCommand((native, id) =>
+          Commands.scrollToOffset(native, id, 0, params?.animated ?? true),
+        ),
+      scrollIndexIntoView: ({ index, animated = true, viewOffset = 0 }) =>
+        intoView(index, animated, viewOffset, 'scrollIndexIntoView'),
+      scrollItemIntoView: ({ item, animated = true, viewOffset = 0 }) =>
+        found(item, (index) => intoView(index, animated, viewOffset, 'scrollItemIntoView')),
+      setNativeProps: (nativeProps) => nativeRef.current?.setNativeProps(nativeProps),
       getScrollableNode: () => nativeRef.current,
       getAnimatableRef: () => nativeRef.current,
-    }),
-    [sendCommand],
-  );
+    };
+  }, [sendCommand]);
 
   const press = (handler: ((info: PressInfo<T>) => void) | undefined) =>
     handler === undefined

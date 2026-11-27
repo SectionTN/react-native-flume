@@ -536,3 +536,19 @@ describe('flexGrow and justifyContent', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('justifyContent'));
   });
 });
+
+describe('nativeProps wrapper props', () => {
+  it('passes progressViewOffset to the refresh control', () => {
+    const props = nativeProps({ data: [], onRefresh: () => {}, progressViewOffset: 30 }, vi.fn());
+    expect(props.refreshProgressViewOffset).toBe(30);
+  });
+
+  it('alignItemsAtEnd places short content at the end', () => {
+    const warn = vi.fn();
+    expect(nativeProps({ data: [], alignItemsAtEnd: true }, warn)).toMatchObject({
+      contentJustify: 'end',
+      growFooter: false,
+    });
+    expect(warn).not.toHaveBeenCalled();
+  });
+});

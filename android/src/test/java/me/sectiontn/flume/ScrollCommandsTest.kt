@@ -1,6 +1,7 @@
 package me.sectiontn.flume
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ScrollCommandsTest {
@@ -79,5 +80,23 @@ class ScrollCommandsTest {
     commands.land()
     commands.begin(4)
     assertEquals(0, commands.settle(rest))
+  }
+
+  @Test
+  fun intoViewEndsAtOnceForARowFullyInView() {
+    assertNull(IntoView.target(5, 3, 8))
+    assertNull(IntoView.target(3, 3, 8))
+    assertNull(IntoView.target(8, 3, 8))
+  }
+
+  @Test
+  fun intoViewScrollsWithViewPosition0BeforeTheVisibleRowsAnd1AfterThem() {
+    assertEquals(0f, IntoView.target(2, 3, 8))
+    assertEquals(1f, IntoView.target(9, 3, 8))
+  }
+
+  @Test
+  fun intoViewPutsTheRowAtTheStartWhenNoRowIsFullyInView() {
+    assertEquals(0f, IntoView.target(4, -1, -1))
   }
 }

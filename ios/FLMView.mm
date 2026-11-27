@@ -1931,6 +1931,41 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
               animated:animated];
 }
 
+// A row already fully in view ends the command where the list is. An index past the data lands at the end edge.
+- (void)scrollIndexIntoView:(NSInteger)requestId
+                      index:(NSInteger)index
+                   animated:(BOOL)animated
+                 viewOffset:(double)viewOffset
+{
+  [self beginCommand:requestId];
+  if (!_attached) {
+    [self landCommand];
+    return;
+  }
+  std::optional<float> viewPosition = 1;
+  if (_rows.dataCount > 0 && index < _rows.dataCount) {
+    const FLMViewport viewport = [_layout viewportFor:_collectionView.bounds];
+    int firstFull = INT_MAX;
+    int lastFull = -1;
+    for (const flume::ItemSpan &span : [_layout spansIn:viewport]) {
+      if (span.start >= -0.5f && span.end <= viewport.length + 0.5f) {
+        firstFull = std::min(firstFull, span.index);
+        lastFull = std::max(lastFull, span.index);
+      }
+    }
+    const int position = _rows.position(*flume::clampIndex(static_cast<int>(index), _rows.dataCount));
+    viewPosition = flume::intoViewPosition(position, lastFull < 0 ? -1 : firstFull, lastFull);
+  }
+  if (!viewPosition) {
+    [self dropJump];
+    _pendingTarget.reset();
+    [self landCommand];
+    return;
+  }
+  [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::Index, static_cast<int>(index), *viewPosition, viewOffset}
+              animated:animated];
+}
+
 - (void)setNativeRefreshing:(BOOL)refreshing
 {
   [_refresh setRefreshing:refreshing];
