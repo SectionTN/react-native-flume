@@ -328,6 +328,9 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
 
   override fun scrollToEnd(view: FlumeView, requestId: Int, animated: Boolean) = view.scrollToEnd(requestId, animated)
 
+  override fun scrollIndexIntoView(view: FlumeView, requestId: Int, index: Int, animated: Boolean, viewOffset: Double) =
+    view.scrollIndexIntoView(requestId, index, animated, viewOffset)
+
   override fun setNativeRefreshing(view: FlumeView, refreshing: Boolean) = view.setNativeRefreshing(refreshing)
 
   companion object {

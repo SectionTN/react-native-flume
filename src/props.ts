@@ -324,7 +324,7 @@ export function refreshOf<T>(props: FlumeProps<T>): Refresh {
     refreshing: props.refreshing === true,
     colors: control?.colors,
     tintColor: control?.tintColor,
-    progressViewOffset: control?.progressViewOffset ?? 0,
+    progressViewOffset: props.progressViewOffset ?? control?.progressViewOffset ?? 0,
     enabled: true,
   };
 }
@@ -393,18 +393,15 @@ function contentGrowth<T>(
   const content: Record<string, unknown> = {};
   flatten(props.contentContainerStyle, content);
   const grows = typeof content.flexGrow === 'number' && content.flexGrow > 0;
-  if (!grows) return { contentJustify: 'start', growFooter: false };
+  // LegendList's alignItemsAtEnd places short content without growing it, so a footer keeps its length.
+  if (!grows) return { contentJustify: props.alignItemsAtEnd ? 'end' : 'start', growFooter: false };
   const footer: Record<string, unknown> = {};
   flatten(props.ListFooterComponentStyle, footer);
   // Yoga takes an explicit flexGrow, 0 included, before the flex shorthand.
   const grow = typeof footer.flexGrow === 'number' ? footer.flexGrow : footer.flex;
+  const justify = content.justifyContent ?? (props.alignItemsAtEnd ? 'flex-end' : undefined);
   return {
-    contentJustify:
-      content.justifyContent === 'center'
-        ? 'center'
-        : content.justifyContent === 'flex-end'
-          ? 'end'
-          : 'start',
+    contentJustify: justify === 'center' ? 'center' : justify === 'flex-end' ? 'end' : 'start',
     growFooter: props.ListFooterComponent != null && typeof grow === 'number' && grow > 0,
   };
 }

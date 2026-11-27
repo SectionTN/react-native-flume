@@ -437,6 +437,26 @@ class FlumeView(context: Context) : FrameLayout(context) {
     requestJump(JumpTarget.Index(index), animated, viewPosition, viewOffsetDp)
   }
 
+  // A row already fully in view ends the command where the list is. An index past the data lands at the end edge.
+  fun scrollIndexIntoView(id: Int, index: Int, animated: Boolean, viewOffsetDp: Double) {
+    commands.begin(id)
+    val target = JumpTarget.Index(index)
+    val position = target.position(rows)
+    val first = layoutManager.findFirstCompletelyVisibleItemPosition()
+    val last = layoutManager.findLastCompletelyVisibleItemPosition()
+    val viewPosition = when {
+      position == null || target.waitsForData(rows) -> 1f
+      else -> IntoView.target(position, minOf(first, last), maxOf(first, last))
+    }
+    if (viewPosition == null) {
+      jumps.cancel()?.let { dropJump(it) }
+      forgetLanding()
+      landCommand()
+      return
+    }
+    requestJump(target, animated, viewPosition, viewOffsetDp)
+  }
+
   // React rows paint a frame or more after their bind, so a jump first has the rows it will show rendered.
   private fun requestJump(target: JumpTarget, animated: Boolean, viewPosition: Float, viewOffsetDp: Double) {
     jumps.cancel()?.let { dropJump(it) }

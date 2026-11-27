@@ -29,12 +29,17 @@ vi.mock('../specs/FlumeViewNativeComponent', () => ({
     scrollToIndex: vi.fn(),
     scrollToOffset: vi.fn(),
     scrollToEnd: vi.fn(),
+    scrollIndexIntoView: vi.fn(),
     setNativeRefreshing: vi.fn(),
   },
 }));
 vi.mock('../specs/FlumeSlotViewNativeComponent', () => ({ default: 'FlumeSlotView' }));
 vi.mock('react-native', () => ({
-  Keyboard: { isVisible: vi.fn(() => true), dismiss: vi.fn() },
+  Keyboard: {
+    isVisible: vi.fn(() => true),
+    dismiss: vi.fn(),
+    addListener: vi.fn(() => ({ remove: vi.fn() })),
+  },
   View: 'View',
 }));
 
@@ -990,6 +995,64 @@ describe('Flume ref', () => {
     warn.mockRestore();
   });
 
+  it("scrollToItem scrolls to the item's index", async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const ref = createRef<FlumeRef>();
+    const second = { id: 'b' };
+    await mount(createElement(Flume, { ref, data: [item, second], renderCell }));
+    ref.current?.scrollToItem({ item: second, viewPosition: 0.5 });
+    expect(Commands.scrollToIndex).toHaveBeenCalledWith(expect.anything(), 1, 1, true, 0.5, 0);
+  });
+
+  it('scrollToItem resolves at once for an item not in data', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const ref = createRef<FlumeRef>();
+    await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    const state = track(ref.current?.scrollToItem({ item: { id: 'a' } }));
+    await flush();
+    expect(state.resolved).toBe(true);
+    expect(Commands.scrollToIndex).not.toHaveBeenCalled();
+  });
+
+  it('scrollToTop scrolls to offset 0', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const ref = createRef<FlumeRef>();
+    await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    ref.current?.scrollToTop({ animated: false });
+    expect(Commands.scrollToOffset).toHaveBeenCalledWith(expect.anything(), 1, 0, false);
+  });
+
+  it("scrollItemIntoView sends the item's index", async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const ref = createRef<FlumeRef>();
+    const second = { id: 'b' };
+    await mount(createElement(Flume, { ref, data: [item, second], renderCell }));
+    ref.current?.scrollItemIntoView({ item: second, viewOffset: 8 });
+    expect(Commands.scrollIndexIntoView).toHaveBeenCalledWith(expect.anything(), 1, 1, true, 8);
+  });
+
+  it('setNativeProps forwards to the native view', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const ref = createRef<FlumeRef>();
+    const setNativeProps = vi.fn();
+    await act(async () => {
+      create(createElement(Flume, { ref, data: [item], renderCell }), {
+        createNodeMock: () => ({ setNativeProps }),
+      });
+    });
+    ref.current?.setNativeProps({ scrollEnabled: false });
+    expect(setNativeProps).toHaveBeenCalledWith({ scrollEnabled: false });
+  });
+
   it('sends the commands with FlatList defaults and a growing id', async () => {
     installHost();
     const { Flume } = await import('../Flume');
@@ -1002,6 +1065,52 @@ describe('Flume ref', () => {
     expect(Commands.scrollToIndex).toHaveBeenCalledWith(expect.anything(), 1, 0, true, 0, 0);
     expect(Commands.scrollToOffset).toHaveBeenCalledWith(expect.anything(), 2, 20, false);
     expect(Commands.scrollToEnd).toHaveBeenCalledWith(expect.anything(), 3, true);
+  });
+});
+
+describe('Flume keyboard events', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it.each([
+    ['onKeyboardWillShow', 'keyboardWillShow'],
+    ['onKeyboardWillHide', 'keyboardWillHide'],
+    ['onKeyboardDidShow', 'keyboardDidShow'],
+    ['onKeyboardDidHide', 'keyboardDidHide'],
+  ] as const)('calls %s from the Keyboard event', async (prop, name) => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Keyboard } = await import('react-native');
+    const handler = vi.fn();
+    await mount(createElement(Flume, { data: [item], renderCell, [prop]: handler }));
+    const calls = vi.mocked(Keyboard.addListener).mock.calls;
+    expect(calls.map((call) => call[0])).toEqual([name]);
+    const event = { endCoordinates: { screenY: 300, height: 320 } };
+    (calls[0] as unknown as [string, (event: unknown) => void])[1](event);
+    expect(handler).toHaveBeenCalledWith(event);
+  });
+
+  it('subscribes to no keyboard event without a handler', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Keyboard } = await import('react-native');
+    await mount(createElement(Flume, { data: [item], renderCell }));
+    expect(Keyboard.addListener).not.toHaveBeenCalled();
+  });
+
+  it('removes the keyboard subscription on unmount', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Keyboard } = await import('react-native');
+    const tree = await mount(
+      createElement(Flume, { data: [item], renderCell, onKeyboardDidShow: () => {} }),
+    );
+    const subscription = vi.mocked(Keyboard.addListener).mock.results[0]?.value as {
+      remove: () => void;
+    };
+    await act(async () => tree.unmount());
+    expect(subscription.remove).toHaveBeenCalled();
   });
 });
 

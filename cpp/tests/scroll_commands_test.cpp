@@ -76,3 +76,18 @@ TEST_CASE("ScrollCommands a newer command clears the landed mark") {
   commands.begin(4);
   CHECK(commands.settle(kRest) == 0);
 }
+
+TEST_CASE("IntoView ends at once for a row fully in view") {
+  CHECK_FALSE(intoViewPosition(5, 3, 8).has_value());
+  CHECK_FALSE(intoViewPosition(3, 3, 8).has_value());
+  CHECK_FALSE(intoViewPosition(8, 3, 8).has_value());
+}
+
+TEST_CASE("IntoView scrolls with viewPosition 0 before the visible rows and 1 after them") {
+  CHECK(intoViewPosition(2, 3, 8) == 0.f);
+  CHECK(intoViewPosition(9, 3, 8) == 1.f);
+}
+
+TEST_CASE("IntoView puts the row at the start when no row is fully in view") {
+  CHECK(intoViewPosition(4, -1, -1) == 0.f);
+}

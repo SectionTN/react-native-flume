@@ -26,3 +26,14 @@ void ScrollCommands::reset() {
 }
 
 }  // namespace flume
+
+namespace flume {
+
+std::optional<float> intoViewPosition(int position, int firstFull, int lastFull) {
+  if (firstFull < 0 || lastFull < firstFull) return 0.f;
+  if (position < firstFull) return 0.f;
+  if (position > lastFull) return 1.f;
+  return std::nullopt;
+}
+
+}  // namespace flume

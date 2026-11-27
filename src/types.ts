@@ -2,6 +2,7 @@ import type { ComponentType, ReactElement, ReactNode } from 'react';
 import type {
   ColorValue,
   Insets,
+  KeyboardEvent,
   LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -179,6 +180,27 @@ export type FlumeRef = {
   }): Promise<void>;
   scrollToOffset(params: { offset: number; animated?: boolean }): Promise<void>;
   scrollToEnd(params?: { animated?: boolean }): Promise<void>;
+  // The item is found by identity in the current data. One that is not there resolves at once.
+  scrollToItem(params: {
+    item: unknown;
+    animated?: boolean;
+    viewOffset?: number;
+    viewPosition?: number;
+  }): Promise<void>;
+  scrollToTop(params?: { animated?: boolean }): Promise<void>;
+  // LegendList's: scrolls only when the row is not fully in view, to the edge it is past.
+  scrollIndexIntoView(params: {
+    index: number;
+    animated?: boolean;
+    viewOffset?: number;
+  }): Promise<void>;
+  scrollItemIntoView(params: {
+    item: unknown;
+    animated?: boolean;
+    viewOffset?: number;
+  }): Promise<void>;
+  // Reaches the list's own native props, such as scrollEnabled.
+  setNativeProps(props: object): void;
   getScrollableNode(): unknown;
   getAnimatableRef(): unknown;
 };
@@ -322,6 +344,8 @@ export type FlumeOwnProps<T> = {
     | ReactElement<RefreshControlProps>
     | { tintColor?: ColorValue; colors?: ReadonlyArray<ColorValue>; progressViewOffset?: number }
     | null;
+  // FlatList's: the spinner's offset for the refresh control onRefresh makes.
+  progressViewOffset?: number;
   scrollEnabled?: boolean;
   nestedScrollEnabled?: boolean;
   overScrollMode?: 'auto' | 'always' | 'never';
@@ -337,6 +361,13 @@ export type FlumeOwnProps<T> = {
   // interactive is iOS only.
   keyboardDismissMode?: 'none' | 'on-drag' | 'interactive';
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
+  // As on ScrollView, from React Native's Keyboard events while a handler is given.
+  onKeyboardWillShow?: ((event: KeyboardEvent) => void) | null;
+  onKeyboardWillHide?: ((event: KeyboardEvent) => void) | null;
+  onKeyboardDidShow?: ((event: KeyboardEvent) => void) | null;
+  onKeyboardDidHide?: ((event: KeyboardEvent) => void) | null;
+  // LegendList's: content shorter than the list sits at its end, as justifyContent flex-end places it.
+  alignItemsAtEnd?: boolean;
   // false turns anchoring off. FlatList and LegendList objects map onto the same switch and top threshold.
   maintainVisibleContentPosition?:
     | boolean
