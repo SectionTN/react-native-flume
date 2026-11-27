@@ -207,6 +207,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   int _realigns;
   flume::ScrollCommands _commands;
   BOOL _commandGlides;  // the command in flight started the glide running, so its end lands the command
+  BOOL _replacingGlide;  // inside the setContentOffset that starts a glide
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -1412,6 +1413,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 // Rows measured during the glide can move the target, so an animated command lands on it again.
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
 {
+  // The glide a new one replaces ends inside the new setContentOffset, and the new glide carries on.
+  if (_replacingGlide) {
+    return;
+  }
   _gliding = NO;
   if (_pendingTarget && _rows.dataCount > 0) {
     FLMPendingTarget target = *_pendingTarget;
@@ -1546,9 +1551,11 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   }
   if (animated) {
     _scrollEvents.scrolledProgrammatically(true);
+    _replacingGlide = YES;
     [_collectionView setContentOffset:[self pointAt:offset] animated:YES];
+    _replacingGlide = NO;
     _gliding = YES;
-    // After the call, since UIKit ends a glide it interrupts inside it.
+    // The end of this glide lands the command that started it.
     _commandGlides = _commands.pending() != 0;
     return;
   }
