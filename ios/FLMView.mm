@@ -1396,6 +1396,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   _scrollEvents.didEndDragging(decelerate);
   if (!decelerate) {
     [self writeShadowOrigins];
+    // A command that landed under the finger ends here, since no layout follows a release without momentum.
+    [self settleCommand];
   }
 }
 
