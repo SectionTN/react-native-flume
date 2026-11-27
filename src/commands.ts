@@ -1,6 +1,6 @@
 export type ScrollCommands = {
   start(): { id: number; done: Promise<void> };
-  // A command sent again takes a new id and keeps its Promise; with none pending the id is just fresh.
+  // A command sent again takes a new id and keeps its Promise. With none pending, the id is only a new one.
   move(): number;
   endThrough(id: number): void;
   endAll(): void;
