@@ -552,6 +552,42 @@ describe('nativeProps wrapper props', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
+  it('passes the platform scroll props to the native view', () => {
+    expect(nativeProps({ data: [] }, vi.fn())).toMatchObject({
+      alwaysBounceHorizontal: false,
+      indicatorStyle: 'default',
+      directionalLockEnabled: false,
+      canCancelContentTouches: true,
+      scrollToOverflowEnabled: false,
+      automaticallyAdjustsScrollIndicatorInsets: true,
+      persistentScrollbar: false,
+    });
+    expect(nativeProps({ data: [], horizontal: true }, vi.fn()).alwaysBounceHorizontal).toBe(true);
+    expect(
+      nativeProps(
+        {
+          data: [],
+          alwaysBounceHorizontal: true,
+          indicatorStyle: 'white',
+          directionalLockEnabled: true,
+          canCancelContentTouches: false,
+          scrollToOverflowEnabled: true,
+          automaticallyAdjustsScrollIndicatorInsets: false,
+          persistentScrollbar: true,
+        },
+        vi.fn(),
+      ),
+    ).toMatchObject({
+      alwaysBounceHorizontal: true,
+      indicatorStyle: 'white',
+      directionalLockEnabled: true,
+      canCancelContentTouches: false,
+      scrollToOverflowEnabled: true,
+      automaticallyAdjustsScrollIndicatorInsets: false,
+      persistentScrollbar: true,
+    });
+  });
+
   it('scrollsToTop defaults to true for a vertical list and false for a horizontal one', () => {
     expect(nativeProps({ data: [] }, vi.fn()).scrollsToTop).toBe(true);
     expect(nativeProps({ data: [], horizontal: true }, vi.fn()).scrollsToTop).toBe(false);
