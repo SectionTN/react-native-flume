@@ -1,4 +1,4 @@
-import type { ComponentType, ReactElement, ReactNode } from 'react';
+import type { ComponentType, ReactElement, ReactNode, Ref } from 'react';
 import type {
   ColorValue,
   Insets,
@@ -169,6 +169,15 @@ export type ViewabilityConfig = {
   waitForInteraction?: boolean;
 };
 
+// ScrollView's own scroll methods, for code written against a ScrollView ref. scrollTo moves along the list's axis.
+export type ScrollResponder = {
+  scrollTo(params?: { x?: number; y?: number; animated?: boolean }): void;
+  scrollToEnd(params?: { animated?: boolean }): Promise<void>;
+  flashScrollIndicators(): void;
+  getScrollableNode(): unknown;
+  getNativeScrollRef(): unknown;
+};
+
 // scrollToIndex is exact for worklet rows; the last two members serve Animated and Reanimated, which read them by name.
 // A scroll resolves once the list rests after it, or when a drag, a newer scroll or an unmount ends it first.
 export type FlumeRef = {
@@ -201,6 +210,9 @@ export type FlumeRef = {
   }): Promise<void>;
   // Reaches the list's own native props, such as scrollEnabled.
   setNativeProps(props: object): void;
+  flashScrollIndicators(): void;
+  getScrollResponder(): ScrollResponder;
+  getNativeScrollRef(): unknown;
   getScrollableNode(): unknown;
   getAnimatableRef(): unknown;
 };
@@ -368,6 +380,9 @@ export type FlumeOwnProps<T> = {
   onKeyboardDidHide?: ((event: KeyboardEvent) => void) | null;
   // LegendList's: content shorter than the list sits at its end, as justifyContent flex-end places it.
   alignItemsAtEnd?: boolean;
+  // FlashList's and LegendList's refs to the scroll view, which get the scroll responder.
+  scrollViewRef?: Ref<unknown>;
+  refScrollView?: Ref<unknown>;
   // false turns anchoring off. FlatList and LegendList objects map onto the same switch and top threshold.
   maintainVisibleContentPosition?:
     | boolean

@@ -19,6 +19,7 @@ export type {
   PressInfo,
   ReactCell,
   ScrollHandler,
+  ScrollResponder,
   SeparatorCellInfo,
   SeparatorProps,
   Separators,
