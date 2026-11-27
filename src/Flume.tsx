@@ -115,6 +115,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     onScrollEndDrag,
     onMomentumScrollBegin,
     onMomentumScrollEnd,
+    onScrollToTop,
     onViewableItemsChanged,
     onEndReached,
     onStartReached,
@@ -624,6 +625,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       onScrollEndDrag={onScrollEndDrag as NativeProps['onScrollEndDrag']}
       onMomentumScrollBegin={onMomentumScrollBegin as NativeProps['onMomentumScrollBegin']}
       onMomentumScrollEnd={onMomentumScrollEnd as NativeProps['onMomentumScrollEnd']}
+      onScrollToTop={onScrollToTop as NativeProps['onScrollToTop']}
       onViewableItemsChanged={viewability}
       onEndReached={
         onEndReached === undefined

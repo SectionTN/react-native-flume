@@ -551,4 +551,12 @@ describe('nativeProps wrapper props', () => {
     });
     expect(warn).not.toHaveBeenCalled();
   });
+
+  it('scrollsToTop defaults to true for a vertical list and false for a horizontal one', () => {
+    expect(nativeProps({ data: [] }, vi.fn()).scrollsToTop).toBe(true);
+    expect(nativeProps({ data: [], horizontal: true }, vi.fn()).scrollsToTop).toBe(false);
+    expect(
+      nativeProps({ data: [], horizontal: true, scrollsToTop: true }, vi.fn()).scrollsToTop,
+    ).toBe(true);
+  });
 });

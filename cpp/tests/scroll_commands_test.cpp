@@ -91,3 +91,22 @@ TEST_CASE("IntoView scrolls with viewPosition 0 before the visible rows and 1 af
 TEST_CASE("IntoView puts the row at the start when no row is fully in view") {
   CHECK(intoViewPosition(4, -1, -1) == 0.f);
 }
+
+TEST_CASE("TopTap: the status bar tap's glide reports scroll to top at its end") {
+  TopTap tap;
+  tap.begin();
+  CHECK(tap.glideEnded());
+  CHECK_FALSE(tap.glideEnded());
+}
+
+TEST_CASE("TopTap: a glide with no tap behind it reports nothing") {
+  TopTap tap;
+  CHECK_FALSE(tap.glideEnded());
+}
+
+TEST_CASE("TopTap: a drag or a newer scroll cancels the report") {
+  TopTap tap;
+  tap.begin();
+  tap.cancel();
+  CHECK_FALSE(tap.glideEnded());
+}
