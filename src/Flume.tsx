@@ -530,7 +530,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   useImperativeHandle(props.scrollViewRef, () => responder, [responder]);
   useImperativeHandle(props.refScrollView, () => responder, [responder]);
 
-  // FlatList's defaults: animated, the item at the start edge; native clamps the index.
+  // FlatList's defaults: animated, the item at the start edge. Native clamps the index.
   useImperativeHandle(ref, () => {
     const toIndex = (
       index: number,
