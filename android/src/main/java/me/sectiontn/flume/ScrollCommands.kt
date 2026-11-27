@@ -36,3 +36,13 @@ class ScrollCommands {
     landed = false
   }
 }
+
+// The viewPosition that brings a row into view: 0 before the fully visible rows, 1 after them, null when it is one.
+object IntoView {
+  fun target(position: Int, firstFull: Int, lastFull: Int): Float? = when {
+    firstFull < 0 || lastFull < firstFull -> 0f
+    position < firstFull -> 0f
+    position > lastFull -> 1f
+    else -> null
+  }
+}

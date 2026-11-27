@@ -180,12 +180,26 @@ interface NativeCommands {
     requestId: CodegenTypes.Int32,
     animated: boolean,
   ) => void;
+  // Scrolls only when the row is not fully in view, to the edge it is past.
+  scrollIndexIntoView: (
+    viewRef: React.ElementRef<FlumeViewType>,
+    requestId: CodegenTypes.Int32,
+    index: CodegenTypes.Int32,
+    animated: boolean,
+    viewOffset: CodegenTypes.Double,
+  ) => void;
   // A pull starts refreshing natively; the wrapper sends the controlled prop back when it did not change.
   setNativeRefreshing: (viewRef: React.ElementRef<FlumeViewType>, refreshing: boolean) => void;
 }
 
 export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
-  supportedCommands: ['scrollToIndex', 'scrollToOffset', 'scrollToEnd', 'setNativeRefreshing'],
+  supportedCommands: [
+    'scrollToIndex',
+    'scrollToOffset',
+    'scrollToEnd',
+    'scrollIndexIntoView',
+    'setNativeRefreshing',
+  ],
 });
 
 export default codegenNativeComponent<NativeProps>('FlumeView', {

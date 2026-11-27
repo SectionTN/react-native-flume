@@ -1,8 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 
 namespace flume {
+
+// The viewPosition that brings a row into view: 0 before the fully visible rows, 1 after them, none when it is one.
+// Positions count list rows. With no row fully in view, the row goes to the start.
+std::optional<float> intoViewPosition(int position, int firstFull, int lastFull);
 
 // The scroll command in flight: its id is reported once, when it settles at rest or is interrupted.
 class ScrollCommands {
