@@ -71,6 +71,19 @@ UIScrollViewContentInsetAdjustmentBehavior FLMInsetAdjustment(FlumeViewContentIn
   return UIScrollViewContentInsetAdjustmentNever;
 }
 
+UIScrollViewIndicatorStyle FLMIndicatorStyle(FlumeViewIndicatorStyle style)
+{
+  switch (style) {
+    case FlumeViewIndicatorStyle::Black:
+      return UIScrollViewIndicatorStyleBlack;
+    case FlumeViewIndicatorStyle::White:
+      return UIScrollViewIndicatorStyleWhite;
+    case FlumeViewIndicatorStyle::Default:
+      return UIScrollViewIndicatorStyleDefault;
+  }
+  return UIScrollViewIndicatorStyleDefault;
+}
+
 UIScrollViewKeyboardDismissMode FLMKeyboardDismissMode(FlumeViewKeyboardDismissMode mode)
 {
   switch (mode) {
@@ -207,6 +220,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   int _realigns;
   flume::ScrollCommands _commands;
   flume::TopTap _topTap;
+  BOOL _scrollToOverflowEnabled;
   BOOL _commandGlides;  // the command in flight started the glide running, so its end lands the command
   BOOL _replacingGlide;  // inside the setContentOffset that starts a glide
 }
@@ -409,6 +423,23 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   if (next.scrollsToTop != old.scrollsToTop) {
     view.scrollsToTop = next.scrollsToTop;
   }
+  if (next.alwaysBounceHorizontal != old.alwaysBounceHorizontal) {
+    view.alwaysBounceHorizontal = next.alwaysBounceHorizontal;
+  }
+  if (next.indicatorStyle != old.indicatorStyle) {
+    view.indicatorStyle = FLMIndicatorStyle(next.indicatorStyle);
+  }
+  if (next.directionalLockEnabled != old.directionalLockEnabled) {
+    view.directionalLockEnabled = next.directionalLockEnabled;
+  }
+  // Flume still cancels JS touches when a drag begins, whatever UIKit does with the content's touches.
+  if (next.canCancelContentTouches != old.canCancelContentTouches) {
+    view.canCancelContentTouches = next.canCancelContentTouches;
+  }
+  if (next.automaticallyAdjustsScrollIndicatorInsets != old.automaticallyAdjustsScrollIndicatorInsets) {
+    view.automaticallyAdjustsScrollIndicatorInsets = next.automaticallyAdjustsScrollIndicatorInsets;
+  }
+  _scrollToOverflowEnabled = next.scrollToOverflowEnabled;
   if (next.contentInsetAdjustmentBehavior != old.contentInsetAdjustmentBehavior) {
     view.contentInsetAdjustmentBehavior = FLMInsetAdjustment(next.contentInsetAdjustmentBehavior);
   }
@@ -484,7 +515,6 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   _horizontal = props.horizontal;
   _inverted = props.inverted;
   _stackFromEnd = config.stackFromEnd;
-  _collectionView.alwaysBounceHorizontal = _horizontal;
   [self requestSlotsFlush];
 }
 
@@ -1918,7 +1948,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     [self landCommand];
     return;
   }
-  if (offset <= 0) {
+  if (offset == 0 || (offset < 0 && !_scrollToOverflowEnabled)) {
     [self scrollToTarget:FLMPendingTarget{FLMPendingTarget::Kind::Start, 0, 0, 0} animated:animated];
     return;
   }
@@ -1930,6 +1960,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   const float contentLength = static_cast<float>(_horizontal ? content.width : content.height);
   const float boundsLength = static_cast<float>(_horizontal ? bounds.width : bounds.height);
   const float start = flume::contentStartOffset(static_cast<float>(offset), contentLength, boundsLength, _inverted);
+  if (_scrollToOverflowEnabled) {
+    [self scrollTo:start animated:animated];
+    return;
+  }
   [self scrollTo:flume::clampOffset(start, contentLength, boundsLength,
                                     static_cast<float>(_horizontal ? insets.left : insets.top),
                                     static_cast<float>(_horizontal ? insets.right : insets.bottom))

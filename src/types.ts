@@ -394,6 +394,16 @@ export type FlumeOwnProps<T> = {
   // The status bar tap scrolls to the top. On by default for a vertical list only, since iOS turns it off for every
   // scroll view when two have it.
   scrollsToTop?: boolean;
+  // On by default for a horizontal list.
+  alwaysBounceHorizontal?: boolean;
+  indicatorStyle?: 'default' | 'black' | 'white';
+  directionalLockEnabled?: boolean;
+  canCancelContentTouches?: boolean;
+  // scrollToOffset and the scroll responder's scrollTo may go past the content edges.
+  scrollToOverflowEnabled?: boolean;
+  automaticallyAdjustsScrollIndicatorInsets?: boolean;
+  // Android only: the scroll bar stays instead of fading.
+  persistentScrollbar?: boolean;
   // interactive is iOS only.
   keyboardDismissMode?: 'none' | 'on-drag' | 'interactive';
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
