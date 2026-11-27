@@ -761,6 +761,14 @@ class FlumeView(context: Context) : FrameLayout(context) {
     requestJump(JumpTarget.End, animated, 1f, 0.0)
   }
 
+  // ScrollView's scrollTo carries no command id: it ends the command in flight, then moves along the list's axis.
+  fun scrollToPoint(xDp: Double, yDp: Double, animated: Boolean) {
+    endScrollCommand()
+    scrollToOffset(0, if (geometry.horizontal) xDp else yDp, animated)
+  }
+
+  fun flashScrollIndicators() = recycler.flashScrollIndicators()
+
   fun setListOverScrollMode(value: String?) {
     recycler.overScrollMode = OverScroll.mode(value)
   }

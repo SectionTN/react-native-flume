@@ -2,11 +2,13 @@ import { type FunctionComponent, useCallback, useMemo, useState } from 'react';
 import { Button, Platform, Text, TextInput, ToastAndroid, View } from 'react-native';
 import { type CellNode, cell, Flume, type FlumeProps } from 'react-native-flume';
 import Animated, {
+  scrollTo,
+  useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
+import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 type Row = { id: string; title: string; body: string };
 
@@ -50,6 +52,15 @@ const renderRow = (item: Row): CellNode => {
   ]);
 };
 
+// The same row as a column, for the horizontal list.
+const renderColumn = (item: Row): CellNode => {
+  'worklet';
+  return cell.view({ width: 160, padding: 12, gap: 4 }, [
+    cell.text(item.title, { fontSize: 16, fontWeight: '600', color: '#111111' }),
+    cell.text(item.body, { fontSize: 13, color: '#555555' }),
+  ]);
+};
+
 const toast = (message: string) => {
   if (Platform.OS === 'android') ToastAndroid.show(message, ToastAndroid.SHORT);
 };
@@ -61,7 +72,7 @@ const INSETS = { top: 40, bottom: 120 };
 
 export default function ScrollScreen() {
   const rows = useMemo(() => makeRows(), []);
-  const [status, setStatus] = useState({ offset: 0, first: -1 });
+  const [status, setStatus] = useState({ offset: 0, x: 0, first: -1 });
   const [taps, setTaps] = useState(0);
   const [dismiss, setDismiss] = useState(0);
   const [insets, setInsets] = useState(false);
@@ -79,16 +90,28 @@ export default function ScrollScreen() {
   }, []);
   const offset = useSharedValue(0);
   const reportOffset = useCallback(
-    (value: number) => setStatus((s) => ({ ...s, offset: value })),
+    (y: number, x: number) => setStatus((s) => ({ ...s, offset: y, x })),
     [],
   );
   const onScroll = useAnimatedScrollHandler((e) => {
     offset.value = e.contentOffset.y;
-    scheduleOnRN(reportOffset, Math.round(e.contentOffset.y));
+    scheduleOnRN(reportOffset, Math.round(e.contentOffset.y), Math.round(e.contentOffset.x));
   });
   const headerStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: -Math.min(Math.max(offset.value, 0), HEADER_HEIGHT) }],
   }));
+  const [horizontal, setHorizontal] = useState(false);
+  const [inverted, setInverted] = useState(false);
+  // Reanimated's scrollTo runs on the UI runtime and reaches the list as ScrollView's command.
+  const listRef = useAnimatedRef();
+  const scrollTo400 = () => {
+    const x = horizontal ? 400 : 0;
+    const y = horizontal ? 0 : 400;
+    scheduleOnUI(() => {
+      'worklet';
+      scrollTo(listRef, x, y, true);
+    });
+  };
   return (
     <View style={{ flex: 1 }}>
       <View
@@ -114,13 +137,20 @@ export default function ScrollScreen() {
         <Button title={`Rate: ${fast ? 'fast' : 'normal'}`} onPress={() => setFast((v) => !v)} />
         <Button title="Block JS 3 s" onPress={() => blockJs(3000)} />
         <Button title="Refresh 1 s" onPress={refreshForASecond} />
+        <Button title="scrollTo 400" onPress={scrollTo400} />
+        <Button
+          title={horizontal ? 'Vertical' : 'Horizontal'}
+          onPress={() => setHorizontal((v) => !v)}
+        />
+        <Button title={inverted ? 'Upright' : 'Inverted'} onPress={() => setInverted((v) => !v)} />
       </View>
       <TextInput
         placeholder="Search"
         style={{ marginHorizontal: 8, padding: 8, borderWidth: 1, borderColor: '#cccccc' }}
       />
       <Text style={{ padding: 8 }} testID="scroll-status">
-        offset {status.offset} first viewable {status.first} pulls {pulls} pressed {pressed}
+        offset {status.offset} x {status.x} first viewable {status.first} pulls {pulls} pressed{' '}
+        {pressed}
       </Text>
       <View style={{ flex: 1, overflow: 'hidden' }}>
         <Animated.View
@@ -144,9 +174,12 @@ export default function ScrollScreen() {
           </Text>
         </Animated.View>
         <AnimatedFlume
+          ref={listRef}
+          horizontal={horizontal}
+          inverted={inverted}
           data={rows}
           keyExtractor={(r) => r.id}
-          renderCell={renderRow}
+          renderCell={horizontal ? renderColumn : renderRow}
           contentContainerStyle={{ paddingTop: HEADER_HEIGHT }}
           onPress={({ item, id }) => {
             const message = id === 'like' ? `like ${item.title}` : item.title;

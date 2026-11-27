@@ -30,6 +30,8 @@ vi.mock('../specs/FlumeViewNativeComponent', () => ({
     scrollToOffset: vi.fn(),
     scrollToEnd: vi.fn(),
     scrollIndexIntoView: vi.fn(),
+    scrollTo: vi.fn(),
+    flashScrollIndicators: vi.fn(),
     setNativeRefreshing: vi.fn(),
   },
 }));
@@ -1051,6 +1053,51 @@ describe('Flume ref', () => {
     });
     ref.current?.setNativeProps({ scrollEnabled: false });
     expect(setNativeProps).toHaveBeenCalledWith({ scrollEnabled: false });
+  });
+
+  it('getScrollResponder().scrollTo sends the scrollTo command', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const ref = createRef<FlumeRef>();
+    await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    ref.current?.getScrollResponder().scrollTo({ y: 400 });
+    expect(Commands.scrollTo).toHaveBeenCalledWith(expect.anything(), 0, 400, true);
+  });
+
+  it.each(['scrollViewRef', 'refScrollView'] as const)(
+    '%s receives the scroll responder',
+    async (prop) => {
+      installHost();
+      const { Flume } = await import('../Flume');
+      const ref = createRef<FlumeRef>();
+      const scrollRef = createRef<unknown>();
+      await mount(createElement(Flume, { ref, data: [item], renderCell, [prop]: scrollRef }));
+      expect(scrollRef.current).toBe(ref.current?.getScrollResponder());
+    },
+  );
+
+  it('getNativeScrollRef returns the host instance', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const ref = createRef<FlumeRef>();
+    const host = { setNativeProps: vi.fn() };
+    await act(async () => {
+      create(createElement(Flume, { ref, data: [item], renderCell }), {
+        createNodeMock: () => host,
+      });
+    });
+    expect(ref.current?.getNativeScrollRef()).toBe(host);
+  });
+
+  it('flashScrollIndicators sends its command', async () => {
+    installHost();
+    const { Flume } = await import('../Flume');
+    const { Commands } = await import('../specs/FlumeViewNativeComponent');
+    const ref = createRef<FlumeRef>();
+    await mount(createElement(Flume, { ref, data: [item], renderCell }));
+    ref.current?.flashScrollIndicators();
+    expect(Commands.flashScrollIndicators).toHaveBeenCalledWith(expect.anything());
   });
 
   it('sends the commands with FlatList defaults and a growing id', async () => {

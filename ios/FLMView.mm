@@ -1931,6 +1931,18 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
               animated:animated];
 }
 
+// ScrollView's scrollTo carries no command id: it ends the command in flight, then moves along the list's axis.
+- (void)scrollTo:(double)x y:(double)y animated:(BOOL)animated
+{
+  [self endCommand];
+  [self scrollToOffset:0 offset:(_horizontal ? x : y) animated:animated];
+}
+
+- (void)flashScrollIndicators
+{
+  [_collectionView flashScrollIndicators];
+}
+
 // A row already fully in view ends the command where the list is. An index past the data lands at the end edge.
 - (void)scrollIndexIntoView:(NSInteger)requestId
                       index:(NSInteger)index

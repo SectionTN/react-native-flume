@@ -125,6 +125,11 @@ class FlumeRecyclerView(context: Context) : RecyclerView(context) {
       invalidate()
     }
 
+  // ScrollView's flashScrollIndicators: the scroll bars show, then fade as after a scroll.
+  fun flashScrollIndicators() {
+    awakenScrollBars()
+  }
+
   // Under the decorations, so a separator line draws over it.
   override fun onDraw(c: Canvas) {
     if (Color.alpha(contentBackground) != 0) drawContentBackground(c)

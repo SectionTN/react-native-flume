@@ -188,6 +188,14 @@ interface NativeCommands {
     animated: boolean,
     viewOffset: CodegenTypes.Double,
   ) => void;
+  // ScrollView's names and arguments, so Reanimated's scrollTo reaches the list. The offset is along the list's axis.
+  scrollTo: (
+    viewRef: React.ElementRef<FlumeViewType>,
+    x: CodegenTypes.Double,
+    y: CodegenTypes.Double,
+    animated: boolean,
+  ) => void;
+  flashScrollIndicators: (viewRef: React.ElementRef<FlumeViewType>) => void;
   // A pull starts refreshing natively; the wrapper sends the controlled prop back when it did not change.
   setNativeRefreshing: (viewRef: React.ElementRef<FlumeViewType>, refreshing: boolean) => void;
 }
@@ -198,6 +206,8 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'scrollToOffset',
     'scrollToEnd',
     'scrollIndexIntoView',
+    'scrollTo',
+    'flashScrollIndicators',
     'setNativeRefreshing',
   ],
 });

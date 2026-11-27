@@ -185,6 +185,8 @@ export const OWN_KEYS = [
   'onKeyboardDidShow',
   'onKeyboardDidHide',
   'alignItemsAtEnd',
+  'scrollViewRef',
+  'refScrollView',
   'maintainVisibleContentPosition',
   'onLayout',
   'testID',

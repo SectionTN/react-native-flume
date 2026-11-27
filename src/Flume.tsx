@@ -56,8 +56,10 @@ import type {
   CellRendererProps,
   FlumeProps,
   FlumeRef,
+  ListRef,
   PressInfo,
   ReactCell,
+  ScrollResponder,
   SeparatorProps,
   ViewToken,
 } from './types';
@@ -504,6 +506,29 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
     [commands],
   );
 
+  // ScrollView's methods, for the scroll view refs FlashList and LegendList hand out and for getScrollResponder.
+  const responder = useMemo<ScrollResponder>(
+    () => ({
+      scrollTo: (params) => {
+        const native = nativeRef.current;
+        if (native === null) return;
+        // Native ends the command in flight, and a data commit must not send it again.
+        recent.current = null;
+        Commands.scrollTo(native, params?.x ?? 0, params?.y ?? 0, params?.animated ?? true);
+      },
+      scrollToEnd: (params) =>
+        sendCommand((native, id) => Commands.scrollToEnd(native, id, params?.animated ?? true)),
+      flashScrollIndicators: () => {
+        if (nativeRef.current !== null) Commands.flashScrollIndicators(nativeRef.current);
+      },
+      getScrollableNode: () => nativeRef.current,
+      getNativeScrollRef: () => nativeRef.current,
+    }),
+    [sendCommand],
+  );
+  useImperativeHandle(props.scrollViewRef, () => responder, [responder]);
+  useImperativeHandle(props.refScrollView, () => responder, [responder]);
+
   // FlatList's defaults: animated, the item at the start edge; native clamps the index.
   useImperativeHandle(ref, () => {
     const toIndex = (
@@ -535,8 +560,7 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
         toIndex(index, animated, viewPosition, viewOffset),
       scrollToOffset: ({ offset, animated = true }) =>
         sendCommand((native, id) => Commands.scrollToOffset(native, id, offset, animated)),
-      scrollToEnd: (params) =>
-        sendCommand((native, id) => Commands.scrollToEnd(native, id, params?.animated ?? true)),
+      scrollToEnd: responder.scrollToEnd,
       scrollToItem: ({ item, animated = true, viewPosition = 0, viewOffset = 0 }) =>
         found(item, (index) => toIndex(index, animated, viewPosition, viewOffset, 'scrollToItem')),
       scrollToTop: (params) =>
@@ -548,10 +572,13 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
       scrollItemIntoView: ({ item, animated = true, viewOffset = 0 }) =>
         found(item, (index) => intoView(index, animated, viewOffset, 'scrollItemIntoView')),
       setNativeProps: (nativeProps) => nativeRef.current?.setNativeProps(nativeProps),
+      flashScrollIndicators: responder.flashScrollIndicators,
+      getScrollResponder: () => responder,
+      getNativeScrollRef: () => nativeRef.current,
       getScrollableNode: () => nativeRef.current,
       getAnimatableRef: () => nativeRef.current,
     };
-  }, [sendCommand]);
+  }, [sendCommand, responder]);
 
   const press = (handler: ((info: PressInfo<T>) => void) | undefined) =>
     handler === undefined
@@ -624,7 +651,11 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   );
 }
 
-// forwardRef drops the generic; the cast gives callers the item type back.
-export const Flume = forwardRef(FlumeInner) as <T>(
-  props: FlumeProps<T> & { ref?: Ref<FlumeRef> },
-) => ReactElement;
+// forwardRef drops the generic, so the cast gives callers the item type back. The ref prop takes a ref typed for
+// FlatList, FlashList or LegendList through the first signature, and ComponentRef reads Flume's handle from the last.
+type FlumeComponent = {
+  <T>(props: FlumeProps<T> & { ref?: Ref<ListRef<NoInfer<T>>> }): ReactElement;
+  <T>(props: FlumeProps<T> & { ref?: Ref<FlumeRef<NoInfer<T>>> }): ReactElement;
+};
+
+export const Flume = forwardRef(FlumeInner) as FlumeComponent;
