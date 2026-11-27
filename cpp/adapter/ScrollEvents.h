@@ -4,7 +4,7 @@
 
 namespace flume {
 
-enum class ScrollEventKind { Scroll, BeginDrag, EndDrag, MomentumBegin, MomentumEnd };
+enum class ScrollEventKind { Scroll, BeginDrag, EndDrag, MomentumBegin, MomentumEnd, ScrollToTop };
 
 // React Native's iOS rules: the throttle, and which events each UIScrollView callback sends.
 class ScrollEvents {

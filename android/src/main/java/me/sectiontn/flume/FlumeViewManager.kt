@@ -299,6 +299,24 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
 
   override fun setAlwaysBounceVertical(view: FlumeView, value: Boolean) = Unit
 
+  override fun setScrollsToTop(view: FlumeView, value: Boolean) = Unit
+
+  override fun setAlwaysBounceHorizontal(view: FlumeView, value: Boolean) = Unit
+
+  override fun setIndicatorStyle(view: FlumeView, value: String?) = Unit
+
+  override fun setDirectionalLockEnabled(view: FlumeView, value: Boolean) = Unit
+
+  override fun setCanCancelContentTouches(view: FlumeView, value: Boolean) = Unit
+
+  override fun setScrollToOverflowEnabled(view: FlumeView, value: Boolean) = Unit
+
+  override fun setAutomaticallyAdjustsScrollIndicatorInsets(view: FlumeView, value: Boolean) = Unit
+
+  override fun setPersistentScrollbar(view: FlumeView, value: Boolean) {
+    view.recycler.isScrollbarFadingEnabled = !value
+  }
+
   override fun setRefreshTintColor(view: FlumeView, value: Int?) = Unit
 
   @ReactProp(name = "keyboardDismissMode")

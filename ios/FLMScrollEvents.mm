@@ -17,6 +17,8 @@ std::string FLMScrollEventName(flume::ScrollEventKind kind)
       return "momentumScrollBegin";
     case flume::ScrollEventKind::MomentumEnd:
       return "momentumScrollEnd";
+    case flume::ScrollEventKind::ScrollToTop:
+      return "scrollToTop";
   }
   return "scroll";
 }

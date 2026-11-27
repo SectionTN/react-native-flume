@@ -68,6 +68,14 @@ export type FlatProps = Pick<
   | 'contentInsetAdjustmentBehavior'
   | 'bounces'
   | 'alwaysBounceVertical'
+  | 'scrollsToTop'
+  | 'alwaysBounceHorizontal'
+  | 'indicatorStyle'
+  | 'directionalLockEnabled'
+  | 'canCancelContentTouches'
+  | 'scrollToOverflowEnabled'
+  | 'automaticallyAdjustsScrollIndicatorInsets'
+  | 'persistentScrollbar'
   | 'refreshTintColor'
   | 'keyboardDismissMode'
   | 'keyboardShouldPersistTaps'
@@ -342,6 +350,7 @@ const NULLABLE = [
   'onScrollEndDrag',
   'onMomentumScrollBegin',
   'onMomentumScrollEnd',
+  'onScrollToTop',
   'onViewableItemsChanged',
   'onEndReached',
   'onStartReached',
@@ -477,6 +486,15 @@ export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
     contentInsetAdjustmentBehavior: props.contentInsetAdjustmentBehavior ?? 'never',
     bounces: props.bounces !== false,
     alwaysBounceVertical: props.alwaysBounceVertical ?? !horizontal,
+    scrollsToTop: props.scrollsToTop ?? !horizontal,
+    alwaysBounceHorizontal: props.alwaysBounceHorizontal ?? horizontal,
+    indicatorStyle: props.indicatorStyle ?? 'default',
+    directionalLockEnabled: props.directionalLockEnabled === true,
+    canCancelContentTouches: props.canCancelContentTouches !== false,
+    scrollToOverflowEnabled: props.scrollToOverflowEnabled === true,
+    automaticallyAdjustsScrollIndicatorInsets:
+      props.automaticallyAdjustsScrollIndicatorInsets !== false,
+    persistentScrollbar: props.persistentScrollbar === true,
     refreshTintColor: refresh.tintColor,
     keyboardDismissMode: props.keyboardDismissMode ?? 'none',
     keyboardShouldPersistTaps: props.keyboardShouldPersistTaps ?? 'never',

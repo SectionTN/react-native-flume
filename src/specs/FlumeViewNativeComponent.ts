@@ -119,6 +119,17 @@ export interface NativeProps extends ViewProps {
   >;
   bounces?: CodegenTypes.WithDefault<boolean, true>;
   alwaysBounceVertical?: CodegenTypes.WithDefault<boolean, true>;
+  // The status bar tap. The wrapper sends React Native's default only for a vertical list.
+  scrollsToTop?: CodegenTypes.WithDefault<boolean, true>;
+  alwaysBounceHorizontal?: CodegenTypes.WithDefault<boolean, false>;
+  indicatorStyle?: CodegenTypes.WithDefault<'default' | 'black' | 'white', 'default'>;
+  directionalLockEnabled?: CodegenTypes.WithDefault<boolean, false>;
+  canCancelContentTouches?: CodegenTypes.WithDefault<boolean, true>;
+  // scrollToOffset and scrollTo skip their clamp to the content.
+  scrollToOverflowEnabled?: CodegenTypes.WithDefault<boolean, false>;
+  automaticallyAdjustsScrollIndicatorInsets?: CodegenTypes.WithDefault<boolean, true>;
+  // Android only: the scroll bar stays instead of fading.
+  persistentScrollbar?: CodegenTypes.WithDefault<boolean, false>;
   refreshTintColor?: ColorValue;
   keyboardDismissMode?: CodegenTypes.WithDefault<'none' | 'on-drag' | 'interactive', 'none'>;
   keyboardShouldPersistTaps?: CodegenTypes.WithDefault<'always' | 'never' | 'handled', 'never'>;
@@ -144,6 +155,7 @@ export interface NativeProps extends ViewProps {
   onScrollEndDrag?: CodegenTypes.DirectEventHandler<ScrollEvent>;
   onMomentumScrollBegin?: CodegenTypes.DirectEventHandler<ScrollEvent>;
   onMomentumScrollEnd?: CodegenTypes.DirectEventHandler<ScrollEvent>;
+  onScrollToTop?: CodegenTypes.DirectEventHandler<ScrollEvent>;
   onViewableItemsChanged?: CodegenTypes.DirectEventHandler<ViewabilityEvent>;
   onEndReached?: CodegenTypes.DirectEventHandler<
     Readonly<{ distanceFromEnd: CodegenTypes.Double }>

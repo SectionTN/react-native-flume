@@ -107,13 +107,21 @@ object OverScroll {
   }
 }
 
-class FlumeRecyclerView(context: Context) : RecyclerView(context) {
+// ScrollView's default style gives the view its themed scroll bars, which a view built in code lacks.
+class FlumeRecyclerView(context: Context) :
+  RecyclerView(context, null, android.R.attr.scrollViewStyle) {
   var scrollEnabled = true
   var flingFactor = 1f
   var keyboardShouldPersistTaps = KeyboardTaps.NEVER
   private val keyboardGesture = KeyboardGesture()
   private val nativeGesture = NativeGestureTracker()
   private val backgroundPaint = Paint()
+
+  init {
+    // The style enables the vertical bar only. Outside the padding, as React Native's ScrollView draws it.
+    isHorizontalScrollBarEnabled = true
+    scrollBarStyle = View.SCROLLBARS_OUTSIDE_OVERLAY
+  }
 
   // contentContainerStyle's backgroundColor, 0 for none: the rows and their padding, scrolled with them.
   var contentBackground = 0
