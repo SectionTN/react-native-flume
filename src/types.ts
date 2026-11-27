@@ -180,7 +180,30 @@ export type ScrollResponder = {
 
 // scrollToIndex is exact for worklet rows; the last two members serve Animated and Reanimated, which read them by name.
 // A scroll resolves once the list rests after it, or when a drag, a newer scroll or an unmount ends it first.
-export type FlumeRef = {
+// The members FlatList's, FlashList's and LegendList's refs share, so a ref typed for any of them fits the ref prop.
+// Method syntax and returns of void keep each list's own signatures assignable.
+export type ListRef<T> = {
+  scrollToIndex(params: {
+    index: number;
+    animated?: boolean;
+    viewPosition?: number;
+    viewOffset?: number;
+  }): void;
+  scrollToOffset(params: { offset: number; animated?: boolean }): void;
+  scrollToEnd(params?: { animated?: boolean }): void;
+  scrollToItem(params: {
+    item: T;
+    animated?: boolean;
+    viewOffset?: number;
+    viewPosition?: number;
+  }): void;
+  flashScrollIndicators(): void;
+  getNativeScrollRef(): unknown;
+  getScrollResponder(): unknown;
+  getScrollableNode(): unknown;
+};
+
+export type FlumeRef<T = unknown> = {
   scrollToIndex(params: {
     index: number;
     animated?: boolean;
@@ -191,7 +214,7 @@ export type FlumeRef = {
   scrollToEnd(params?: { animated?: boolean }): Promise<void>;
   // The item is found by identity in the current data. One that is not there resolves at once.
   scrollToItem(params: {
-    item: unknown;
+    item: T;
     animated?: boolean;
     viewOffset?: number;
     viewPosition?: number;
@@ -203,11 +226,7 @@ export type FlumeRef = {
     animated?: boolean;
     viewOffset?: number;
   }): Promise<void>;
-  scrollItemIntoView(params: {
-    item: unknown;
-    animated?: boolean;
-    viewOffset?: number;
-  }): Promise<void>;
+  scrollItemIntoView(params: { item: T; animated?: boolean; viewOffset?: number }): Promise<void>;
   // Reaches the list's own native props, such as scrollEnabled.
   setNativeProps(props: object): void;
   flashScrollIndicators(): void;

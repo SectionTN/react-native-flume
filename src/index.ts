@@ -13,6 +13,7 @@ export type {
   FlumeProps,
   FlumeRef,
   LegendListAnchoring,
+  ListRef,
   ListRenderItem,
   ListRenderItemInfo,
   MaintainVisibleContentPosition,

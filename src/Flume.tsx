@@ -56,6 +56,7 @@ import type {
   CellRendererProps,
   FlumeProps,
   FlumeRef,
+  ListRef,
   PressInfo,
   ReactCell,
   ScrollResponder,
@@ -650,7 +651,11 @@ function FlumeInner<T>(given: FlumeProps<T>, ref: Ref<FlumeRef>): ReactElement {
   );
 }
 
-// forwardRef drops the generic; the cast gives callers the item type back.
-export const Flume = forwardRef(FlumeInner) as <T>(
-  props: FlumeProps<T> & { ref?: Ref<FlumeRef> },
-) => ReactElement;
+// forwardRef drops the generic, so the cast gives callers the item type back. The ref prop takes a ref typed for
+// FlatList, FlashList or LegendList through the first signature, and ComponentRef reads Flume's handle from the last.
+type FlumeComponent = {
+  <T>(props: FlumeProps<T> & { ref?: Ref<ListRef<NoInfer<T>>> }): ReactElement;
+  <T>(props: FlumeProps<T> & { ref?: Ref<FlumeRef<NoInfer<T>>> }): ReactElement;
+};
+
+export const Flume = forwardRef(FlumeInner) as FlumeComponent;

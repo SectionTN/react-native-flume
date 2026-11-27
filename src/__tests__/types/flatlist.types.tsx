@@ -1,6 +1,7 @@
 // FlatList code from React Native's docs, with only the import and the component name changed.
-import { useState } from 'react';
+import { type ComponentRef, useRef, useState } from 'react';
 import {
+  type FlatList,
   RefreshControl,
   type ListRenderItem as RNListRenderItem,
   StyleSheet,
@@ -91,3 +92,26 @@ export function FlatListSeparatorExample() {
     </>
   );
 }
+
+// A ref typed for FlatList fits, and an untyped one leaves the item type to data.
+export function FlatListRefExample() {
+  const typed = useRef<FlatList<ItemData>>(null);
+  const untyped = useRef<FlatList>(null);
+  return (
+    <>
+      <Flume ref={typed} data={DATA} renderItem={renderItem} />
+      <Flume
+        ref={untyped}
+        data={DATA}
+        renderItem={({ item }) => (
+          // @ts-expect-error the item type comes from data, not from an untyped FlatList ref
+          <Text>{item.missing}</Text>
+        )}
+      />
+    </>
+  );
+}
+
+// The component's ref type is Flume's handle, so scrollToTop is there and returns a Promise.
+export const scrollToTop = (handle: ComponentRef<typeof Flume>): Promise<void> =>
+  handle.scrollToTop();
