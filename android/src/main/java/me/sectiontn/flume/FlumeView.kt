@@ -231,6 +231,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
       if (again != null) {
         scrollToken++
         pendingAlign = null
+        // Begun again before stopScroll, whose idle state would end a command its scroller had landed.
+        commands.begin(commands.pending)
       }
       if (reset) {
         recycler.stopScroll()
@@ -238,7 +240,6 @@ class FlumeView(context: Context) : FrameLayout(context) {
       }
       applySpans()
       if (again != null) {
-        commands.begin(commands.pending)
         requestJump(again.target, again.animated, again.viewPosition, again.viewOffsetDp)
       } else {
         retargetJump()
