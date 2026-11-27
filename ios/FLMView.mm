@@ -206,6 +206,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   std::optional<FLMPendingTarget> _realign;
   int _realigns;
   flume::ScrollCommands _commands;
+  flume::TopTap _topTap;
   BOOL _commandGlides;  // the command in flight started the glide running, so its end lands the command
   BOOL _replacingGlide;  // inside the setContentOffset that starts a glide
 }
@@ -405,6 +406,9 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   if (next.alwaysBounceVertical != old.alwaysBounceVertical) {
     view.alwaysBounceVertical = next.alwaysBounceVertical;
   }
+  if (next.scrollsToTop != old.scrollsToTop) {
+    view.scrollsToTop = next.scrollsToTop;
+  }
   if (next.contentInsetAdjustmentBehavior != old.contentInsetAdjustmentBehavior) {
     view.contentInsetAdjustmentBehavior = FLMInsetAdjustment(next.contentInsetAdjustmentBehavior);
   }
@@ -481,8 +485,6 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   _inverted = props.inverted;
   _stackFromEnd = config.stackFromEnd;
   _collectionView.alwaysBounceHorizontal = _horizontal;
-  // A horizontal strip never takes the status bar tap from the vertical list beside it.
-  _collectionView.scrollsToTop = !_horizontal;
   [self requestSlotsFlush];
 }
 
@@ -724,6 +726,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 - (void)detach
 {
   // Leaving the window or the store ends the command in flight, as a drag does.
+  _topTap.cancel();
   [self endCommand];
   if (!_attached) {
     return;
@@ -1117,6 +1120,8 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     [self scrollToTarget:FLMPendingTarget{end ? FLMPendingTarget::Kind::End : FLMPendingTarget::Kind::Start,
                                           end ? _rows.dataCount - 1 : 0, end ? 1.0 : 0.0, 0}
                 animated:YES];
+    // UIKit never calls scrollViewDidScrollToTop: for this glide, so its end reports the scroll to top.
+    _topTap.begin();
     return NO;
   }
   // The status bar tap's own animation ends in scrollViewDidScrollToTop:, never in a command's re-land.
@@ -1125,6 +1130,11 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   [self dropJump];
   [self reclaimGlideSlots];
   return YES;
+}
+
+- (void)scrollViewDidScrollToTop:(UIScrollView *)scrollView
+{
+  [self emitScrollEvents:std::vector<flume::ScrollEventKind>{flume::ScrollEventKind::ScrollToTop} velocity:CGPointZero];
 }
 
 - (BOOL)showsReactRows
@@ -1138,6 +1148,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   _gliding = NO;
   [self dropJump];
   [self endCommand];
+  _topTap.cancel();
   [self reclaimGlideSlots];
   // The list takes the touch, so no React handler under it may still press, as on Android.
   FLMCancelJSTouches(self);
@@ -1154,6 +1165,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     stops = _collectionView.isDecelerating || _gliding;
     // The touch stops a glide in place, so neither the re-land nor the realign moves the list to the target.
     if (_gliding) {
+      _topTap.cancel();
       _pendingTarget.reset();
       _realign.reset();
     }
@@ -1435,6 +1447,10 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   // Also after a touch stopped the glide, which UIKit ends here too.
   if (std::exchange(_commandGlides, NO)) {
     [self landCommand];
+  }
+  if (_topTap.glideEnded()) {
+    [self emitScrollEvents:std::vector<flume::ScrollEventKind>{flume::ScrollEventKind::ScrollToTop}
+                  velocity:CGPointZero];
   }
 }
 
@@ -1810,6 +1826,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
 - (void)beginCommand:(NSInteger)requestId
 {
   _commands.begin(static_cast<int32_t>(requestId));
+  _topTap.cancel();
   _commandGlides = NO;
 }
 

@@ -359,6 +359,8 @@ export type FlumeOwnProps<T> = {
   onScrollEndDrag?: ScrollHandler | null;
   onMomentumScrollBegin?: ScrollHandler | null;
   onMomentumScrollEnd?: ScrollHandler | null;
+  // iOS: after the status bar tap scrolled the list to its top.
+  onScrollToTop?: ScrollHandler | null;
   scrollEventThrottle?: number;
   onViewableItemsChanged?:
     | ((info: { viewableItems: ViewToken<T>[]; changed: ViewToken<T>[] }) => void)
@@ -389,6 +391,9 @@ export type FlumeOwnProps<T> = {
   contentInsetAdjustmentBehavior?: 'automatic' | 'scrollableAxes' | 'never' | 'always';
   bounces?: boolean;
   alwaysBounceVertical?: boolean;
+  // The status bar tap scrolls to the top. On by default for a vertical list only, since iOS turns it off for every
+  // scroll view when two have it.
+  scrollsToTop?: boolean;
   // interactive is iOS only.
   keyboardDismissMode?: 'none' | 'on-drag' | 'interactive';
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';

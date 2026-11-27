@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <utility>
 
 namespace flume {
 
@@ -32,6 +33,19 @@ class ScrollCommands {
  private:
   int32_t id_ = 0;
   bool landed_ = false;
+};
+
+// The status bar tap that scrolls through the jump gate: the end of its glide reports the scroll to top, once.
+class TopTap {
+ public:
+  void begin() { pending_ = true; }
+  // A drag or a newer scroll took the list over.
+  void cancel() { pending_ = false; }
+  // True once, for the glide the tap started.
+  bool glideEnded() { return std::exchange(pending_, false); }
+
+ private:
+  bool pending_ = false;
 };
 
 }  // namespace flume

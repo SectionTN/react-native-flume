@@ -299,6 +299,8 @@ class FlumeViewManager : ViewGroupManager<FlumeView>(), FlumeViewManagerInterfac
 
   override fun setAlwaysBounceVertical(view: FlumeView, value: Boolean) = Unit
 
+  override fun setScrollsToTop(view: FlumeView, value: Boolean) = Unit
+
   override fun setRefreshTintColor(view: FlumeView, value: Int?) = Unit
 
   @ReactProp(name = "keyboardDismissMode")

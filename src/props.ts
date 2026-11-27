@@ -68,6 +68,7 @@ export type FlatProps = Pick<
   | 'contentInsetAdjustmentBehavior'
   | 'bounces'
   | 'alwaysBounceVertical'
+  | 'scrollsToTop'
   | 'refreshTintColor'
   | 'keyboardDismissMode'
   | 'keyboardShouldPersistTaps'
@@ -342,6 +343,7 @@ const NULLABLE = [
   'onScrollEndDrag',
   'onMomentumScrollBegin',
   'onMomentumScrollEnd',
+  'onScrollToTop',
   'onViewableItemsChanged',
   'onEndReached',
   'onStartReached',
@@ -477,6 +479,7 @@ export function nativeProps<T>(given: FlumeProps<T>, warn: Warn): FlatProps {
     contentInsetAdjustmentBehavior: props.contentInsetAdjustmentBehavior ?? 'never',
     bounces: props.bounces !== false,
     alwaysBounceVertical: props.alwaysBounceVertical ?? !horizontal,
+    scrollsToTop: props.scrollsToTop ?? !horizontal,
     refreshTintColor: refresh.tintColor,
     keyboardDismissMode: props.keyboardDismissMode ?? 'none',
     keyboardShouldPersistTaps: props.keyboardShouldPersistTaps ?? 'never',
