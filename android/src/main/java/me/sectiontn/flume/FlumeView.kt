@@ -75,6 +75,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
   private val commands = ScrollCommands()
   // The jump of the command in flight once it has run, which new data sends again at its target.
   private var landing: Jump? = null
+  // The offset of the command's glide in flight, which a data reset sends again.
+  private var landingOffsetDp: Double? = null
   // An instant scroll lands with the next layout pass, an offset glide at its first idle state after it moved.
   private var landOnLayout = false
   private var landOnIdle = false
@@ -228,9 +230,12 @@ class FlumeView(context: Context) : FrameLayout(context) {
       viewability.invalidate()
       // A command still on its way lands on its target in the new rows, not where anchoring keeps the old ones.
       val again = landing?.takeIf { commands.pending != 0 && jumps.pending == null }
-      if (again != null) {
+      // Only a reset stops an offset glide, so only a reset sends it again.
+      val againOffset = landingOffsetDp?.takeIf { reset && commands.pending != 0 }
+      if (again != null || againOffset != null) {
         scrollToken++
         pendingAlign = null
+        landOnIdle = false
         // Begun again before stopScroll, whose idle state would end a command its scroller had landed.
         commands.begin(commands.pending)
       }
@@ -241,6 +246,8 @@ class FlumeView(context: Context) : FrameLayout(context) {
       applySpans()
       if (again != null) {
         requestJump(again.target, again.animated, again.viewPosition, again.viewOffsetDp)
+      } else if (againOffset != null) {
+        scrollToOffset(commands.pending, againOffset, true)
       } else {
         retargetJump()
       }
@@ -487,6 +494,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   // A new scroll replaces the landing of the one before it.
   private fun forgetLanding() {
     landing = null
+    landingOffsetDp = null
     landOnLayout = false
     landOnIdle = false
     scrollToken++
@@ -508,6 +516,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     )
     if (ended != 0) {
       landing = null
+      landingOffsetDp = null
       dispatch(FlumeScrollCommandEndEvent(UIManagerHelper.getSurfaceId(this), id, ended))
     }
   }
@@ -515,6 +524,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
   // A drag, leaving the window, anchoring's own scroll or a dropped view ends the command in flight.
   fun endScrollCommand() {
     landing = null
+    landingOffsetDp = null
     landOnLayout = false
     landOnIdle = false
     val ended = commands.end()
@@ -730,6 +740,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
     if (visual != 0 && animated) {
       movedSinceScroll = false
       landOnIdle = true
+      landingOffsetDp = offsetDp
       recycler.smoothScrollBy(dx, dy)
       return
     }
