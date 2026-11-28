@@ -409,7 +409,7 @@ class FlumeView(context: Context) : FrameLayout(context) {
       runJump(jump)
       return
     }
-    jumps.request(jump, waiting, SystemClock.uptimeMillis())
+    jumps.request(jump, waiting, SystemClock.uptimeMillis(), target.waitsForData(rows))
     removeCallbacks(jumpDue)
     postDelayed(jumpDue, ScrollTargets.JUMP_WAIT_MS)
   }
@@ -428,8 +428,9 @@ class FlumeView(context: Context) : FrameLayout(context) {
     slots.dropReserved(waiting.owner)
     val jump = waiting.copy(owner = adapter.allocateHolderId())
     val slotsLeft = reserveJump(jump)
-    jumps.retarget(jump, slotsLeft)
-    if (slotsLeft.isEmpty() && !jump.target.waitsForData(rows)) jumps.cancel()?.let { runJump(it) }
+    val waitsForData = jump.target.waitsForData(rows)
+    jumps.retarget(jump, slotsLeft, waitsForData)
+    if (slotsLeft.isEmpty() && !waitsForData) jumps.cancel()?.let { runJump(it) }
   }
 
   private fun runJump(jump: Jump) {

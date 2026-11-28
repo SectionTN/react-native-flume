@@ -1566,7 +1566,7 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
     [self runJump:jump];
     return;
   }
-  _jumps.request(jump, waiting, static_cast<int64_t>(FLMNowMs()));
+  _jumps.request(jump, waiting, static_cast<int64_t>(FLMNowMs()), [self waitsForData:target]);
   __weak FLMView *weakSelf = self;
   dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (flume::kJumpWaitMs + 1) * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
     [weakSelf jumpDue];
@@ -1719,8 +1719,9 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   std::unordered_set<int> waiting = [self reserveJumpTo:[self landingFor:jump.target]
                                                animated:jump.animated
                                                   owner:jump.owner];
-  const BOOL ready = waiting.empty() && ![self waitsForData:jump.target];
-  _jumps.retarget(jump, std::move(waiting));
+  const BOOL waitsForData = [self waitsForData:jump.target];
+  const BOOL ready = waiting.empty() && !waitsForData;
+  _jumps.retarget(jump, std::move(waiting), waitsForData);
   [self requestSlotsFlush];
   if (ready) {
     _readyJump = _jumps.cancel();
