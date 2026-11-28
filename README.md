@@ -232,7 +232,20 @@ Then rename `<FlatList>` to `<Flume>`. `renderItem`, `keyExtractor`, the list co
 ## Roadmap
 
 - [x] 0.1: Android and iOS
-- [ ] 1.0: First stable release
+- [ ] 0.2: Move from FlatList, SectionList, FlashList or LegendList by changing the import
+  - [x] FlatList's `refreshControl` element, `data={null}` and the other props that differed
+  - [x] `ItemSeparatorComponent`, `columnWrapperStyle` and container styles
+  - [ ] Scroll methods that return Promises, and the remaining ref methods
+  - [ ] Paging, snapping and starting offsets
+  - [ ] A pinned `ListHeaderComponent` and `viewabilityConfigCallbackPairs`
+  - [ ] `SectionList`
+  - [ ] Masonry layouts
+  - [ ] Migration notes for FlashList and LegendList
+- [ ] 0.3: Native views in worklet rows, starting with Lottie, blur and gradients
+- [ ] 0.4: A compiler that runs your `renderItem` on the UI thread
+- [ ] 0.5: Faster rows and no flash when the list changes
+- [ ] 0.6: Web
+- [ ] 1.0: First stable release, with a docs site
 
 ## License
 
