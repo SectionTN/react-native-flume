@@ -81,4 +81,22 @@ class JumpGateTest {
     assertNull(gate.rendered(1))
     assertEquals("a", gate.due(nowMs = 1000))
   }
+
+  @Test
+  fun aJumpPastTheDataDoesNotRunWhenItsSlotsRender() {
+    val gate = JumpGate<String>(waitMs = 1000)
+    gate.request("a", setOf(1), nowMs = 0, waitsForData = true)
+    assertNull(gate.rendered(1))
+    gate.retarget("b", setOf(2), waitsForData = true)
+    assertNull(gate.rendered(2))
+    assertEquals("b", gate.due(nowMs = 1000))
+  }
+
+  @Test
+  fun aJumpRetargetedOntoDataThatArrivedRunsWhenItsSlotsRender() {
+    val gate = JumpGate<String>()
+    gate.request("a", setOf(1), nowMs = 0, waitsForData = true)
+    gate.retarget("b", setOf(2))
+    assertEquals("b", gate.rendered(2))
+  }
 }

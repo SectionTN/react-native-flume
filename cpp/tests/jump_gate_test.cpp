@@ -73,3 +73,19 @@ TEST_CASE("a jump with no slots waits for its deadline") {
   CHECK_FALSE(gate.rendered(1));
   CHECK(gate.due(1000) == "a");
 }
+
+TEST_CASE("a jump past the data does not run when its slots render") {
+  JumpGate<std::string> gate(1000);
+  gate.request("a", {1}, 0, true);
+  CHECK_FALSE(gate.rendered(1));
+  gate.retarget("b", {2}, true);
+  CHECK_FALSE(gate.rendered(2));
+  CHECK(gate.due(1000) == "b");
+}
+
+TEST_CASE("a jump retargeted onto data that arrived runs when its slots render") {
+  JumpGate<std::string> gate;
+  gate.request("a", {1}, 0, true);
+  gate.retarget("b", {2});
+  CHECK(gate.rendered(2) == "b");
+}
