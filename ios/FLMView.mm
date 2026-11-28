@@ -1433,6 +1433,9 @@ int FLMViewType(int storeId, const flume::ListRows &rows, int position)
   // Also after a touch stopped the glide, which UIKit ends here too.
   if (std::exchange(_commandGlides, NO)) {
     [self landCommand];
+  } else {
+    // A command that landed without moving while this older glide ran ends at its rest.
+    [self settleCommand];
   }
 }
 
